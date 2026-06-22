@@ -24,7 +24,7 @@ const users = [
   },
   {
     name: 'Customer Service User',
-    email: 'customer-service@diveshop.local',
+    email: 'cs@diveshop.local',
     role: UserRole.CUSTOMER_SERVICE,
   },
   {
