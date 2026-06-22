@@ -81,8 +81,8 @@ Sprint 1 should focus only on `/bookings`, `/bookings/new`, and basic booking de
 ```bash
 pnpm install
 cp .env.example .env
-pnpm prisma migrate dev
-pnpm prisma db seed
+pnpm db:migrate
+pnpm db:seed
 pnpm dev
 ```
 
@@ -107,3 +107,16 @@ Create a `.env` file:
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
 ```
+
+## Development Seed Users
+
+After migrations have been applied, run `pnpm db:seed` (or `npx prisma db seed`) to create these idempotent local development users:
+
+| Name | Email | Role |
+| --- | --- | --- |
+| Admin User | `admin@diveshop.local` | `ADMIN` |
+| Customer Service User | `customer-service@diveshop.local` | `CUSTOMER_SERVICE` |
+| Manager User | `manager@diveshop.local` | `MANAGER` |
+| Mark User | `mark@diveshop.local` | `INSTRUCTOR` |
+
+The seed does not create passwords, authentication records, bookings, or other demo data. It uses each email as a stable key, so re-running it safely updates the same users.

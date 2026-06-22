@@ -1,11 +1,16 @@
 import DashboardHeader from '@/components/layout/dashboard-header';
 import DashboardSidebar from '@/components/layout/dashboard-sidebar';
+import { requireCurrentUser } from '@/lib/current-user';
 
-function DashboardLayout({ children }: { children: React.ReactNode }) {
+export const dynamic = 'force-dynamic';
+
+async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const currentUser = await requireCurrentUser();
+
   return (
     <div className="app-layout">
       <DashboardSidebar />
-      <DashboardHeader />
+      <DashboardHeader currentUser={currentUser} />
 
       <main className="app-content">{children}</main>
     </div>
