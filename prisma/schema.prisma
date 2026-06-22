@@ -14,15 +14,135 @@ enum UserRole {
   INSTRUCTOR
 }
 
+enum BookingStatus {
+  DRAFT
+  PENDING_APPROVAL
+  NEEDS_MORE_INFO
+  APPROVED
+  SCHEDULED
+  CANCELLED
+}
+
+enum ActivityType {
+  FUN_DIVE
+  DISCOVER_SCUBA_DIVING
+  OPEN_WATER_COURSE
+  ADVANCED_OPEN_WATER_COURSE
+  RESCUE_DIVER_COURSE
+  SPECIALTY_COURSE
+  SNORKELING
+  OTHER
+}
+
+enum BookingSource {
+  WECHAT
+  WHATSAPP
+  PHONE
+  EMAIL
+  WALK_IN
+  REFERRAL
+  INSTRUCTOR
+  OTHER
+}
+
+enum PreferredLanguage {
+  ENGLISH
+  CHINESE
+  INDONESIAN
+  OTHER
+}
+
+enum BookingCustomerRole {
+  PRIMARY_CONTACT
+  PARTICIPANT
+}
+
+enum DepositStatus {
+  PENDING
+  PAID
+  WAIVED
+  REFUNDED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      UserRole
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  role            UserRole
+  isActive        Boolean          @default(true)
+  createdBookings BookingRequest[] @relation("BookingCreatedBy")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([role])
   @@index([isActive])
+}
+
+model BookingRequest {
+  id             String          @id @default(cuid())
+  status         BookingStatus   @default(DRAFT)
+  activityType   ActivityType?
+  source         BookingSource?
+  startAt        DateTime?
+  endAt          DateTime?
+  notes          String?         @db.Text
+  internalNotes  String?         @db.Text
+  createdById    String
+  createdBy      User            @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  customers      BookingCustomer[]
+  deposits       Deposit[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([status])
+  @@index([createdById])
+  @@index([startAt])
+}
+
+model Customer {
+  id                String             @id @default(cuid())
+  firstName         String?
+  lastName          String?
+  email             String?
+  phone             String?
+  preferredLanguage PreferredLanguage?
+  notes             String?            @db.Text
+  bookings          BookingCustomer[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([email])
+  @@index([phone])
+}
+
+model BookingCustomer {
+  bookingRequestId   String
+  customerId         String
+  role               BookingCustomerRole @default(PARTICIPANT)
+  certificationAgency String?
+  certificationLevel  String?
+  lastDiveAt          DateTime?
+  bookingRequest     BookingRequest     @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@id([bookingRequestId, customerId])
+  @@index([customerId])
+}
+
+model Deposit {
+  id               String          @id @default(cuid())
+  bookingRequestId String
+  amount           Decimal?        @db.Decimal(10, 2)
+  status           DepositStatus   @default(PENDING)
+  dueAt            DateTime?
+  paidAt           DateTime?
+  notes            String?         @db.Text
+  bookingRequest   BookingRequest  @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([bookingRequestId])
+  @@index([status])
 }
