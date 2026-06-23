@@ -1,28 +1,16 @@
 import {
   BookingCustomerRole,
-  BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
-
-export const bookingStatusFilters = [
-  BookingStatus.DRAFT,
-  BookingStatus.PENDING_APPROVAL,
-  BookingStatus.NEEDS_MORE_INFO,
-  BookingStatus.APPROVED,
-  BookingStatus.CANCELLED,
-] as const;
-
-export type BookingStatusFilter = (typeof bookingStatusFilters)[number];
+import {
+  bookingStatusFilters,
+  type BookingRequestFilter,
+  type BookingStatusFilter,
+} from './types';
 
 type BookingQueryUser = {
   id: string;
   role: UserRole;
-};
-
-export type BookingRequestFilter = {
-  status?: BookingStatusFilter;
-  createdById?: string;
-  id?: { in: string[] };
 };
 
 export function parseBookingStatusFilter(
