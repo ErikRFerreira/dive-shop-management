@@ -25,8 +25,13 @@ import {
 import {
   bookingFormDefaultValues,
   formatEnumLabel,
+  normalizeBookingFormValues,
 } from '@/features/bookings/intake';
 import type { BookingFormValues } from '@/features/bookings/types';
+import {
+  validateBookingIntake,
+  type BookingIntakeFieldErrors,
+} from '@/features/bookings/validation';
 import {
   ActivityType,
   BookingSource,
@@ -35,20 +40,41 @@ import {
   PreferredLanguage,
 } from '@/generated/prisma/enums';
 
-type SubmitIntent = 'draft' | 'approval';
+type SubmitIntent = 'draft' | 'submit';
 
 type FieldProps = {
   id: keyof BookingFormValues;
   label: string;
   className?: string;
+  required?: boolean;
+  error?: string;
   children: React.ReactNode;
 };
 
-function Field({ id, label, className, children }: FieldProps) {
+function Field({
+  id,
+  label,
+  className,
+  required = false,
+  error,
+  children,
+}: FieldProps) {
   return (
     <div className={className ?? 'grid gap-2'}>
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required ? (
+          <span aria-hidden="true" className="ml-1 text-destructive">
+            *
+          </span>
+        ) : null}
+      </Label>
       {children}
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -94,7 +120,7 @@ function EnumSelect<T extends string>({
 export function BookingForm() {
   const router = useRouter();
   const [submitIntent, setSubmitIntent] = useState<SubmitIntent>('draft');
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
   const form = useForm<BookingFormValues>({
     defaultValues: bookingFormDefaultValues,
   });
@@ -103,19 +129,57 @@ export function BookingForm() {
     control: form.control,
     name: 'activityType',
   });
+  const depositStatus = useWatch({
+    control: form.control,
+    name: 'depositStatus',
+  });
 
   const isSubmitting = form.formState.isSubmitting;
 
-  async function onSubmit(values: BookingFormValues) {
-    setSubmitError(null);
+  function showValidationErrors(
+    fieldErrors: BookingIntakeFieldErrors,
+    nextFormErrors: string[],
+  ) {
+    form.clearErrors();
+
+    for (const [field, messages] of Object.entries(fieldErrors)) {
+      const message = messages[0];
+
+      if (message) {
+        form.setError(field as keyof BookingFormValues, {
+          type: 'validate',
+          message,
+        });
+      }
+    }
+
+    setFormErrors(nextFormErrors);
+  }
+
+  async function submitBooking(
+    values: BookingFormValues,
+    intent: SubmitIntent,
+  ) {
+    setSubmitIntent(intent);
+    showValidationErrors({}, []);
+
+    const validation = validateBookingIntake(
+      normalizeBookingFormValues(values),
+      intent,
+    );
+
+    if (!validation.success) {
+      showValidationErrors(validation.fieldErrors, validation.formErrors);
+      return;
+    }
 
     const result =
-      submitIntent === 'draft'
+      intent === 'draft'
         ? await createDraftBooking(values)
         : await submitBookingForApproval(values);
 
     if (!result.success) {
-      setSubmitError(result.message);
+      showValidationErrors(result.fieldErrors, result.formErrors);
       return;
     }
 
@@ -127,15 +191,33 @@ export function BookingForm() {
     clearAutosave();
   }
 
+  const errorMessages = [
+    ...new Set([
+      ...formErrors,
+      ...Object.values(form.formState.errors).flatMap((error) =>
+        error.message ? [error.message] : [],
+      ),
+    ]),
+  ];
+  const isPaidDeposit =
+    depositStatus === DepositStatus.PAID ||
+    depositStatus === DepositStatus.PARTIALLY_PAID;
+  const getFieldError = (field: keyof BookingFormValues) =>
+    form.formState.errors[field]?.message;
+
   return (
-    <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+    <form
+      className="space-y-6"
+      noValidate
+      onSubmit={form.handleSubmit((values) => submitBooking(values, 'submit'))}
+    >
       <BookingFormSection
         title="Raw Booking Information"
         description="Keep the original customer message for review."
       >
         <Field
           id="rawBookingText"
-          label="Raw booking text"
+          label=""
           className="grid gap-2 md:col-span-2"
         >
           <Textarea
@@ -146,8 +228,20 @@ export function BookingForm() {
         </Field>
       </BookingFormSection>
 
+      <p className="text-sm text-muted-foreground mb-1">
+        <span aria-hidden="true" className="text-destructive">
+          *
+        </span>{' '}
+        Required for approval. Provide at least one contact method.
+      </p>
+
       <BookingFormSection title="Booking Details">
-        <Field id="activityType" label="Activity type">
+        <Field
+          id="activityType"
+          label="Activity type"
+          required
+          error={getFieldError('activityType')}
+        >
           <Controller
             control={form.control}
             name="activityType"
@@ -163,15 +257,21 @@ export function BookingForm() {
           />
         </Field>
         {activityType === ActivityType.SPECIALTY_COURSE ? (
-          <Field id="specialtyCourse" label="Specialty course">
-            <Input
-              id="specialtyCourse"
-              required={submitIntent === 'approval'}
-              {...form.register('specialtyCourse')}
-            />
+          <Field
+            id="specialtyCourse"
+            label="Specialty course"
+            required
+            error={getFieldError('specialtyCourse')}
+          >
+            <Input id="specialtyCourse" {...form.register('specialtyCourse')} />
           </Field>
         ) : null}
-        <Field id="source" label="Source">
+        <Field
+          id="source"
+          label="Source"
+          required
+          error={getFieldError('source')}
+        >
           <Controller
             control={form.control}
             name="source"
@@ -186,7 +286,12 @@ export function BookingForm() {
             )}
           />
         </Field>
-        <Field id="requestedDate" label="Requested date">
+        <Field
+          id="requestedDate"
+          label="Requested date"
+          required
+          error={getFieldError('requestedDate')}
+        >
           <Input
             id="requestedDate"
             type="date"
@@ -200,7 +305,12 @@ export function BookingForm() {
             {...form.register('requestedTime')}
           />
         </Field>
-        <Field id="numberOfPeople" label="Number of people">
+        <Field
+          id="numberOfPeople"
+          label="Number of people"
+          required
+          error={getFieldError('numberOfPeople')}
+        >
           <Input
             id="numberOfPeople"
             type="number"
@@ -222,22 +332,37 @@ export function BookingForm() {
       </BookingFormSection>
 
       <BookingFormSection title="Customer / Diver Details">
-        <Field id="customerName" label="Customer name">
+        <Field
+          id="customerName"
+          label="Customer name"
+          required
+          error={getFieldError('customerName')}
+        >
           <Input id="customerName" {...form.register('customerName')} />
         </Field>
         <Field id="chineseName" label="Chinese name">
           <Input id="chineseName" {...form.register('chineseName')} />
         </Field>
-        <Field id="weChatId" label="WeChat ID">
+        <Field
+          id="weChatId"
+          label="WeChat ID"
+          required
+          error={getFieldError('weChatId')}
+        >
           <Input id="weChatId" {...form.register('weChatId')} />
         </Field>
-        <Field id="whatsAppNumber" label="WhatsApp number">
+        <Field
+          id="whatsAppNumber"
+          label="WhatsApp number"
+          required
+          error={getFieldError('whatsAppNumber')}
+        >
           <Input id="whatsAppNumber" {...form.register('whatsAppNumber')} />
         </Field>
-        <Field id="email" label="Email">
+        <Field id="email" label="Email" required error={getFieldError('email')}>
           <Input id="email" type="email" {...form.register('email')} />
         </Field>
-        <Field id="phone" label="Phone (optional)">
+        <Field id="phone" label="Phone" required error={getFieldError('phone')}>
           <Input id="phone" type="tel" {...form.register('phone')} />
         </Field>
         <Field id="hotel" label="Hotel">
@@ -262,35 +387,46 @@ export function BookingForm() {
 
       {activityType === ActivityType.FUN_DIVE ? (
         <BookingFormSection title="Fun Diver Details">
-          <Field id="certificationLevel" label="Certification level">
+          <Field
+            id="certificationLevel"
+            label="Certification level"
+            required
+            error={getFieldError('certificationLevel')}
+          >
             <Input
               id="certificationLevel"
-              required={submitIntent === 'approval'}
               {...form.register('certificationLevel')}
             />
           </Field>
           <Field id="certificationAgency" label="Certification agency">
             <Input
               id="certificationAgency"
-              required={submitIntent === 'approval'}
               {...form.register('certificationAgency')}
             />
           </Field>
-          <Field id="lastDiveDate" label="Last dive date">
+          <Field
+            id="lastDiveDate"
+            label="Last dive date"
+            required
+            error={getFieldError('lastDiveDate')}
+          >
             <Input
               id="lastDiveDate"
               type="date"
-              required={submitIntent === 'approval'}
               {...form.register('lastDiveDate')}
             />
           </Field>
-          <Field id="divesLogged" label="Dives logged">
+          <Field
+            id="divesLogged"
+            label="Dives logged"
+            required
+            error={getFieldError('divesLogged')}
+          >
             <Input
               id="divesLogged"
               type="number"
               min="0"
               step="1"
-              required={submitIntent === 'approval'}
               {...form.register('divesLogged')}
             />
           </Field>
@@ -342,16 +478,26 @@ export function BookingForm() {
             )}
           />
         </Field>
-        <Field id="amount" label="Amount">
+        <Field
+          id="amount"
+          label="Amount"
+          required={isPaidDeposit}
+          error={getFieldError('amount')}
+        >
           <Input
             id="amount"
             type="number"
-            min="0"
+            min="0.01"
             step="0.01"
             {...form.register('amount')}
           />
         </Field>
-        <Field id="currency" label="Currency">
+        <Field
+          id="currency"
+          label="Currency"
+          required={isPaidDeposit}
+          error={getFieldError('currency')}
+        >
           <Controller
             control={form.control}
             name="currency"
@@ -366,7 +512,12 @@ export function BookingForm() {
             )}
           />
         </Field>
-        <Field id="paidTo" label="Paid to">
+        <Field
+          id="paidTo"
+          label="Paid to"
+          required={isPaidDeposit}
+          error={getFieldError('paidTo')}
+        >
           <Input id="paidTo" {...form.register('paidTo')} />
         </Field>
         <Field id="paymentMethod" label="Payment method">
@@ -377,10 +528,18 @@ export function BookingForm() {
         </Field>
       </BookingFormSection>
 
-      {submitError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {submitError}
-        </p>
+      {errorMessages.length > 0 ? (
+        <div
+          className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <p>Please fix the following before continuing:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {errorMessages.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">
@@ -390,19 +549,21 @@ export function BookingForm() {
           </Link>
         </Button>
         <Button
-          type="submit"
+          type="button"
           variant="outline"
           disabled={isSubmitting}
-          onClick={() => setSubmitIntent('draft')}
+          onClick={() =>
+            void form.handleSubmit((values) => submitBooking(values, 'draft'))()
+          }
         >
           {isSubmitting && submitIntent === 'draft' ? 'Saving…' : 'Save Draft'}
         </Button>
         <Button
           type="submit"
           disabled={isSubmitting}
-          onClick={() => setSubmitIntent('approval')}
+          onClick={() => setSubmitIntent('submit')}
         >
-          {isSubmitting && submitIntent === 'approval'
+          {isSubmitting && submitIntent === 'submit'
             ? 'Submitting…'
             : 'Submit for Approval'}
         </Button>
