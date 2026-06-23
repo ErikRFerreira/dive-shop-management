@@ -5,7 +5,13 @@
  * @module features/bookings/types
  */
 
-import { BookingStatus } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingSource,
+  BookingStatus,
+  DepositStatus,
+  PreferredLanguage,
+} from '@/generated/prisma/enums';
 
 /**
  * Booking statuses that can be selected in the internal booking-list filter.
@@ -34,4 +40,85 @@ export type BookingRequestFilter = {
   status?: BookingStatusFilter;
   createdById?: string;
   id?: { in: string[] };
+};
+
+/**
+ * Values managed by the new-booking React Hook Form instance.
+ *
+ * @remarks Numeric and date values remain strings here because HTML form
+ * controls emit strings. `normalizeBookingFormValues` converts them before
+ * database persistence.
+ */
+export type BookingFormValues = {
+  rawBookingText: string;
+  activityType: ActivityType | '';
+  requestedDate: string;
+  requestedTime: string;
+  numberOfPeople: string;
+  source: BookingSource | '';
+  referrerName: string;
+  internalNotes: string;
+  customerName: string;
+  chineseName: string;
+  weChatId: string;
+  whatsAppNumber: string;
+  email: string;
+  phone: string;
+  hotel: string;
+  preferredLanguage: PreferredLanguage | '';
+  equipmentNeeded: boolean;
+  heightCm: string;
+  weightKg: string;
+  shoeSize: string;
+  maskNotes: string;
+  depositStatus: DepositStatus;
+  amount: string;
+  currency: string;
+  paidTo: string;
+  paymentMethod: string;
+  paymentNotes: string;
+  certificationLevel: string;
+  certificationAgency: string;
+  lastDiveDate: string;
+  divesLogged: string;
+};
+
+/**
+ * Booking intake values after conversion to database-friendly nullable types.
+ *
+ * @remarks This is the contract between form normalization and the booking
+ * creation Server Actions.
+ */
+export type NormalizedBookingFormValues = {
+  rawBookingText: string | null;
+  activityType: ActivityType | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  numberOfPeople: number | null;
+  source: BookingSource | null;
+  referrerName: string | null;
+  internalNotes: string | null;
+  customerName: string | null;
+  chineseName: string | null;
+  weChatId: string | null;
+  whatsAppNumber: string | null;
+  email: string | null;
+  phone: string | null;
+  hotel: string | null;
+  preferredLanguage: PreferredLanguage | null;
+  equipmentNeeded: boolean;
+  heightCm: number | null;
+  weightKg: number | null;
+  shoeSize: number | null;
+  maskNotes: string | null;
+  depositStatus: DepositStatus;
+  amount: number | null;
+  currency: string | null;
+  paidTo: string | null;
+  paymentMethod: string | null;
+  paymentNotes: string | null;
+  certificationLevel: string | null;
+  certificationAgency: string | null;
+  lastDiveDate: Date | null;
+  divesLogged: number | null;
 };

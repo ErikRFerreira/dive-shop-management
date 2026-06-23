@@ -58,6 +58,7 @@ enum BookingCustomerRole {
 }
 
 enum DepositStatus {
+  UNKNOWN
   PENDING
   PAID
   WAIVED
@@ -83,6 +84,10 @@ model BookingRequest {
   status         BookingStatus   @default(DRAFT)
   activityType   ActivityType?
   source         BookingSource?
+  requestedDate  DateTime?       @db.Date
+  requestedTime  String?
+  numberOfPeople Int?
+  referrerName   String?
   startAt        DateTime?
   endAt          DateTime?
   notes          String?         @db.Text
@@ -96,15 +101,21 @@ model BookingRequest {
 
   @@index([status])
   @@index([createdById])
+  @@index([requestedDate])
   @@index([startAt])
 }
 
 model Customer {
   id                String             @id @default(cuid())
+  fullName          String?
   firstName         String?
   lastName          String?
+  chineseName       String?
+  weChatId          String?
+  whatsAppNumber    String?
   email             String?
   phone             String?
+  hotel             String?
   preferredLanguage PreferredLanguage?
   notes             String?            @db.Text
   bookings          BookingCustomer[]
@@ -122,6 +133,12 @@ model BookingCustomer {
   certificationAgency String?
   certificationLevel  String?
   lastDiveAt          DateTime?
+  equipmentNeeded     Boolean?
+  heightCm            Int?
+  weightKg            Decimal?          @db.Decimal(5, 2)
+  shoeSize            Decimal?          @db.Decimal(4, 1)
+  maskNotes           String?           @db.Text
+  divesLogged         Int?
   bookingRequest     BookingRequest     @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
   customer           Customer           @relation(fields: [customerId], references: [id])
   createdAt          DateTime           @default(now())
@@ -136,6 +153,9 @@ model Deposit {
   bookingRequestId String
   amount           Decimal?        @db.Decimal(10, 2)
   status           DepositStatus   @default(PENDING)
+  currency         String?
+  paidTo           String?
+  paymentMethod    String?
   dueAt            DateTime?
   paidAt           DateTime?
   notes            String?         @db.Text
