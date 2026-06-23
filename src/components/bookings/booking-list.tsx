@@ -42,6 +42,12 @@ function formatEnum(value: string | null) {
 
 function formatCustomerName(booking: BookingListItem) {
   const customer = booking.displayCustomer;
+  const fullName = customer?.fullName?.trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
   const name = [customer?.firstName, customer?.lastName]
     .filter((part): part is string => Boolean(part))
     .join(' ');
@@ -72,6 +78,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
               <TableHead>Status</TableHead>
               <TableHead>Customer name</TableHead>
               <TableHead>Activity type</TableHead>
+              <TableHead>Specialty course</TableHead>
               <TableHead>Requested date</TableHead>
               <TableHead>Number of people</TableHead>
               <TableHead>Source/referrer</TableHead>
@@ -89,8 +96,9 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                 </TableCell>
                 <TableCell>{formatCustomerName(booking)}</TableCell>
                 <TableCell>{formatEnum(booking.activityType)}</TableCell>
-                <TableCell>{formatDate(booking.startAt)}</TableCell>
-                <TableCell>{booking.customers.length}</TableCell>
+                <TableCell>{booking.specialtyCourse ?? '—'}</TableCell>
+                <TableCell>{formatDate(booking.requestedDate)}</TableCell>
+                <TableCell>{booking.numberOfPeople ?? '—'}</TableCell>
                 <TableCell>{formatEnum(booking.source)}</TableCell>
                 <TableCell>{booking.createdBy.name}</TableCell>
                 <TableCell>{formatDate(booking.createdAt)}</TableCell>
