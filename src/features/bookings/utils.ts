@@ -66,8 +66,9 @@ export function resolveDisplayCustomer<TCustomer>(
   customers: BookingCustomerForDisplay<TCustomer>[],
 ) {
   return (
-    customers.find((customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT)
-      ?.customer ??
+    customers.find(
+      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
+    )?.customer ??
     customers[0]?.customer ??
     null
   );

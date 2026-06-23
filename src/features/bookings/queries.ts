@@ -7,15 +7,15 @@ import {
   buildBookingRequestWhere,
   resolveDisplayCustomer,
   type BookingStatusFilter,
-} from './list-utils';
+} from './utils';
 
 export {
   buildBookingRequestWhere,
   bookingStatusFilters,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
-} from './list-utils';
-export type { BookingStatusFilter } from './list-utils';
+} from './utils';
+export type { BookingStatusFilter } from './utils';
 
 const bookingRequestListArgs = {
   include: {
@@ -41,7 +41,9 @@ type BookingRequestWithRelations = Prisma.BookingRequestGetPayload<
 >;
 
 export type BookingListItem = BookingRequestWithRelations & {
-  displayCustomer: BookingRequestWithRelations['customers'][number]['customer'] | null;
+  displayCustomer:
+    | BookingRequestWithRelations['customers'][number]['customer']
+    | null;
 };
 
 export async function getBookingRequests(
