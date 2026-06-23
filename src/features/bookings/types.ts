@@ -9,6 +9,7 @@ import {
   ActivityType,
   BookingSource,
   BookingStatus,
+  Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -72,7 +73,7 @@ export type BookingFormValues = {
   shoeSize: string;
   depositStatus: DepositStatus;
   amount: string;
-  currency: string;
+  currency: Currency | '';
   paidTo: string;
   paymentMethod: string;
   paymentNotes: string;
@@ -111,7 +112,7 @@ export type NormalizedBookingFormValues = {
   shoeSize: number | null;
   depositStatus: DepositStatus;
   amount: number | null;
-  currency: string | null;
+  currency: Currency | null;
   paidTo: string | null;
   paymentMethod: string | null;
   paymentNotes: string | null;

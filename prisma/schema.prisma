@@ -50,7 +50,6 @@ enum BookingSource {
 enum PreferredLanguage {
   ENGLISH
   CHINESE
-  INDONESIAN
   OTHER
 }
 
@@ -65,6 +64,14 @@ enum DepositStatus {
   PAID
   WAIVED
   REFUNDED
+}
+
+enum Currency {
+  PESOS
+  YUAN
+  EURO
+  DOLLAR
+  OTHER
 }
 
 model User {

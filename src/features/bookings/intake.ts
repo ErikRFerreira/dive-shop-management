@@ -14,6 +14,7 @@
 import {
   ActivityType,
   BookingSource,
+  Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -134,7 +135,7 @@ export function normalizeBookingFormValues(
     depositStatus:
       enumValue(DepositStatus, values.depositStatus) ?? DepositStatus.UNKNOWN,
     amount: nullableNumber(values.amount),
-    currency: nullableText(values.currency),
+    currency: enumValue(Currency, values.currency),
     paidTo: nullableText(values.paidTo),
     paymentMethod: nullableText(values.paymentMethod),
     paymentNotes: nullableText(values.paymentNotes),

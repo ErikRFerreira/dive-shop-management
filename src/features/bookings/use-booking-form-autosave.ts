@@ -42,6 +42,8 @@ export function useBookingFormAutosave(
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     try {
       const savedValues = window.localStorage.getItem(
         NEW_BOOKING_FORM_AUTOSAVE_KEY,
@@ -51,17 +53,40 @@ export function useBookingFormAutosave(
         const parsedValues: unknown = JSON.parse(savedValues);
 
         if (isRecord(parsedValues)) {
-          form.reset({
-            ...bookingFormDefaultValues,
-            ...(parsedValues as Partial<BookingFormValues>),
+          queueMicrotask(() => {
+            if (cancelled) {
+              return;
+            }
+
+            form.reset({
+              ...bookingFormDefaultValues,
+              ...(parsedValues as Partial<BookingFormValues>),
+            });
+            hasRestored.current = true;
           });
+
+          const subscription = form.watch((values) => {
+            if (!hasRestored.current) {
+              return;
+            }
+
+            window.localStorage.setItem(
+              NEW_BOOKING_FORM_AUTOSAVE_KEY,
+              JSON.stringify(values),
+            );
+          });
+
+          return () => {
+            cancelled = true;
+            subscription.unsubscribe();
+          };
         }
       }
     } catch {
       clearAutosave();
-    } finally {
-      hasRestored.current = true;
     }
+
+    hasRestored.current = true;
 
     const subscription = form.watch((values) => {
       if (!hasRestored.current) {
@@ -74,7 +99,10 @@ export function useBookingFormAutosave(
       );
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [clearAutosave, form]);
 
   return { clearAutosave };

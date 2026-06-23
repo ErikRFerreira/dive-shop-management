@@ -9,6 +9,7 @@ import {
 import {
   ActivityType,
   BookingSource,
+  Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -37,6 +38,7 @@ test('normalizes empty values and valid numeric, enum, and date inputs', () => {
     weightKg: ' 63.5 ',
     shoeSize: '40.5',
     amount: ' 1200.50 ',
+    currency: Currency.PESOS,
     lastDiveDate: '2026-06-01',
     divesLogged: '15',
   });
@@ -53,6 +55,7 @@ test('normalizes empty values and valid numeric, enum, and date inputs', () => {
     weightKg: 63.5,
     shoeSize: 40.5,
     amount: 1200.5,
+    currency: Currency.PESOS,
     divesLogged: 15,
   });
   expect(values.requestedDate?.toISOString()).toBe('2026-07-14T00:00:00.000Z');

@@ -30,6 +30,7 @@ import type { BookingFormValues } from '@/features/bookings/types';
 import {
   ActivityType,
   BookingSource,
+  Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -66,9 +67,11 @@ function EnumSelect<T extends string>({
   placeholder: string;
 }) {
   return (
-    <Select value={value || undefined} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger id={id}>
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>
+          {value ? formatEnumLabel(value) : undefined}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {values.map((option) => (
@@ -349,7 +352,19 @@ export function BookingForm() {
           />
         </Field>
         <Field id="currency" label="Currency">
-          <Input id="currency" {...form.register('currency')} />
+          <Controller
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <EnumSelect
+                id={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                values={Object.values(Currency)}
+                placeholder="Select currency"
+              />
+            )}
+          />
         </Field>
         <Field id="paidTo" label="Paid to">
           <Input id="paidTo" {...form.register('paidTo')} />
