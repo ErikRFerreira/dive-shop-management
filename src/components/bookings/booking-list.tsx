@@ -78,6 +78,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
               <TableHead>Status</TableHead>
               <TableHead>Customer name</TableHead>
               <TableHead>Activity type</TableHead>
+              <TableHead>Specialty course</TableHead>
               <TableHead>Requested date</TableHead>
               <TableHead>Number of people</TableHead>
               <TableHead>Source/referrer</TableHead>
@@ -95,6 +96,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                 </TableCell>
                 <TableCell>{formatCustomerName(booking)}</TableCell>
                 <TableCell>{formatEnum(booking.activityType)}</TableCell>
+                <TableCell>{booking.specialtyCourse ?? 'â€”'}</TableCell>
                 <TableCell>{formatDate(booking.requestedDate)}</TableCell>
                 <TableCell>{booking.numberOfPeople ?? '—'}</TableCell>
                 <TableCell>{formatEnum(booking.source)}</TableCell>

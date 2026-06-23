@@ -1,11 +1,20 @@
+/**
+ * Purpose: This module provides a React hook for automatically saving and restoring unsaved booking form values in the browser's localStorage.
+ *
+ * @remarks
+ * - The `useBookingFormAutosave` hook watches the form values and persists them to localStorage.
+ * - It restores any saved values when the component mounts, ensuring that users do not lose their progress.
+ * - The hook provides a function to clear the saved values from localStorage when needed.
+ *
+ * @module features/bookings/use-booking-form-autosave
+ */
+
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
-import {
-  bookingFormDefaultValues,
-} from '@/features/bookings/intake';
+import { bookingFormDefaultValues } from '@/features/bookings/intake';
 import type { BookingFormValues } from '@/features/bookings/types';
 
 /** Versioned browser storage key for unsaved new-booking form values. */

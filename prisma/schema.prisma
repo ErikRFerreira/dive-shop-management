@@ -25,6 +25,8 @@ enum BookingStatus {
 
 enum ActivityType {
   FUN_DIVE
+  SCUBA_REVIEW
+  DIVEMASTER
   DISCOVER_SCUBA_DIVING
   OPEN_WATER_COURSE
   ADVANCED_OPEN_WATER_COURSE
@@ -83,6 +85,7 @@ model BookingRequest {
   id             String          @id @default(cuid())
   status         BookingStatus   @default(DRAFT)
   activityType   ActivityType?
+  specialtyCourse String?
   source         BookingSource?
   requestedDate  DateTime?       @db.Date
   requestedTime  String?

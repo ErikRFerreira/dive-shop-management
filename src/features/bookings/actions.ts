@@ -1,11 +1,14 @@
+/**
+ * Purpose: This module provides server-side actions for CRUD operations on booking requests and their related intake records.
+ *
+ * @module features/bookings/actions
+ */
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 
-import {
-  BookingCustomerRole,
-  BookingStatus,
-} from '@/generated/prisma/enums';
+import { BookingCustomerRole, BookingStatus } from '@/generated/prisma/enums';
 import {
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
@@ -15,6 +18,7 @@ import { requireCurrentUser } from '@/lib/current-user';
 
 import { canCreateBookingRequest } from './permissions';
 import type { BookingFormValues } from './types';
+import { validateBookingSubmission } from './validation';
 
 /**
  * Result returned to the intake form after a booking creation attempt.
@@ -36,9 +40,7 @@ export type CreateBookingActionResult =
  */
 async function createBooking(
   values: BookingFormValues,
-  status:
-    | typeof BookingStatus.DRAFT
-    | typeof BookingStatus.PENDING_APPROVAL,
+  status: typeof BookingStatus.DRAFT | typeof BookingStatus.PENDING_APPROVAL,
 ): Promise<CreateBookingActionResult> {
   const currentUser = await requireCurrentUser();
 
@@ -51,11 +53,20 @@ async function createBooking(
 
   const bookingValues = normalizeBookingFormValues(values);
 
+  if (status === BookingStatus.PENDING_APPROVAL) {
+    const validationError = validateBookingSubmission(bookingValues);
+
+    if (validationError) {
+      return { success: false, message: validationError };
+    }
+  }
+
   const booking = await db.$transaction(async (transaction) => {
     const bookingRequest = await transaction.bookingRequest.create({
       data: {
         status,
         activityType: bookingValues.activityType,
+        specialtyCourse: bookingValues.specialtyCourse,
         source: bookingValues.source,
         requestedDate: bookingValues.requestedDate,
         requestedTime: bookingValues.requestedTime,
@@ -88,11 +99,9 @@ async function createBooking(
         certificationAgency: bookingValues.certificationAgency,
         certificationLevel: bookingValues.certificationLevel,
         lastDiveAt: bookingValues.lastDiveDate,
-        equipmentNeeded: bookingValues.equipmentNeeded,
         heightCm: bookingValues.heightCm,
         weightKg: bookingValues.weightKg,
         shoeSize: bookingValues.shoeSize,
-        maskNotes: bookingValues.maskNotes,
         divesLogged: bookingValues.divesLogged,
       },
     });

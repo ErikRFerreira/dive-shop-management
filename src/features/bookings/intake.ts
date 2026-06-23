@@ -1,13 +1,23 @@
+/**
+ * Purpose: This module provides utilities for normalizing and validating booking intake form values.
+ * It includes functions to convert raw form input into database-friendly formats,
+ * check for meaningful deposit information, and format enum values for display.
+ *
+ * @remarks
+ * - The `normalizeBookingFormValues` function converts raw form values into a format suitable for database storage.
+ * - The `hasMeaningfulDeposit` function checks if the deposit information is significant enough to be saved.
+ * - The `formatEnumLabel` function formats enum values into human-readable labels for display in the UI.
+ *
+ * @module features/bookings/intake
+ */
+
 import {
   ActivityType,
   BookingSource,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
-import type {
-  BookingFormValues,
-  NormalizedBookingFormValues,
-} from './types';
+import type { BookingFormValues, NormalizedBookingFormValues } from './types';
 
 export type { BookingFormValues, NormalizedBookingFormValues } from './types';
 
@@ -20,6 +30,7 @@ export type { BookingFormValues, NormalizedBookingFormValues } from './types';
 export const bookingFormDefaultValues: BookingFormValues = {
   rawBookingText: '',
   activityType: '',
+  specialtyCourse: '',
   requestedDate: '',
   requestedTime: '',
   numberOfPeople: '',
@@ -34,11 +45,9 @@ export const bookingFormDefaultValues: BookingFormValues = {
   phone: '',
   hotel: '',
   preferredLanguage: '',
-  equipmentNeeded: false,
   heightCm: '',
   weightKg: '',
   shoeSize: '',
-  maskNotes: '',
   depositStatus: DepositStatus.UNKNOWN,
   amount: '',
   currency: '',
@@ -104,6 +113,7 @@ export function normalizeBookingFormValues(
   return {
     rawBookingText: nullableText(values.rawBookingText),
     activityType: enumValue(ActivityType, values.activityType),
+    specialtyCourse: nullableText(values.specialtyCourse),
     requestedDate: nullableDate(values.requestedDate),
     requestedTime: nullableText(values.requestedTime),
     numberOfPeople: nullableInteger(values.numberOfPeople),
@@ -117,15 +127,10 @@ export function normalizeBookingFormValues(
     email: nullableText(values.email),
     phone: nullableText(values.phone),
     hotel: nullableText(values.hotel),
-    preferredLanguage: enumValue(
-      PreferredLanguage,
-      values.preferredLanguage,
-    ),
-    equipmentNeeded: values.equipmentNeeded,
+    preferredLanguage: enumValue(PreferredLanguage, values.preferredLanguage),
     heightCm: nullableInteger(values.heightCm),
     weightKg: nullableNumber(values.weightKg),
     shoeSize: nullableNumber(values.shoeSize),
-    maskNotes: nullableText(values.maskNotes),
     depositStatus:
       enumValue(DepositStatus, values.depositStatus) ?? DepositStatus.UNKNOWN,
     amount: nullableNumber(values.amount),

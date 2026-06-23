@@ -27,6 +27,7 @@ test('normalizes empty values and valid numeric, enum, and date inputs', () => {
     ...bookingFormDefaultValues,
     rawBookingText: '  Customer message  ',
     activityType: ActivityType.FUN_DIVE,
+    specialtyCourse: '  Nitrox  ',
     requestedDate: '2026-07-14',
     requestedTime: ' 09:30 ',
     numberOfPeople: ' 3 ',
@@ -43,6 +44,7 @@ test('normalizes empty values and valid numeric, enum, and date inputs', () => {
   expect(values).toMatchObject({
     rawBookingText: 'Customer message',
     activityType: ActivityType.FUN_DIVE,
+    specialtyCourse: 'Nitrox',
     requestedTime: '09:30',
     numberOfPeople: 3,
     source: BookingSource.WECHAT,

@@ -52,6 +52,7 @@ export type BookingRequestFilter = {
 export type BookingFormValues = {
   rawBookingText: string;
   activityType: ActivityType | '';
+  specialtyCourse: string;
   requestedDate: string;
   requestedTime: string;
   numberOfPeople: string;
@@ -66,11 +67,9 @@ export type BookingFormValues = {
   phone: string;
   hotel: string;
   preferredLanguage: PreferredLanguage | '';
-  equipmentNeeded: boolean;
   heightCm: string;
   weightKg: string;
   shoeSize: string;
-  maskNotes: string;
   depositStatus: DepositStatus;
   amount: string;
   currency: string;
@@ -92,6 +91,7 @@ export type BookingFormValues = {
 export type NormalizedBookingFormValues = {
   rawBookingText: string | null;
   activityType: ActivityType | null;
+  specialtyCourse: string | null;
   requestedDate: Date | null;
   requestedTime: string | null;
   numberOfPeople: number | null;
@@ -106,11 +106,9 @@ export type NormalizedBookingFormValues = {
   phone: string | null;
   hotel: string | null;
   preferredLanguage: PreferredLanguage | null;
-  equipmentNeeded: boolean;
   heightCm: number | null;
   weightKg: number | null;
   shoeSize: number | null;
-  maskNotes: string | null;
   depositStatus: DepositStatus;
   amount: number | null;
   currency: string | null;

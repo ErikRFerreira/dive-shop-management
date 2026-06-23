@@ -3,12 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import { BookingFormSection } from '@/components/bookings/booking-form-section';
-import { useBookingFormAutosave } from '@/components/bookings/use-booking-form-autosave';
+import { useBookingFormAutosave } from '@/features/bookings/use-booking-form-autosave';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -97,6 +96,10 @@ export function BookingForm() {
     defaultValues: bookingFormDefaultValues,
   });
   const { clearAutosave } = useBookingFormAutosave(form);
+  const activityType = useWatch({
+    control: form.control,
+    name: 'activityType',
+  });
 
   const isSubmitting = form.formState.isSubmitting;
 
@@ -156,6 +159,15 @@ export function BookingForm() {
             )}
           />
         </Field>
+        {activityType === ActivityType.SPECIALTY_COURSE ? (
+          <Field id="specialtyCourse" label="Specialty course">
+            <Input
+              id="specialtyCourse"
+              required={submitIntent === 'approval'}
+              {...form.register('specialtyCourse')}
+            />
+          </Field>
+        ) : null}
         <Field id="source" label="Source">
           <Controller
             control={form.control}
@@ -172,10 +184,18 @@ export function BookingForm() {
           />
         </Field>
         <Field id="requestedDate" label="Requested date">
-          <Input id="requestedDate" type="date" {...form.register('requestedDate')} />
+          <Input
+            id="requestedDate"
+            type="date"
+            {...form.register('requestedDate')}
+          />
         </Field>
         <Field id="requestedTime" label="Requested time (optional)">
-          <Input id="requestedTime" type="time" {...form.register('requestedTime')} />
+          <Input
+            id="requestedTime"
+            type="time"
+            {...form.register('requestedTime')}
+          />
         </Field>
         <Field id="numberOfPeople" label="Number of people">
           <Input
@@ -237,32 +257,69 @@ export function BookingForm() {
         </Field>
       </BookingFormSection>
 
+      {activityType === ActivityType.FUN_DIVE ? (
+        <BookingFormSection title="Fun Diver Details">
+          <Field id="certificationLevel" label="Certification level">
+            <Input
+              id="certificationLevel"
+              required={submitIntent === 'approval'}
+              {...form.register('certificationLevel')}
+            />
+          </Field>
+          <Field id="certificationAgency" label="Certification agency">
+            <Input
+              id="certificationAgency"
+              required={submitIntent === 'approval'}
+              {...form.register('certificationAgency')}
+            />
+          </Field>
+          <Field id="lastDiveDate" label="Last dive date">
+            <Input
+              id="lastDiveDate"
+              type="date"
+              required={submitIntent === 'approval'}
+              {...form.register('lastDiveDate')}
+            />
+          </Field>
+          <Field id="divesLogged" label="Dives logged">
+            <Input
+              id="divesLogged"
+              type="number"
+              min="0"
+              step="1"
+              required={submitIntent === 'approval'}
+              {...form.register('divesLogged')}
+            />
+          </Field>
+        </BookingFormSection>
+      ) : null}
+
       <BookingFormSection title="Equipment Details">
-        <Controller
-          control={form.control}
-          name="equipmentNeeded"
-          render={({ field }) => (
-            <div className="flex items-center gap-2 md:col-span-2">
-              <Checkbox
-                id="equipmentNeeded"
-                checked={field.value}
-                onCheckedChange={(checked) => field.onChange(checked === true)}
-              />
-              <Label htmlFor="equipmentNeeded">Equipment needed</Label>
-            </div>
-          )}
-        />
         <Field id="heightCm" label="Height (cm)">
-          <Input id="heightCm" type="number" min="0" {...form.register('heightCm')} />
+          <Input
+            id="heightCm"
+            type="number"
+            min="0"
+            {...form.register('heightCm')}
+          />
         </Field>
         <Field id="weightKg" label="Weight (kg)">
-          <Input id="weightKg" type="number" min="0" step="0.01" {...form.register('weightKg')} />
+          <Input
+            id="weightKg"
+            type="number"
+            min="0"
+            step="0.01"
+            {...form.register('weightKg')}
+          />
         </Field>
         <Field id="shoeSize" label="Shoe size">
-          <Input id="shoeSize" type="number" min="0" step="0.5" {...form.register('shoeSize')} />
-        </Field>
-        <Field id="maskNotes" label="Mask notes">
-          <Input id="maskNotes" {...form.register('maskNotes')} />
+          <Input
+            id="shoeSize"
+            type="number"
+            min="0"
+            step="0.5"
+            {...form.register('shoeSize')}
+          />
         </Field>
       </BookingFormSection>
 
@@ -283,7 +340,13 @@ export function BookingForm() {
           />
         </Field>
         <Field id="amount" label="Amount">
-          <Input id="amount" type="number" min="0" step="0.01" {...form.register('amount')} />
+          <Input
+            id="amount"
+            type="number"
+            min="0"
+            step="0.01"
+            {...form.register('amount')}
+          />
         </Field>
         <Field id="currency" label="Currency">
           <Input id="currency" {...form.register('currency')} />
@@ -296,21 +359,6 @@ export function BookingForm() {
         </Field>
         <Field id="paymentNotes" label="Payment notes">
           <Input id="paymentNotes" {...form.register('paymentNotes')} />
-        </Field>
-      </BookingFormSection>
-
-      <BookingFormSection title="Fun Diver Details">
-        <Field id="certificationLevel" label="Certification level">
-          <Input id="certificationLevel" {...form.register('certificationLevel')} />
-        </Field>
-        <Field id="certificationAgency" label="Certification agency">
-          <Input id="certificationAgency" {...form.register('certificationAgency')} />
-        </Field>
-        <Field id="lastDiveDate" label="Last dive date">
-          <Input id="lastDiveDate" type="date" {...form.register('lastDiveDate')} />
-        </Field>
-        <Field id="divesLogged" label="Dives logged">
-          <Input id="divesLogged" type="number" min="0" step="1" {...form.register('divesLogged')} />
         </Field>
       </BookingFormSection>
 
