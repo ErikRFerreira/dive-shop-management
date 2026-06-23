@@ -51,6 +51,11 @@ const bookingRequestListArgs = {
         createdAt: 'asc',
       },
     },
+    deposits: {
+      orderBy: {
+        createdAt: 'desc',
+      },
+    },
   },
 } satisfies Prisma.BookingRequestDefaultArgs;
 
@@ -97,4 +102,30 @@ export async function getBookingRequests(
     ...bookingRequest,
     displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
   }));
+}
+
+/**
+ * Returns a single booking request by its ID, if visible to the current user.
+ *
+ * @param id - The ID of the booking request to retrieve.
+ * @returns The booking request with its relations and display customer, or null if not found or not visible.
+ */
+export async function getBookingRequestById(
+  id: string,
+): Promise<BookingListItem | null> {
+  const bookingRequest = await db.bookingRequest.findUnique({
+    where: {
+      id,
+    },
+    ...bookingRequestListArgs,
+  });
+
+  if (!bookingRequest) {
+    return null;
+  }
+
+  return {
+    ...bookingRequest,
+    displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
+  };
 }
