@@ -4,51 +4,189 @@ import {
   bookingFormDefaultValues,
   normalizeBookingFormValues,
 } from '@/features/bookings/intake';
-import { ActivityType } from '@/generated/prisma/enums';
-import { validateBookingSubmission } from './validation';
+import type { BookingFormValues } from '@/features/bookings/types';
+import {
+  ActivityType,
+  BookingSource,
+  Currency,
+  DepositStatus,
+} from '@/generated/prisma/enums';
+import { validateBookingIntake } from './validation';
 
-test('allows incomplete bookings to remain drafts without submission validation', () => {
-  const values = normalizeBookingFormValues({
+function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
+  return normalizeBookingFormValues({
     ...bookingFormDefaultValues,
-    activityType: ActivityType.SPECIALTY_COURSE,
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    requestedDate: '2026-07-14',
+    numberOfPeople: '2',
+    source: BookingSource.EMAIL,
+    customerName: 'Maria Santos',
+    email: 'maria@example.com',
+    ...overrides,
   });
+}
 
-  expect(values.specialtyCourse).toBeNull();
+/** Verifies a draft with a customer message can remain incomplete. */
+test('allows an incomplete draft when raw booking text exists', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer is asking about availability.',
+    }),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
 });
 
+/** Verifies completely empty drafts are rejected with a form-level message. */
+test('blocks a completely empty draft', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues(bookingFormDefaultValues),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {},
+    formErrors: [
+      'Enter at least one booking or customer detail before saving a draft.',
+    ],
+  });
+});
+
+/** Verifies submissions cannot omit an activity type. */
+test('blocks a submit without an activity type', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({ activityType: '' }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      activityType: ['Activity type is required before submitting for approval.'],
+    },
+  });
+});
+
+/** Verifies submissions flag each contact field when none are provided. */
+test('blocks a submit without contact methods', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({ email: '' }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      weChatId: [
+        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+      ],
+      whatsAppNumber: [
+        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+      ],
+      email: [
+        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+      ],
+      phone: [
+        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+      ],
+    },
+  });
+});
+
+/** Verifies the three required Fun Dive details are individually reported. */
+test('requires certification level, last dive date, and logged dives for Fun Dive', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({ activityType: ActivityType.FUN_DIVE }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      certificationLevel: [
+        'Certification level is required when submitting a Fun Dive booking.',
+      ],
+      lastDiveDate: [
+        'Last dive date is required when submitting a Fun Dive booking.',
+      ],
+      divesLogged: [
+        'Dives logged is required when submitting a Fun Dive booking.',
+      ],
+    },
+  });
+});
+
+/** Verifies completed deposits need all required payment details. */
+test.each([DepositStatus.PAID, DepositStatus.PARTIALLY_PAID])(
+  '%s deposits require amount, currency, and paid to',
+  (depositStatus) => {
+    const result = validateBookingIntake(
+      validSubmitValues({ depositStatus }),
+      'submit',
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      fieldErrors: {
+        amount: ['Deposit amount is required when a deposit is paid.'],
+        currency: ['Deposit currency is required when a deposit is paid.'],
+        paidTo: ['Paid to is required when a deposit is paid.'],
+      },
+    });
+  },
+);
+
+/** Verifies paid deposits reject zero and negative amounts. */
+test('requires a positive amount for a paid deposit', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({
+      depositStatus: DepositStatus.PAID,
+      amount: '0',
+      currency: Currency.PESOS,
+      paidTo: 'Front desk',
+    }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      amount: ['Deposit amount must be a positive number.'],
+    },
+  });
+});
+
+/** Verifies the retained Specialty Course requirement. */
 test('requires a specialty course for Specialty Course submissions', () => {
-  const values = normalizeBookingFormValues({
-    ...bookingFormDefaultValues,
-    activityType: ActivityType.SPECIALTY_COURSE,
-  });
-
-  expect(validateBookingSubmission(values)).toBe(
-    'Specialty course is required when submitting a Specialty Course booking.',
+  const result = validateBookingIntake(
+    validSubmitValues({ activityType: ActivityType.SPECIALTY_COURSE }),
+    'submit',
   );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      specialtyCourse: [
+        'Specialty course is required when submitting a Specialty Course booking.',
+      ],
+    },
+  });
 });
 
-test('accepts a Specialty Course submission with course details', () => {
-  const values = normalizeBookingFormValues({
-    ...bookingFormDefaultValues,
-    activityType: ActivityType.SPECIALTY_COURSE,
-    specialtyCourse: ' Nitrox ',
-  });
+/** Verifies a complete regular booking request is ready for approval. */
+test('accepts a valid submission', () => {
+  const result = validateBookingIntake(validSubmitValues(), 'submit');
 
-  expect(validateBookingSubmission(values)).toBeNull();
-});
-
-test('requires fun diver details only for Fun Dive submissions', () => {
-  const incompleteFunDive = normalizeBookingFormValues({
-    ...bookingFormDefaultValues,
-    activityType: ActivityType.FUN_DIVE,
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
   });
-  const scubaReview = normalizeBookingFormValues({
-    ...bookingFormDefaultValues,
-    activityType: ActivityType.SCUBA_REVIEW,
-  });
-
-  expect(validateBookingSubmission(incompleteFunDive)).toBe(
-    'Certification level is required when submitting a Fun Dive booking.',
-  );
-  expect(validateBookingSubmission(scubaReview)).toBeNull();
 });

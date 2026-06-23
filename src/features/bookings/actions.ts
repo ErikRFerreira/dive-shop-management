@@ -18,7 +18,10 @@ import { requireCurrentUser } from '@/lib/current-user';
 
 import { canCreateBookingRequest } from './permissions';
 import type { BookingFormValues } from './types';
-import { validateBookingSubmission } from './validation';
+import {
+  validateBookingIntake,
+  type BookingIntakeFieldErrors,
+} from './validation';
 
 /**
  * Result returned to the intake form after a booking creation attempt.
@@ -28,7 +31,11 @@ import { validateBookingSubmission } from './validation';
  */
 export type CreateBookingActionResult =
   | { success: true; bookingId: string }
-  | { success: false; message: string };
+  | {
+      success: false;
+      fieldErrors: BookingIntakeFieldErrors;
+      formErrors: string[];
+    };
 
 /**
  * Persists one booking request and its related intake records atomically.
@@ -47,18 +54,20 @@ async function createBooking(
   if (!canCreateBookingRequest(currentUser)) {
     return {
       success: false,
-      message: 'You do not have permission to create booking requests.',
+      fieldErrors: {},
+      formErrors: ['You do not have permission to create booking requests.'],
     };
   }
 
   const bookingValues = normalizeBookingFormValues(values);
 
-  if (status === BookingStatus.PENDING_APPROVAL) {
-    const validationError = validateBookingSubmission(bookingValues);
+  const validation = validateBookingIntake(
+    bookingValues,
+    status === BookingStatus.DRAFT ? 'draft' : 'submit',
+  );
 
-    if (validationError) {
-      return { success: false, message: validationError };
-    }
+  if (!validation.success) {
+    return validation;
   }
 
   const booking = await db.$transaction(async (transaction) => {

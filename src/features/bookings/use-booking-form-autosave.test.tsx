@@ -85,7 +85,7 @@ test('displays restored enum select values in the booking form', async () => {
   render(<BookingForm />);
 
   await waitFor(() => {
-    expect(screen.getByLabelText('Activity type').textContent).toContain(
+    expect(screen.getByLabelText(/Activity type/).textContent).toContain(
       'Fun Dive',
     );
     expect(screen.getByLabelText('Preferred language').textContent).toContain(
