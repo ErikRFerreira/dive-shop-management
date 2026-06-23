@@ -237,6 +237,12 @@ export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefi
   },
 );
 
+/**
+ * Converts Zod issues into the form's field- and form-level error contract.
+ *
+ * @param error - The failed Zod validation result.
+ * @returns Structured validation errors suitable for form rendering.
+ */
 function formatValidationErrors(error: z.ZodError): BookingIntakeValidationResult {
   const fieldErrors: BookingIntakeFieldErrors = {};
   const formErrors: string[] = [];

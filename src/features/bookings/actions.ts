@@ -26,15 +26,15 @@ import {
 /**
  * Result returned to the intake form after a booking creation attempt.
  *
- * @remarks Actions return a result instead of redirecting so the client can
- * clear its browser-only autosave only after a successful write.
+ * @remarks Successful actions revalidate the booking list and return its path
+ * so the client can clear browser-only autosave before navigating.
  */
 export type CreateBookingActionResult =
-  | { success: true; bookingId: string }
+  | { success: true; redirectTo: '/bookings' }
   | {
       success: false;
       fieldErrors: BookingIntakeFieldErrors;
-      formErrors: string[];
+      formError?: string;
     };
 
 /**
@@ -42,8 +42,8 @@ export type CreateBookingActionResult =
  *
  * @param values - Browser-safe booking intake values to normalize and persist.
  * @param status - The workflow status assigned when the booking is created.
- * @returns A success result containing the booking ID, or an authorization
- * failure result.
+ * @returns A validation or authorization failure result, or the booking-list
+ * path for client-side navigation after a successful write.
  */
 async function createBooking(
   values: BookingFormValues,
@@ -55,7 +55,7 @@ async function createBooking(
     return {
       success: false,
       fieldErrors: {},
-      formErrors: ['You do not have permission to create booking requests.'],
+      formError: 'You do not have permission to create booking requests.',
     };
   }
 
@@ -67,10 +67,14 @@ async function createBooking(
   );
 
   if (!validation.success) {
-    return validation;
+    return {
+      success: false,
+      fieldErrors: validation.fieldErrors,
+      formError: validation.formErrors[0],
+    };
   }
 
-  const booking = await db.$transaction(async (transaction) => {
+  await db.$transaction(async (transaction) => {
     const bookingRequest = await transaction.bookingRequest.create({
       data: {
         status,
@@ -128,22 +132,20 @@ async function createBooking(
         },
       });
     }
-
-    return bookingRequest;
   });
 
   revalidatePath('/bookings');
-
-  return { success: true, bookingId: booking.id };
+  return { success: true, redirectTo: '/bookings' };
 }
 
 /**
  * Creates a draft booking request for the current Customer Service user.
  *
  * @param values - Intake form values to persist as a draft.
- * @returns The creation outcome and booking identifier on success.
+ * @returns A validation or authorization failure result, or the booking-list
+ * path after a successful write.
  */
-export async function createDraftBooking(
+export async function createBookingDraft(
   values: BookingFormValues,
 ): Promise<CreateBookingActionResult> {
   return createBooking(values, BookingStatus.DRAFT);
@@ -153,7 +155,8 @@ export async function createDraftBooking(
  * Creates a booking request that is ready for administrative review.
  *
  * @param values - Intake form values to persist as pending approval.
- * @returns The creation outcome and booking identifier on success.
+ * @returns A validation or authorization failure result, or the booking-list
+ * path after a successful write.
  */
 export async function submitBookingForApproval(
   values: BookingFormValues,

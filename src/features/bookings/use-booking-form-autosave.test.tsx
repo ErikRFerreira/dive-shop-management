@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/features/bookings/actions', () => ({
-  createDraftBooking: vi.fn(),
+  createBookingDraft: vi.fn(),
   submitBookingForApproval: vi.fn(),
 }));
 
