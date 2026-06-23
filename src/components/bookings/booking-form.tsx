@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  createDraftBooking,
+  createBookingDraft,
   submitBookingForApproval,
 } from '@/features/bookings/actions';
 import {
@@ -114,8 +114,7 @@ function EnumSelect<T extends string>({
  * Renders and submits the first internal booking intake form.
  *
  * @returns A React Hook Form booking intake interface with local autosave.
- * @remarks The component redirects only after the corresponding Server Action
- * confirms persistence, preserving autosave data when a request fails.
+ * @remarks Autosave is cleared only after a Server Action confirms persistence.
  */
 export function BookingForm() {
   const router = useRouter();
@@ -175,16 +174,19 @@ export function BookingForm() {
 
     const result =
       intent === 'draft'
-        ? await createDraftBooking(values)
+        ? await createBookingDraft(values)
         : await submitBookingForApproval(values);
 
     if (!result.success) {
-      showValidationErrors(result.fieldErrors, result.formErrors);
+      showValidationErrors(
+        result.fieldErrors,
+        result.formError ? [result.formError] : [],
+      );
       return;
     }
 
     clearAutosave();
-    router.push('/bookings');
+    router.push(result.redirectTo);
   }
 
   function cancel() {

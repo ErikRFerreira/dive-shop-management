@@ -1,11 +1,20 @@
+import BookingDetails from '@/components/bookings/booking-details';
+import { getBookingRequestById } from '@/features/bookings/queries';
+import { notFound } from 'next/navigation';
+
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-async function BookingDetails({ params }: Props) {
+async function BookingDetailsPage({ params }: Props) {
   const { id } = await params;
+  const booking = await getBookingRequestById(id);
 
-  return <div> Details for booking #{id}</div>;
+  if (!booking) {
+    return notFound();
+  }
+
+  return <BookingDetails booking={booking} />;
 }
 
-export default BookingDetails;
+export default BookingDetailsPage;
