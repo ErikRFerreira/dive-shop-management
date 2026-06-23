@@ -144,11 +144,9 @@ model BookingCustomer {
   certificationAgency String?
   certificationLevel  String?
   lastDiveAt          DateTime?
-  equipmentNeeded     Boolean?
   heightCm            Int?
   weightKg            Decimal?          @db.Decimal(5, 2)
   shoeSize            Decimal?          @db.Decimal(4, 1)
-  maskNotes           String?           @db.Text
   divesLogged         Int?
   bookingRequest     BookingRequest     @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
   customer           Customer           @relation(fields: [customerId], references: [id])

@@ -155,14 +155,11 @@ export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefi
       values.email === null &&
       values.phone === null
     ) {
-      for (const field of ['weChatId', 'whatsAppNumber', 'email', 'phone']) {
-        context.addIssue({
-          code: 'custom',
-          path: [field],
-          message:
-            'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-        });
-      }
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+      });
     }
 
     if (

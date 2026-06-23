@@ -156,18 +156,7 @@ function BookingDetails({ booking }: Props) {
         <Field label="Number of logged dives" value={bookingCustomer?.divesLogged} />
       </Section>
 
-      <Section title="Equipment details">
-        <Field
-          label="Equipment needed"
-          value={
-            bookingCustomer?.equipmentNeeded === undefined ||
-            bookingCustomer?.equipmentNeeded === null
-              ? '—'
-              : bookingCustomer.equipmentNeeded
-                ? 'Yes'
-                : 'No'
-          }
-        />
+      <Section title="Sizing details">
         <Field
           label="Height"
           value={
@@ -188,7 +177,6 @@ function BookingDetails({ booking }: Props) {
           label="Shoe size"
           value={bookingCustomer?.shoeSize?.toString()}
         />
-        <Field label="Mask notes" value={bookingCustomer?.maskNotes} />
       </Section>
 
       <Section title="Deposit details">
