@@ -42,6 +42,9 @@ import {
 
 type SubmitIntent = 'draft' | 'submit';
 
+const contactMethodError =
+  'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.';
+
 type FieldProps = {
   id: keyof BookingFormValues;
   label: string;
@@ -195,7 +198,7 @@ export function BookingForm() {
 
   const errorMessages = [
     ...new Set([
-      ...formErrors,
+      ...formErrors.filter((error) => error !== contactMethodError),
       ...Object.values(form.formState.errors).flatMap((error) =>
         error.message ? [error.message] : [],
       ),
@@ -206,6 +209,14 @@ export function BookingForm() {
     depositStatus === DepositStatus.PARTIALLY_PAID;
   const getFieldError = (field: keyof BookingFormValues) =>
     form.formState.errors[field]?.message;
+  const hasContactMethodError = formErrors.includes(contactMethodError);
+  const contactInputProps = hasContactMethodError
+    ? {
+        'aria-invalid': true,
+        className:
+          'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20',
+      }
+    : {};
 
   return (
     <form
@@ -229,13 +240,6 @@ export function BookingForm() {
           />
         </Field>
       </BookingFormSection>
-
-      <p className="text-sm text-muted-foreground mb-1">
-        <span aria-hidden="true" className="text-destructive">
-          *
-        </span>{' '}
-        Required for approval. Provide at least one contact method.
-      </p>
 
       <BookingFormSection title="Booking Details">
         <Field
@@ -348,24 +352,38 @@ export function BookingForm() {
         <Field
           id="weChatId"
           label="WeChat ID"
-          required
-          error={getFieldError('weChatId')}
         >
-          <Input id="weChatId" {...form.register('weChatId')} />
+          <Input
+            id="weChatId"
+            {...contactInputProps}
+            {...form.register('weChatId')}
+          />
         </Field>
         <Field
           id="whatsAppNumber"
           label="WhatsApp number"
-          required
-          error={getFieldError('whatsAppNumber')}
         >
-          <Input id="whatsAppNumber" {...form.register('whatsAppNumber')} />
+          <Input
+            id="whatsAppNumber"
+            {...contactInputProps}
+            {...form.register('whatsAppNumber')}
+          />
         </Field>
-        <Field id="email" label="Email" required error={getFieldError('email')}>
-          <Input id="email" type="email" {...form.register('email')} />
+        <Field id="email" label="Email">
+          <Input
+            id="email"
+            type="email"
+            {...contactInputProps}
+            {...form.register('email')}
+          />
         </Field>
-        <Field id="phone" label="Phone" required error={getFieldError('phone')}>
-          <Input id="phone" type="tel" {...form.register('phone')} />
+        <Field id="phone" label="Phone">
+          <Input
+            id="phone"
+            type="tel"
+            {...contactInputProps}
+            {...form.register('phone')}
+          />
         </Field>
         <Field id="hotel" label="Hotel">
           <Input id="hotel" {...form.register('hotel')} />
@@ -385,6 +403,18 @@ export function BookingForm() {
             )}
           />
         </Field>
+        <p
+          className={
+            hasContactMethodError
+              ? 'text-sm text-destructive md:col-span-2'
+              : 'text-sm text-muted-foreground md:col-span-2'
+          }
+          role={hasContactMethodError ? 'alert' : undefined}
+        >
+          {hasContactMethodError
+            ? contactMethodError
+            : 'Required for approval: provide at least one contact method.'}
+        </p>
       </BookingFormSection>
 
       {activityType === ActivityType.FUN_DIVE ? (
@@ -435,7 +465,7 @@ export function BookingForm() {
         </BookingFormSection>
       ) : null}
 
-      <BookingFormSection title="Equipment Details">
+      <BookingFormSection title="Sizing details">
         <Field id="heightCm" label="Height (cm)">
           <Input
             id="heightCm"

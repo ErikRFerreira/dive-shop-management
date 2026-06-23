@@ -74,7 +74,7 @@ test('blocks a submit without an activity type', () => {
   });
 });
 
-/** Verifies submissions flag each contact field when none are provided. */
+/** Verifies submissions report missing contact information once at form level. */
 test('blocks a submit without contact methods', () => {
   const result = validateBookingIntake(
     validSubmitValues({ email: '' }),
@@ -83,20 +83,10 @@ test('blocks a submit without contact methods', () => {
 
   expect(result).toMatchObject({
     success: false,
-    fieldErrors: {
-      weChatId: [
-        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-      ],
-      whatsAppNumber: [
-        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-      ],
-      email: [
-        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-      ],
-      phone: [
-        'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-      ],
-    },
+    fieldErrors: {},
+    formErrors: [
+      'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
+    ],
   });
 });
 
