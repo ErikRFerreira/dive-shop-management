@@ -6,8 +6,10 @@
  * @module features/bookings/permissions
  */
 
-import { UserRole } from '@/generated/prisma/enums';
+import { BookingStatus, UserRole } from '@/generated/prisma/enums';
 import type { CurrentUser } from '@/lib/current-user';
+
+import { canTransitionBookingStatus } from './status';
 
 /**
  * Determines whether the current user is allowed to create a booking request.
@@ -27,4 +29,37 @@ export function canCreateBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
   return currentUser.role === UserRole.CUSTOMER_SERVICE;
+}
+
+/**
+ * Determines whether the current user may perform a booking status transition.
+ *
+ * Future Server Actions must call this after loading the booking's current
+ * status and before persisting a status change. This is server-side
+ * authorization; UI checks alone are insufficient.
+ *
+ * @returns `true` only when the transition is valid and permitted for the
+ * user's role.
+ */
+export function canPerformBookingStatusTransition(
+  currentUser: Pick<CurrentUser, 'role'>,
+  currentStatus: BookingStatus,
+  nextStatus: BookingStatus,
+) {
+  if (!canTransitionBookingStatus(currentStatus, nextStatus)) {
+    return false;
+  }
+
+  if (
+    currentUser.role === UserRole.ADMIN ||
+    currentUser.role === UserRole.MANAGER
+  ) {
+    return true;
+  }
+
+  return (
+    currentUser.role === UserRole.CUSTOMER_SERVICE &&
+    currentStatus === BookingStatus.NEEDS_MORE_INFO &&
+    nextStatus === BookingStatus.PENDING_APPROVAL
+  );
 }
