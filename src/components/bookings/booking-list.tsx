@@ -17,6 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+import { Eye } from 'lucide-react';
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
 import type { BookingListItem } from '@/features/bookings/queries';
 
 const dateFormatter = new Intl.DateTimeFormat('en-SG', {
@@ -85,7 +95,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
               <TableHead>Customer service owner</TableHead>
               <TableHead>Created date</TableHead>
               <TableHead>Updated date</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,10 +113,24 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                 <TableCell>{booking.createdBy.name}</TableCell>
                 <TableCell>{formatDate(booking.createdAt)}</TableCell>
                 <TableCell>{formatDate(booking.updatedAt)}</TableCell>
-                <TableCell>
-                  <Button asChild size="sm" variant="link">
-                    <Link href={`/bookings/${booking.id}`}>Open</Link>
-                  </Button>
+                <TableCell className="text-right">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button asChild size="icon" variant="outline">
+                          <Link
+                            href={`/bookings/${booking.id}`}
+                            aria-label="View booking"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View booking</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
               </TableRow>
             ))}
