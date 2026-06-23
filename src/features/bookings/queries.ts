@@ -1,4 +1,9 @@
-/** @module features/bookings/queries */
+/**
+ * Purpose: This file contains server-only queries for fetching booking requests from the database.
+ * It applies role-based visibility rules and returns the necessary relations for the booking-list UI.
+ *
+ * @module features/bookings/queries
+ */
 
 import 'server-only';
 
@@ -6,10 +11,7 @@ import { Prisma } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import type { BookingStatusFilter } from './types';
-import {
-  buildBookingRequestWhere,
-  resolveDisplayCustomer,
-} from './utils';
+import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
 
 /**
  * Server-only booking list queries.

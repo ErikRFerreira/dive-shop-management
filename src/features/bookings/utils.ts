@@ -1,4 +1,9 @@
-/** @module features/bookings/utils */
+/**
+ * Purpose: This file contains utility functions for booking-related operations.
+ * It provides helpers for parsing filters, building queries, and resolving display customers.
+ *
+ * @module features/bookings/utils
+ */
 
 import { BookingCustomerRole, UserRole } from '@/generated/prisma/enums';
 import {

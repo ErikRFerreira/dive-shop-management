@@ -1,4 +1,10 @@
-/** @module features/bookings/permissions */
+/**
+ * Purpose: This file contains permission checks for booking-related actions in the application.
+ * It provides functions to determine whether a user has the necessary role to perform
+ * specific booking-related operations.
+ *
+ * @module features/bookings/permissions
+ */
 
 import { UserRole } from '@/generated/prisma/enums';
 import type { CurrentUser } from '@/lib/current-user';

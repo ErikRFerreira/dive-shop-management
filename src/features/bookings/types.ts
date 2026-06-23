@@ -1,4 +1,9 @@
-/** @module features/bookings/types */
+/**
+ * Purpose: This file contains type definitions for booking-related entities in the application.
+ * It provides types for booking statuses, filters, and other related constructs.
+ *
+ * @module features/bookings/types
+ */
 
 import { BookingStatus } from '@/generated/prisma/enums';
 
