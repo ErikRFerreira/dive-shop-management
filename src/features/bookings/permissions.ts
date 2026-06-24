@@ -74,3 +74,21 @@ export function canPerformBookingStatusTransition(
     nextStatus === BookingStatus.PENDING_APPROVAL
   );
 }
+
+/**
+ * Determines whether a user may resubmit a booking that needs more details.
+ *
+ * Admin and Manager users may resubmit any visible booking. Customer Service
+ * users may resubmit only booking requests they originally created.
+ */
+export function canResubmitBookingForApproval(
+  currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  createdById: string,
+) {
+  return (
+    currentUser.role === UserRole.ADMIN ||
+    currentUser.role === UserRole.MANAGER ||
+    (currentUser.role === UserRole.CUSTOMER_SERVICE &&
+      currentUser.id === createdById)
+  );
+}

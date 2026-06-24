@@ -13,7 +13,10 @@ import {
   Currency,
   DepositStatus,
 } from '@/generated/prisma/enums';
-import { validateBookingIntake } from './validation';
+import {
+  markBookingNeedsMoreInfoSchema,
+  validateBookingIntake,
+} from './validation';
 
 function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
   return normalizeBookingFormValues({
@@ -51,6 +54,30 @@ test('allows an incomplete draft when raw booking text exists', () => {
   );
 
   expect(result).toMatchObject({ success: true, fieldErrors: {}, formErrors: [] });
+});
+
+test('requires a booking ID and nonblank reason when requesting more information', () => {
+  expect(
+    markBookingNeedsMoreInfoSchema.safeParse({
+      bookingId: '',
+      needsMoreInfoReason: '   ',
+    }).success,
+  ).toBe(false);
+});
+
+test('trims a valid reason when requesting more information', () => {
+  const result = markBookingNeedsMoreInfoSchema.safeParse({
+    bookingId: ' booking-1 ',
+    needsMoreInfoReason: ' Please confirm the diver certification. ',
+  });
+
+  expect(result).toMatchObject({
+    success: true,
+    data: {
+      bookingId: 'booking-1',
+      needsMoreInfoReason: 'Please confirm the diver certification.',
+    },
+  });
 });
 
 test('blocks a completely empty draft', () => {

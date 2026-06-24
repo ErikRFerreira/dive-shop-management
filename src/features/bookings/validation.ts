@@ -35,6 +35,20 @@ export type BookingIntakeValidationResult =
       formErrors: string[];
     };
 
+/** Validates the information an admin must provide when requesting follow-up. */
+export const markBookingNeedsMoreInfoSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  needsMoreInfoReason: z
+    .string()
+    .trim()
+    .min(1, 'A reason is required when requesting more information.'),
+});
+
+/** Validates the booking selected for a resubmission action. */
+export const resubmitBookingForApprovalSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+});
+
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),

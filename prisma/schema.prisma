@@ -103,6 +103,7 @@ model BookingRequest {
   endAt           DateTime?
   notes           String?           @db.Text
   internalNotes   String?           @db.Text
+  needsMoreInfoReason String?       @db.Text
   createdById     String
   createdBy       User              @relation("BookingCreatedBy", fields: [createdById], references: [id])
   activities      BookingActivity[]
