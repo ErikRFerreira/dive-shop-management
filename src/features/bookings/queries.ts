@@ -75,6 +75,9 @@ export type BookingListItem = BookingRequestWithRelations & {
     | null;
 };
 
+/** A visible booking request with all relations required by the detail view. */
+export type BookingDetailsItem = BookingListItem;
+
 /**
  * Returns the visible bookings for the current user, newest first.
  *
@@ -107,17 +110,19 @@ export async function getBookingRequests(
 /**
  * Returns a single booking request by its ID, if visible to the current user.
  *
+ * @param currentUser - The authenticated user whose role scopes visibility.
  * @param id - The ID of the booking request to retrieve.
  * @returns The booking request with its relations and display customer, or null if not found or not visible.
  */
 export async function getBookingRequestById(
+  currentUser: CurrentUser,
   id: string,
-): Promise<BookingListItem | null> {
-  const bookingRequest = await db.bookingRequest.findUnique({
-    where: {
-      id,
-    },
+): Promise<BookingDetailsItem | null> {
+  const bookingRequest = await db.bookingRequest.findFirst({
     ...bookingRequestListArgs,
+    where: {
+      AND: [{ id }, buildBookingRequestWhere(currentUser)],
+    },
   });
 
   if (!bookingRequest) {

@@ -2,12 +2,15 @@ import Link from 'next/link';
 
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
-import { BookingCustomerRole } from '@/generated/prisma/enums';
-import type { BookingListItem } from '@/features/bookings/queries';
+import { ActivityType, BookingCustomerRole } from '@/generated/prisma/enums';
+import type { BookingDetailsItem } from '@/features/bookings/queries';
 
 type Props = {
-  booking: BookingListItem;
+  booking: BookingDetailsItem;
+  canReview: boolean;
 };
+
+const EMPTY_VALUE = '—';
 
 const dateFormatter = new Intl.DateTimeFormat('en-SG', {
   day: '2-digit',
@@ -25,8 +28,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-SG', {
   timeZone: 'Asia/Singapore',
 });
 
-function formatDate(value: Date | null) {
-  return value ? dateFormatter.format(value) : '—';
+function formatDate(value: Date | null | undefined) {
+  return value ? dateFormatter.format(value) : EMPTY_VALUE;
 }
 
 function formatDateTime(value: Date) {
@@ -40,11 +43,11 @@ function formatEnum(value: string | null | undefined) {
         .split('_')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
-    : '—';
+    : EMPTY_VALUE;
 }
 
 function formatCustomerName(
-  customer: BookingListItem['displayCustomer'],
+  customer: BookingDetailsItem['displayCustomer'],
 ) {
   const fullName = customer?.fullName?.trim();
 
@@ -55,15 +58,18 @@ function formatCustomerName(
   return (
     [customer?.firstName, customer?.lastName]
       .filter((part): part is string => Boolean(part))
-      .join(' ') || '—'
+      .join(' ') || EMPTY_VALUE
   );
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  const displayValue =
+    value === null || value === undefined || value === '' ? EMPTY_VALUE : value;
+
   return (
     <div>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-sm">{value || '—'}</dd>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="mt-1 text-sm">{displayValue}</div>
     </div>
   );
 }
@@ -78,31 +84,38 @@ function Section({
   return (
     <section className="border-t pt-6">
       <h2 className="text-base font-semibold">{title}</h2>
-      <dl className="mt-4 grid gap-4 sm:grid-cols-2">{children}</dl>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
 
-function BookingDetails({ booking }: Props) {
+function BookingDetails({ booking, canReview }: Props) {
   const bookingCustomer =
     booking.customers.find(
       (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
     ) ?? booking.customers[0];
-  const customer = bookingCustomer?.customer ?? null;
-  const deposit = booking.deposits[0];
-  const customerName = formatCustomerName(customer);
+  const customerName = formatCustomerName(bookingCustomer?.customer ?? null);
+  const isFunDive = booking.activityType === ActivityType.FUN_DIVE;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
       <header>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Booking details</h1>
-          <Button asChild variant="outline">
-            <Link href="/bookings">Back to booking requests</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canReview ? (
+              <Button asChild>
+                <Link href={`/bookings/${booking.id}/review`}>Review booking</Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline">
+              <Link href="/bookings">Back to booking requests</Link>
+            </Button>
+          </div>
         </div>
-        <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Reference code" value={booking.id} />
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Booking ID" value={booking.id} />
           <Field
             label="Status"
             value={<BookingStatusBadge status={booking.status} />}
@@ -110,15 +123,19 @@ function BookingDetails({ booking }: Props) {
           <Field label="Activity type" value={formatEnum(booking.activityType)} />
           <Field label="Requested date" value={formatDate(booking.requestedDate)} />
           <Field label="Customer name" value={customerName} />
-        </dl>
+        </div>
+
         <div className="mt-6">
           <p className="text-sm text-muted-foreground">Raw booking text</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{booking.notes || '—'}</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm">
+            {booking.notes || EMPTY_VALUE}
+          </p>
         </div>
       </header>
 
       <Section title="Booking details">
         <Field label="Activity type" value={formatEnum(booking.activityType)} />
+        <Field label="Specialty course" value={booking.specialtyCourse} />
         <Field label="Requested date" value={formatDate(booking.requestedDate)} />
         <Field label="Requested time" value={booking.requestedTime} />
         <Field label="Number of people" value={booking.numberOfPeople} />
@@ -130,62 +147,122 @@ function BookingDetails({ booking }: Props) {
       </Section>
 
       <Section title="Customer/diver details">
-        <Field label="Customer name" value={customerName} />
-        <Field label="Chinese name" value={customer?.chineseName} />
-        <Field label="WeChat ID" value={customer?.weChatId} />
-        <Field label="WhatsApp number" value={customer?.whatsAppNumber} />
-        <Field label="Email" value={customer?.email} />
-        <Field label="Phone" value={customer?.phone} />
-        <Field label="Hotel" value={customer?.hotel} />
-        <Field
-          label="Preferred language"
-          value={formatEnum(customer?.preferredLanguage)}
-        />
-        <Field
-          label="Certification level"
-          value={bookingCustomer?.certificationLevel}
-        />
-        <Field
-          label="Certification agency"
-          value={bookingCustomer?.certificationAgency}
-        />
-        <Field
-          label="Last dive date"
-          value={formatDate(bookingCustomer?.lastDiveAt ?? null)}
-        />
-        <Field label="Number of logged dives" value={bookingCustomer?.divesLogged} />
+        {booking.customers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No customer or diver details.
+          </p>
+        ) : (
+          booking.customers.map((customerBooking) => {
+            const customer = customerBooking.customer;
+
+            return (
+              <div
+                className="space-y-6 rounded-lg border p-4 sm:col-span-2"
+                key={customerBooking.customerId}
+              >
+                <div>
+                  <h3 className="font-medium">{formatCustomerName(customer)}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {formatEnum(customerBooking.role)}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Chinese name" value={customer.chineseName} />
+                  <Field label="WeChat ID" value={customer.weChatId} />
+                  <Field label="WhatsApp number" value={customer.whatsAppNumber} />
+                  <Field label="Email" value={customer.email} />
+                  <Field label="Phone" value={customer.phone} />
+                  <Field label="Hotel" value={customer.hotel} />
+                  <Field
+                    label="Preferred language"
+                    value={formatEnum(customer.preferredLanguage)}
+                  />
+                  <Field label="Customer notes" value={customer.notes} />
+                </div>
+
+                {isFunDive ? (
+                  <div>
+                    <h4 className="font-medium">Fun diver details</h4>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <Field
+                        label="Certification level"
+                        value={customerBooking.certificationLevel}
+                      />
+                      <Field
+                        label="Certification agency"
+                        value={customerBooking.certificationAgency}
+                      />
+                      <Field
+                        label="Last dive date"
+                        value={formatDate(customerBooking.lastDiveAt)}
+                      />
+                      <Field
+                        label="Number of logged dives"
+                        value={customerBooking.divesLogged}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div>
+                  <h4 className="font-medium">Equipment details</h4>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Height"
+                      value={
+                        customerBooking.heightCm === null
+                          ? null
+                          : `${customerBooking.heightCm} cm`
+                      }
+                    />
+                    <Field
+                      label="Weight"
+                      value={
+                        customerBooking.weightKg === null
+                          ? null
+                          : `${customerBooking.weightKg.toString()} kg`
+                      }
+                    />
+                    <Field
+                      label="Shoe size"
+                      value={customerBooking.shoeSize?.toString()}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </Section>
 
-      <Section title="Sizing details">
-        <Field
-          label="Height"
-          value={
-            bookingCustomer?.heightCm === null || bookingCustomer?.heightCm === undefined
-              ? '—'
-              : `${bookingCustomer.heightCm} cm`
-          }
-        />
-        <Field
-          label="Weight"
-          value={
-            bookingCustomer?.weightKg === null || bookingCustomer?.weightKg === undefined
-              ? '—'
-              : `${bookingCustomer.weightKg.toString()} kg`
-          }
-        />
-        <Field
-          label="Shoe size"
-          value={bookingCustomer?.shoeSize?.toString()}
-        />
-      </Section>
-
-      <Section title="Deposit details">
-        <Field label="Deposit status" value={formatEnum(deposit?.status)} />
-        <Field label="Amount" value={deposit?.amount?.toString()} />
-        <Field label="Currency" value={deposit?.currency} />
-        <Field label="Paid to" value={deposit?.paidTo} />
-        <Field label="Payment method" value={deposit?.paymentMethod} />
-        <Field label="Payment notes" value={deposit?.notes} />
+      <Section title="Deposit/payment details">
+        {booking.deposits.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No deposit records.</p>
+        ) : (
+          booking.deposits.map((deposit) => (
+            <div
+              className="grid gap-4 rounded-lg border p-4 sm:col-span-2 sm:grid-cols-2"
+              key={deposit.id}
+            >
+              <Field label="Deposit status" value={formatEnum(deposit.status)} />
+              <Field
+                label="Amount"
+                value={
+                  deposit.amount === null
+                    ? null
+                    : `${deposit.amount.toString()} ${deposit.currency ?? ''}`.trim()
+                }
+              />
+              <Field label="Currency" value={deposit.currency} />
+              <Field label="Paid to" value={deposit.paidTo} />
+              <Field label="Payment method" value={deposit.paymentMethod} />
+              <Field label="Due date" value={formatDate(deposit.dueAt)} />
+              <Field label="Paid date" value={formatDate(deposit.paidAt)} />
+              <Field label="Payment notes" value={deposit.notes} />
+            </div>
+          ))
+        )}
       </Section>
 
       <Section title="Internal notes">

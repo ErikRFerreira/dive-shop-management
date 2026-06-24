@@ -1,5 +1,8 @@
 /**
  * Purpose: This module defines the permitted booking workflow transitions.
+ * Workflow:
+ * - `PENDING_APPROVAL` → `NEEDS_MORE_INFO` | `CANCELLED` | `SCHEDULED`
+ * - `NEEDS_MORE_INFO` → `PENDING_APPROVAL` | `CANCELLED`
  *
  * @module features/bookings/status
  */

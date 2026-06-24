@@ -24,11 +24,22 @@ import { canTransitionBookingStatus } from './status';
  * checks may use it to hide or disable controls, but they are not
  * authorization. The helper accepts only `role` because that is the only user
  * data needed for this decision.
+ * In the future, if the workflow changes to allow other roles to create booking
+ * requests, this function should be updated to reflect the new rules.
  */
 export function canCreateBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
   return currentUser.role === UserRole.CUSTOMER_SERVICE;
+}
+
+/** Returns whether the current user may access the booking review workflow. */
+export function canReviewBookingRequest(
+  currentUser: Pick<CurrentUser, 'role'>,
+) {
+  return (
+    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
+  );
 }
 
 /**

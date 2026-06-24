@@ -1,13 +1,11 @@
 import Link from 'next/link';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/bookings', label: 'Bookings' },
-  { href: '/schedule', label: 'Schedule' },
-  { href: '/customers', label: 'Customers' },
-];
+import { getDashboardNavigation } from '@/lib/dashboard-navigation';
+import type { CurrentUser } from '@/lib/current-user';
 
-function DashboardSidebar() {
+function DashboardSidebar({ currentUser }: { currentUser: CurrentUser }) {
+  const navItems = getDashboardNavigation(currentUser);
+
   return (
     <aside className="app-sidebar">
       <div className="mb-8">
