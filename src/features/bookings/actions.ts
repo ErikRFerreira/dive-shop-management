@@ -8,7 +8,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { BookingCustomerRole, BookingStatus } from '@/generated/prisma/enums';
+import { BookingStatus } from '@/generated/prisma/enums';
 import {
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
@@ -75,49 +75,66 @@ async function createBooking(
   }
 
   await db.$transaction(async (transaction) => {
+    const firstActivity = bookingValues.activities[0];
     const bookingRequest = await transaction.bookingRequest.create({
       data: {
         status,
-        activityType: bookingValues.activityType,
-        specialtyCourse: bookingValues.specialtyCourse,
+        activityType: firstActivity?.activityType ?? null,
+        specialtyCourse: firstActivity?.specialtyCourse ?? null,
         source: bookingValues.source,
-        requestedDate: bookingValues.requestedDate,
-        requestedTime: bookingValues.requestedTime,
+        requestedDate: firstActivity?.requestedDate ?? null,
+        requestedTime: firstActivity?.requestedTime ?? null,
         numberOfPeople: bookingValues.numberOfPeople,
         referrerName: bookingValues.referrerName,
         notes: bookingValues.rawBookingText,
         internalNotes: bookingValues.internalNotes,
         createdById: currentUser.id,
+        activities: {
+          create: bookingValues.activities.map((activity, sortOrder) => ({
+            activityType: activity.activityType,
+            specialtyCourse: activity.specialtyCourse,
+            requestedDate: activity.requestedDate,
+            requestedTime: activity.requestedTime,
+            notes: activity.notes,
+            sortOrder,
+          })),
+        },
       },
     });
 
-    const customer = await transaction.customer.create({
-      data: {
-        fullName: bookingValues.customerName,
-        chineseName: bookingValues.chineseName,
-        weChatId: bookingValues.weChatId,
-        whatsAppNumber: bookingValues.whatsAppNumber,
-        email: bookingValues.email,
-        phone: bookingValues.phone,
-        hotel: bookingValues.hotel,
-        preferredLanguage: bookingValues.preferredLanguage,
-      },
-    });
+    await Promise.all(
+      bookingValues.customers.map(async (bookingCustomer) => {
+        const customer = await transaction.customer.create({
+          data: {
+            fullName: bookingCustomer.customerName,
+            chineseName: bookingCustomer.chineseName,
+            weChatId: bookingCustomer.weChatId,
+            whatsAppNumber: bookingCustomer.whatsAppNumber,
+            email: bookingCustomer.email,
+            phone: bookingCustomer.phone,
+            preferredLanguage: bookingCustomer.preferredLanguage,
+          },
+        });
 
-    await transaction.bookingCustomer.create({
-      data: {
-        bookingRequestId: bookingRequest.id,
-        customerId: customer.id,
-        role: BookingCustomerRole.PRIMARY_CONTACT,
-        certificationAgency: bookingValues.certificationAgency,
-        certificationLevel: bookingValues.certificationLevel,
-        lastDiveAt: bookingValues.lastDiveDate,
-        heightCm: bookingValues.heightCm,
-        weightKg: bookingValues.weightKg,
-        shoeSize: bookingValues.shoeSize,
-        divesLogged: bookingValues.divesLogged,
-      },
-    });
+        await transaction.bookingCustomer.create({
+          data: {
+            bookingRequestId: bookingRequest.id,
+            customerId: customer.id,
+            role: bookingCustomer.role,
+            hotelAtBooking: bookingCustomer.hotelAtBooking,
+            equipmentNeeded: bookingCustomer.equipmentNeeded,
+            notes: bookingCustomer.customerNotes,
+            certificationAgency: bookingCustomer.certificationAgency,
+            certificationLevel: bookingCustomer.certificationLevel,
+            lastDiveAt: bookingCustomer.lastDiveDate,
+            heightCm: bookingCustomer.heightCm,
+            weightKg: bookingCustomer.weightKg,
+            shoeSize: bookingCustomer.shoeSize,
+            divesLogged: bookingCustomer.divesLogged,
+          },
+        });
+      }),
+    );
 
     if (hasMeaningfulDeposit(bookingValues)) {
       await transaction.deposit.create({

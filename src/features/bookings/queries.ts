@@ -51,6 +51,11 @@ const bookingRequestListArgs = {
         createdAt: 'asc',
       },
     },
+    activities: {
+      orderBy: {
+        sortOrder: 'asc',
+      },
+    },
     deposits: {
       orderBy: {
         createdAt: 'desc',

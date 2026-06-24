@@ -1,97 +1,99 @@
-/**
- * Purpose: This module provides utilities for normalizing and validating booking intake form values.
- * It includes functions to convert raw form input into database-friendly formats,
- * check for meaningful deposit information, and format enum values for display.
- *
- * @remarks
- * - The `normalizeBookingFormValues` function converts raw form values into a format suitable for database storage.
- * - The `hasMeaningfulDeposit` function checks if the deposit information is significant enough to be saved.
- * - The `formatEnumLabel` function formats enum values into human-readable labels for display in the UI.
- *
- * @module features/bookings/intake
- */
+/** Normalization and display helpers for booking intake. */
 
 import {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
-import type { BookingFormValues, NormalizedBookingFormValues } from './types';
+import type {
+  BookingActivityFormValues,
+  BookingCustomerFormValues,
+  BookingFormValues,
+  NormalizedBookingFormValues,
+} from './types';
 
-export type { BookingFormValues, NormalizedBookingFormValues } from './types';
+export type {
+  BookingActivityFormValues,
+  BookingCustomerFormValues,
+  BookingFormValues,
+  NormalizedBookingFormValues,
+} from './types';
 
-/**
- * Default values for the booking intake form.
- *
- * @remarks Shared by the React Hook Form instance and localStorage restore
- * flow so missing saved fields always receive safe defaults.
- */
-export const bookingFormDefaultValues: BookingFormValues = {
-  rawBookingText: '',
+export const bookingActivityDefaultValues: BookingActivityFormValues = {
   activityType: '',
   specialtyCourse: '',
   requestedDate: '',
   requestedTime: '',
-  numberOfPeople: '',
-  source: '',
-  referrerName: '',
-  internalNotes: '',
+  notes: '',
+};
+
+export const bookingCustomerDefaultValues: BookingCustomerFormValues = {
+  role: BookingCustomerRole.PARTICIPANT,
   customerName: '',
   chineseName: '',
   weChatId: '',
   whatsAppNumber: '',
   email: '',
   phone: '',
-  hotel: '',
+  hotelAtBooking: '',
+  equipmentNeeded: '',
+  customerNotes: '',
   preferredLanguage: '',
   heightCm: '',
   weightKg: '',
   shoeSize: '',
-  depositStatus: DepositStatus.UNKNOWN,
-  amount: '',
-  currency: '',
-  paidTo: '',
-  paymentMethod: '',
-  paymentNotes: '',
   certificationLevel: '',
   certificationAgency: '',
   lastDiveDate: '',
   divesLogged: '',
 };
 
+export const bookingFormDefaultValues: BookingFormValues = {
+  rawBookingText: '',
+  activities: [{ ...bookingActivityDefaultValues }],
+  numberOfPeople: '',
+  source: '',
+  referrerName: '',
+  internalNotes: '',
+  customers: [
+    {
+      ...bookingCustomerDefaultValues,
+      role: BookingCustomerRole.PRIMARY_CONTACT,
+    },
+  ],
+  depositStatus: DepositStatus.UNKNOWN,
+  amount: '',
+  currency: '',
+  paidTo: '',
+  paymentMethod: '',
+  paymentNotes: '',
+};
+
 function nullableText(value: string) {
   const normalized = value.trim();
-
   return normalized || null;
 }
 
 function nullableNumber(value: string) {
   const normalized = nullableText(value);
-
-  if (!normalized) {
-    return null;
-  }
+  if (!normalized) return null;
 
   const number = Number(normalized);
-
   return Number.isFinite(number) ? number : null;
 }
 
 function nullableInteger(value: string) {
   const number = nullableNumber(value);
-
   return number !== null && Number.isInteger(number) ? number : null;
 }
 
 function nullableDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return null;
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
 
   const date = new Date(`${value}T00:00:00.000Z`);
-
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -102,36 +104,47 @@ function enumValue<T extends Record<string, string>>(
   return Object.values(values).includes(value) ? (value as T[keyof T]) : null;
 }
 
-/**
- * Converts browser form values to nullable database-friendly values.
- *
- * @param values - Raw values maintained by the booking intake form.
- * @returns Values with empty strings and invalid numeric/date input normalized.
- */
 export function normalizeBookingFormValues(
   values: BookingFormValues,
 ): NormalizedBookingFormValues {
   return {
     rawBookingText: nullableText(values.rawBookingText),
-    activityType: enumValue(ActivityType, values.activityType),
-    specialtyCourse: nullableText(values.specialtyCourse),
-    requestedDate: nullableDate(values.requestedDate),
-    requestedTime: nullableText(values.requestedTime),
+    activities: values.activities.map((activity) => ({
+      activityType: enumValue(ActivityType, activity.activityType),
+      specialtyCourse: nullableText(activity.specialtyCourse),
+      requestedDate: nullableDate(activity.requestedDate),
+      requestedTime: nullableText(activity.requestedTime),
+      notes: nullableText(activity.notes),
+    })),
     numberOfPeople: nullableInteger(values.numberOfPeople),
     source: enumValue(BookingSource, values.source),
     referrerName: nullableText(values.referrerName),
     internalNotes: nullableText(values.internalNotes),
-    customerName: nullableText(values.customerName),
-    chineseName: nullableText(values.chineseName),
-    weChatId: nullableText(values.weChatId),
-    whatsAppNumber: nullableText(values.whatsAppNumber),
-    email: nullableText(values.email),
-    phone: nullableText(values.phone),
-    hotel: nullableText(values.hotel),
-    preferredLanguage: enumValue(PreferredLanguage, values.preferredLanguage),
-    heightCm: nullableInteger(values.heightCm),
-    weightKg: nullableNumber(values.weightKg),
-    shoeSize: nullableNumber(values.shoeSize),
+    customers: values.customers.map((customer) => ({
+      role:
+        enumValue(BookingCustomerRole, customer.role) ??
+        BookingCustomerRole.PARTICIPANT,
+      customerName: nullableText(customer.customerName),
+      chineseName: nullableText(customer.chineseName),
+      weChatId: nullableText(customer.weChatId),
+      whatsAppNumber: nullableText(customer.whatsAppNumber),
+      email: nullableText(customer.email),
+      phone: nullableText(customer.phone),
+      hotelAtBooking: nullableText(customer.hotelAtBooking),
+      equipmentNeeded: nullableText(customer.equipmentNeeded),
+      customerNotes: nullableText(customer.customerNotes),
+      preferredLanguage: enumValue(
+        PreferredLanguage,
+        customer.preferredLanguage,
+      ),
+      heightCm: nullableInteger(customer.heightCm),
+      weightKg: nullableNumber(customer.weightKg),
+      shoeSize: nullableNumber(customer.shoeSize),
+      certificationLevel: nullableText(customer.certificationLevel),
+      certificationAgency: nullableText(customer.certificationAgency),
+      lastDiveDate: nullableDate(customer.lastDiveDate),
+      divesLogged: nullableInteger(customer.divesLogged),
+    })),
     depositStatus:
       enumValue(DepositStatus, values.depositStatus) ?? DepositStatus.UNKNOWN,
     amount: nullableNumber(values.amount),
@@ -139,19 +152,9 @@ export function normalizeBookingFormValues(
     paidTo: nullableText(values.paidTo),
     paymentMethod: nullableText(values.paymentMethod),
     paymentNotes: nullableText(values.paymentNotes),
-    certificationLevel: nullableText(values.certificationLevel),
-    certificationAgency: nullableText(values.certificationAgency),
-    lastDiveDate: nullableDate(values.lastDiveDate),
-    divesLogged: nullableInteger(values.divesLogged),
   };
 }
 
-/**
- * Returns whether a deposit record contains information worth persisting.
- *
- * @param values - Normalized deposit fields from the intake form.
- * @returns `true` if a non-default status or any deposit detail is present.
- */
 export function hasMeaningfulDeposit(
   values: Pick<
     NormalizedBookingFormValues,
@@ -173,16 +176,8 @@ export function hasMeaningfulDeposit(
   );
 }
 
-/**
- * Formats an enum value for a human-readable form label.
- *
- * @param value - The underscore-separated enum value to format.
- * @returns A title-cased label, or an em dash when the value is absent.
- */
 export function formatEnumLabel(value: string | null | undefined) {
-  if (!value) {
-    return '—';
-  }
+  if (!value) return '—';
 
   return value
     .toLowerCase()

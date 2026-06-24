@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Eye } from 'lucide-react';
 
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
@@ -17,17 +18,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-import { Eye } from 'lucide-react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
 import type { BookingListItem } from '@/features/bookings/queries';
+import { summarizeBookingActivities } from '@/features/bookings/utils';
 
 const dateFormatter = new Intl.DateTimeFormat('en-SG', {
   day: '2-digit',
@@ -53,16 +51,18 @@ function formatEnum(value: string | null) {
 function formatCustomerName(booking: BookingListItem) {
   const customer = booking.displayCustomer;
   const fullName = customer?.fullName?.trim();
-
-  if (fullName) {
-    return fullName;
-  }
-
   const name = [customer?.firstName, customer?.lastName]
     .filter((part): part is string => Boolean(part))
     .join(' ');
+  const displayName = fullName || name;
 
-  return name || '—';
+  if (!displayName) {
+    return booking.customers.length > 1 ? 'Multiple customers' : '—';
+  }
+
+  return booking.customers.length > 1
+    ? `${displayName} + ${booking.customers.length - 1} more`
+    : displayName;
 }
 
 export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
@@ -87,8 +87,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
             <TableRow>
               <TableHead>Status</TableHead>
               <TableHead>Customer name</TableHead>
-              <TableHead>Activity type</TableHead>
-              <TableHead>Specialty course</TableHead>
+              <TableHead>Activities</TableHead>
               <TableHead>Requested date</TableHead>
               <TableHead>Number of people</TableHead>
               <TableHead>Source/referrer</TableHead>
@@ -105,8 +104,12 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
                 <TableCell>{formatCustomerName(booking)}</TableCell>
-                <TableCell>{formatEnum(booking.activityType)}</TableCell>
-                <TableCell>{booking.specialtyCourse ?? '—'}</TableCell>
+                <TableCell>
+                  {summarizeBookingActivities(
+                    booking.activities,
+                    booking.activityType,
+                  )}
+                </TableCell>
                 <TableCell>{formatDate(booking.requestedDate)}</TableCell>
                 <TableCell>{booking.numberOfPeople ?? '—'}</TableCell>
                 <TableCell>{formatEnum(booking.source)}</TableCell>
@@ -118,10 +121,7 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button asChild size="icon" variant="outline">
-                          <Link
-                            href={`/bookings/${booking.id}`}
-                            aria-label="View booking"
-                          >
+                          <Link href={`/bookings/${booking.id}`} aria-label="View booking">
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
