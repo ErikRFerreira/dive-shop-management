@@ -64,6 +64,11 @@ test('scopes booking queries to the current user role', () => {
     id: 'manager-user',
     role: UserRole.MANAGER,
   };
+  const instructorUser = {
+    ...customerServiceUser,
+    id: 'instructor-user',
+    role: UserRole.INSTRUCTOR,
+  };
 
   expect(
     buildBookingRequestWhere(customerServiceUser, BookingStatus.DRAFT),
@@ -73,4 +78,7 @@ test('scopes booking queries to the current user role', () => {
   });
   expect(buildBookingRequestWhere(adminUser)).toEqual({});
   expect(buildBookingRequestWhere(managerUser)).toEqual({});
+  expect(buildBookingRequestWhere(instructorUser)).toEqual({
+    id: { in: [] },
+  });
 });
