@@ -1,12 +1,12 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 
 import {
-  initialBookingWorkflowActionState,
   markBookingNeedsMoreInfo,
   resubmitBookingForApproval,
 } from '@/features/bookings/actions';
+import type { BookingWorkflowActionState } from '@/features/bookings/actions';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 type BookingIdProps = {
   bookingId: string;
 };
+
+const initialBookingWorkflowActionState: BookingWorkflowActionState = {};
 
 function ActionError({ message }: { message?: string }) {
   return message ? (
@@ -29,10 +31,22 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
     markBookingNeedsMoreInfo,
     initialBookingWorkflowActionState,
   );
-  const reasonError = state.fieldErrors?.needsMoreInfoReason?.[0];
+  const [reason, setReason] = useState('');
+  const [clientReasonError, setClientReasonError] = useState<string>();
+  const reasonError =
+    clientReasonError ?? state.fieldErrors?.needsMoreInfoReason?.[0];
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (reason.trim()) {
+      return;
+    }
+
+    event.preventDefault();
+    setClientReasonError('Enter a reason before requesting more information.');
+  }
 
   return (
-    <form action={formAction} className="grid gap-3">
+    <form action={formAction} className="grid gap-3" noValidate onSubmit={handleSubmit}>
       <input name="bookingId" type="hidden" value={bookingId} />
       <div className="grid gap-2">
         <label className="text-sm font-medium" htmlFor="needs-more-info-reason">
@@ -43,8 +57,15 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
           aria-invalid={Boolean(reasonError)}
           id="needs-more-info-reason"
           name="needsMoreInfoReason"
+          onChange={(event) => {
+            setReason(event.target.value);
+
+            if (event.target.value.trim()) {
+              setClientReasonError(undefined);
+            }
+          }}
           placeholder="Explain what information customer service needs to provide."
-          required
+          value={reason}
         />
         {reasonError ? (
           <p className="text-sm text-destructive" id="needs-more-info-reason-error">

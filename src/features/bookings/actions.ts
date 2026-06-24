@@ -52,8 +52,6 @@ export type BookingWorkflowActionState = {
   formError?: string;
 };
 
-export const initialBookingWorkflowActionState: BookingWorkflowActionState = {};
-
 function getValidationErrors(error: {
   flatten: () => {
     fieldErrors: Record<string, string[] | undefined>;

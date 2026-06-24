@@ -28,10 +28,11 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 import {
-  initialBookingWorkflowActionState,
   markBookingNeedsMoreInfo,
   resubmitBookingForApproval,
 } from './actions';
+
+const initialBookingWorkflowActionState = {};
 
 function formData(values: Record<string, string>) {
   const data = new FormData();
