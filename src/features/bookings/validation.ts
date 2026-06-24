@@ -1,4 +1,10 @@
-/** Booking intake validation for draft saving and approval submission. */
+/**
+ * Purpose: This module provides validation logic for the booking intake form. It defines schemas for both draft and submission intents, ensuring that the form data adheres to the required structure and business rules before processing.
+ *
+ * The validation logic uses the `zod` library to define schemas for activities, customers, and the overall booking intake form. It includes custom validation rules to enforce business requirements, such as ensuring at least one activity or customer is provided, and that required fields are filled based on the booking's context (e.g., deposit status, activity type).
+ *
+ * @module features/bookings/validation
+ */
 
 import { z } from 'zod';
 
@@ -18,7 +24,11 @@ export type BookingIntakeIntent = 'draft' | 'submit';
 export type BookingIntakeFieldErrors = Record<string, string[]>;
 
 export type BookingIntakeValidationResult =
-  | { success: true; fieldErrors: BookingIntakeFieldErrors; formErrors: string[] }
+  | {
+      success: true;
+      fieldErrors: BookingIntakeFieldErrors;
+      formErrors: string[];
+    }
   | {
       success: false;
       fieldErrors: BookingIntakeFieldErrors;
@@ -84,8 +94,8 @@ function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   );
 }
 
-export const draftBookingIntakeSchema = normalizedBookingIntakeSchema.superRefine(
-  (values, context) => {
+export const draftBookingIntakeSchema =
+  normalizedBookingIntakeSchema.superRefine((values, context) => {
     const hasMeaningfulValue =
       values.rawBookingText !== null ||
       values.numberOfPeople !== null ||
@@ -98,14 +108,14 @@ export const draftBookingIntakeSchema = normalizedBookingIntakeSchema.superRefin
     if (!hasMeaningfulValue) {
       context.addIssue({
         code: 'custom',
-        message: 'Enter at least one booking, activity, or customer detail before saving a draft.',
+        message:
+          'Enter at least one booking, activity, or customer detail before saving a draft.',
       });
     }
-  },
-);
+  });
 
-export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefine(
-  (values, context) => {
+export const submitBookingIntakeSchema =
+  normalizedBookingIntakeSchema.superRefine((values, context) => {
     if (values.activities.length === 0) {
       context.addIssue({
         code: 'custom',
@@ -265,10 +275,11 @@ export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefi
         });
       }
     }
-  },
-);
+  });
 
-function formatValidationErrors(error: z.ZodError): BookingIntakeValidationResult {
+function formatValidationErrors(
+  error: z.ZodError,
+): BookingIntakeValidationResult {
   const fieldErrors: BookingIntakeFieldErrors = {};
   const formErrors: string[] = [];
 
