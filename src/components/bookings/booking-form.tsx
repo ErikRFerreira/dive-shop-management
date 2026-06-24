@@ -142,7 +142,9 @@ export function BookingForm() {
   const router = useRouter();
   const [submitIntent, setSubmitIntent] = useState<SubmitIntent>('draft');
   const [formErrors, setFormErrors] = useState<string[]>([]);
-  const form = useForm<BookingFormValues>({ defaultValues: bookingFormDefaultValues });
+  const form = useForm<BookingFormValues>({
+    defaultValues: bookingFormDefaultValues,
+  });
   const { clearAutosave } = useBookingFormAutosave(form);
   const {
     fields: activityFields,
@@ -154,9 +156,14 @@ export function BookingForm() {
     append: appendCustomer,
     remove: removeCustomer,
   } = useFieldArray({ control: form.control, name: 'customers' });
-  const activities = useWatch({ control: form.control, name: 'activities' }) ?? [];
-  const customers = useWatch({ control: form.control, name: 'customers' }) ?? [];
-  const depositStatus = useWatch({ control: form.control, name: 'depositStatus' });
+  const activities =
+    useWatch({ control: form.control, name: 'activities' }) ?? [];
+  const customers =
+    useWatch({ control: form.control, name: 'customers' }) ?? [];
+  const depositStatus = useWatch({
+    control: form.control,
+    name: 'depositStatus',
+  });
   const isSubmitting = form.formState.isSubmitting;
   const includesFunDive = activities.some(
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
@@ -183,7 +190,10 @@ export function BookingForm() {
     setFormErrors(nextFormErrors);
   }
 
-  async function submitBooking(values: BookingFormValues, intent: SubmitIntent) {
+  async function submitBooking(
+    values: BookingFormValues,
+    intent: SubmitIntent,
+  ) {
     setSubmitIntent(intent);
     showValidationErrors({}, []);
 
@@ -234,11 +244,9 @@ export function BookingForm() {
         (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
       )
     ) {
-      form.setValue(
-        'customers.0.role',
-        BookingCustomerRole.PRIMARY_CONTACT,
-        { shouldDirty: true },
-      );
+      form.setValue('customers.0.role', BookingCustomerRole.PRIMARY_CONTACT, {
+        shouldDirty: true,
+      });
     }
   }
 
@@ -246,7 +254,8 @@ export function BookingForm() {
     depositStatus === DepositStatus.PAID ||
     depositStatus === DepositStatus.PARTIALLY_PAID;
   const customerError = getFieldError('customers');
-  const hasPrimaryContactMethodError = customerError === primaryContactMethodError;
+  const hasPrimaryContactMethodError =
+    customerError === primaryContactMethodError;
   const errorMessages = [
     ...new Set([...formErrors, ...collectErrorMessages(form.formState.errors)]),
   ];
@@ -261,13 +270,26 @@ export function BookingForm() {
         title="Raw Booking Information"
         description="Keep the original customer message for review."
       >
-        <Field id="rawBookingText" label="" className="grid gap-2 md:col-span-2">
-          <Textarea id="rawBookingText" rows={6} {...form.register('rawBookingText')} />
+        <Field
+          id="rawBookingText"
+          label=""
+          className="grid gap-2 md:col-span-2"
+        >
+          <Textarea
+            id="rawBookingText"
+            rows={6}
+            {...form.register('rawBookingText')}
+          />
         </Field>
       </BookingFormSection>
 
       <BookingFormSection title="Booking Details">
-        <Field id="source" label="Source" required error={getFieldError('source')}>
+        <Field
+          id="source"
+          label="Source"
+          required
+          error={getFieldError('source')}
+        >
           <Controller
             control={form.control}
             name="source"
@@ -288,12 +310,22 @@ export function BookingForm() {
           required
           error={getFieldError('numberOfPeople')}
         >
-          <Input id="numberOfPeople" type="number" min="1" step="1" {...form.register('numberOfPeople')} />
+          <Input
+            id="numberOfPeople"
+            type="number"
+            min="1"
+            step="1"
+            {...form.register('numberOfPeople')}
+          />
         </Field>
         <Field id="referrerName" label="Referrer name (optional)">
           <Input id="referrerName" {...form.register('referrerName')} />
         </Field>
-        <Field id="internalNotes" label="Internal notes" className="grid gap-2 md:col-span-2">
+        <Field
+          id="internalNotes"
+          label="Internal notes"
+          className="grid gap-2 md:col-span-2"
+        >
           <Textarea id="internalNotes" {...form.register('internalNotes')} />
         </Field>
       </BookingFormSection>
@@ -310,7 +342,12 @@ export function BookingForm() {
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <h3 className="font-medium">Activity {index + 1}</h3>
                   {activityFields.length > 1 ? (
-                    <Button type="button" variant="outline" size="sm" onClick={() => removeActivity(index)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeActivity(index)}
+                    >
                       Remove activity
                     </Button>
                   ) : null}
@@ -343,28 +380,53 @@ export function BookingForm() {
                       required
                       error={getFieldError(`${prefix}.specialtyCourse`)}
                     >
-                      <Input id={`${prefix}.specialtyCourse`} {...form.register(`${prefix}.specialtyCourse`)} />
+                      <Input
+                        id={`${prefix}.specialtyCourse`}
+                        {...form.register(`${prefix}.specialtyCourse`)}
+                      />
                     </Field>
                   ) : null}
                   <Field
                     id={`${prefix}.requestedDate`}
-                    label="Requested date"
+                    label="Requested start date"
                     required
                     error={getFieldError(`${prefix}.requestedDate`)}
                   >
-                    <Input id={`${prefix}.requestedDate`} type="date" {...form.register(`${prefix}.requestedDate`)} />
+                    <Input
+                      id={`${prefix}.requestedDate`}
+                      type="date"
+                      {...form.register(`${prefix}.requestedDate`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.requestedTime`} label="Requested time (optional)">
-                    <Input id={`${prefix}.requestedTime`} type="time" {...form.register(`${prefix}.requestedTime`)} />
+                  <Field
+                    id={`${prefix}.requestedTime`}
+                    label="Requested time (optional)"
+                  >
+                    <Input
+                      id={`${prefix}.requestedTime`}
+                      type="time"
+                      {...form.register(`${prefix}.requestedTime`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.notes`} label="Activity notes" className="grid gap-2 md:col-span-2">
-                    <Textarea id={`${prefix}.notes`} {...form.register(`${prefix}.notes`)} />
+                  <Field
+                    id={`${prefix}.notes`}
+                    label="Activity notes"
+                    className="grid gap-2 md:col-span-2"
+                  >
+                    <Textarea
+                      id={`${prefix}.notes`}
+                      {...form.register(`${prefix}.notes`)}
+                    />
                   </Field>
                 </div>
               </div>
             );
           })}
-          <Button type="button" variant="outline" onClick={() => appendActivity({ ...bookingActivityDefaultValues })}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => appendActivity({ ...bookingActivityDefaultValues })}
+          >
             Add activity
           </Button>
         </div>
@@ -389,13 +451,18 @@ export function BookingForm() {
               <div className="rounded-lg border p-4" key={customer.id}>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-medium">Customer / diver {index + 1}</h3>
+                    <h3 className="font-medium">
+                      Customer / diver {index + 1}
+                    </h3>
                     <p className="text-sm text-muted-foreground">
                       {isPrimaryContact ? 'Primary contact' : 'Participant'}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm" htmlFor={`${prefix}.primaryContact`}>
+                    <label
+                      className="flex items-center gap-2 text-sm"
+                      htmlFor={`${prefix}.primaryContact`}
+                    >
                       <input
                         id={`${prefix}.primaryContact`}
                         type="checkbox"
@@ -405,7 +472,12 @@ export function BookingForm() {
                       Primary contact
                     </label>
                     {customerFields.length > 1 ? (
-                      <Button type="button" variant="outline" size="sm" onClick={() => removeCustomerAndKeepPrimary(index)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeCustomerAndKeepPrimary(index)}
+                      >
                         Remove customer
                       </Button>
                     ) : null}
@@ -418,27 +490,63 @@ export function BookingForm() {
                     required
                     error={getFieldError(`${prefix}.customerName`)}
                   >
-                    <Input id={`${prefix}.customerName`} {...form.register(`${prefix}.customerName`)} />
+                    <Input
+                      id={`${prefix}.customerName`}
+                      {...form.register(`${prefix}.customerName`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.chineseName`} label="Chinese name">
-                    <Input id={`${prefix}.chineseName`} {...form.register(`${prefix}.chineseName`)} />
+                    <Input
+                      id={`${prefix}.chineseName`}
+                      {...form.register(`${prefix}.chineseName`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.weChatId`} label="WeChat ID">
-                    <Input id={`${prefix}.weChatId`} {...contactInputProps} {...form.register(`${prefix}.weChatId`)} />
+                    <Input
+                      id={`${prefix}.weChatId`}
+                      {...contactInputProps}
+                      {...form.register(`${prefix}.weChatId`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.whatsAppNumber`} label="WhatsApp number">
-                    <Input id={`${prefix}.whatsAppNumber`} {...contactInputProps} {...form.register(`${prefix}.whatsAppNumber`)} />
+                  <Field
+                    id={`${prefix}.whatsAppNumber`}
+                    label="WhatsApp number"
+                  >
+                    <Input
+                      id={`${prefix}.whatsAppNumber`}
+                      {...contactInputProps}
+                      {...form.register(`${prefix}.whatsAppNumber`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.email`} label="Email">
-                    <Input id={`${prefix}.email`} type="email" {...contactInputProps} {...form.register(`${prefix}.email`)} />
+                    <Input
+                      id={`${prefix}.email`}
+                      type="email"
+                      {...contactInputProps}
+                      {...form.register(`${prefix}.email`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.phone`} label="Phone">
-                    <Input id={`${prefix}.phone`} type="tel" {...contactInputProps} {...form.register(`${prefix}.phone`)} />
+                    <Input
+                      id={`${prefix}.phone`}
+                      type="tel"
+                      {...contactInputProps}
+                      {...form.register(`${prefix}.phone`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.hotelAtBooking`} label="Hotel for this booking">
-                    <Input id={`${prefix}.hotelAtBooking`} {...form.register(`${prefix}.hotelAtBooking`)} />
+                  <Field
+                    id={`${prefix}.hotelAtBooking`}
+                    label="Hotel for this booking"
+                  >
+                    <Input
+                      id={`${prefix}.hotelAtBooking`}
+                      {...form.register(`${prefix}.hotelAtBooking`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.preferredLanguage`} label="Preferred language">
+                  <Field
+                    id={`${prefix}.preferredLanguage`}
+                    label="Preferred language"
+                  >
                     <Controller
                       control={form.control}
                       name={`${prefix}.preferredLanguage`}
@@ -453,11 +561,25 @@ export function BookingForm() {
                       )}
                     />
                   </Field>
-                  <Field id={`${prefix}.equipmentNeeded`} label="Equipment needed" className="grid gap-2 md:col-span-2">
-                    <Textarea id={`${prefix}.equipmentNeeded`} {...form.register(`${prefix}.equipmentNeeded`)} />
+                  <Field
+                    id={`${prefix}.equipmentNeeded`}
+                    label="Equipment needed"
+                    className="grid gap-2 md:col-span-2"
+                  >
+                    <Textarea
+                      id={`${prefix}.equipmentNeeded`}
+                      {...form.register(`${prefix}.equipmentNeeded`)}
+                    />
                   </Field>
-                  <Field id={`${prefix}.customerNotes`} label="Customer/diver notes" className="grid gap-2 md:col-span-2">
-                    <Textarea id={`${prefix}.customerNotes`} {...form.register(`${prefix}.customerNotes`)} />
+                  <Field
+                    id={`${prefix}.customerNotes`}
+                    label="Customer/diver notes"
+                    className="grid gap-2 md:col-span-2"
+                  >
+                    <Textarea
+                      id={`${prefix}.customerNotes`}
+                      {...form.register(`${prefix}.customerNotes`)}
+                    />
                   </Field>
 
                   {includesFunDive ? (
@@ -468,10 +590,19 @@ export function BookingForm() {
                         required
                         error={getFieldError(`${prefix}.certificationLevel`)}
                       >
-                        <Input id={`${prefix}.certificationLevel`} {...form.register(`${prefix}.certificationLevel`)} />
+                        <Input
+                          id={`${prefix}.certificationLevel`}
+                          {...form.register(`${prefix}.certificationLevel`)}
+                        />
                       </Field>
-                      <Field id={`${prefix}.certificationAgency`} label="Certification agency">
-                        <Input id={`${prefix}.certificationAgency`} {...form.register(`${prefix}.certificationAgency`)} />
+                      <Field
+                        id={`${prefix}.certificationAgency`}
+                        label="Certification agency"
+                      >
+                        <Input
+                          id={`${prefix}.certificationAgency`}
+                          {...form.register(`${prefix}.certificationAgency`)}
+                        />
                       </Field>
                       <Field
                         id={`${prefix}.lastDiveDate`}
@@ -479,7 +610,11 @@ export function BookingForm() {
                         required
                         error={getFieldError(`${prefix}.lastDiveDate`)}
                       >
-                        <Input id={`${prefix}.lastDiveDate`} type="date" {...form.register(`${prefix}.lastDiveDate`)} />
+                        <Input
+                          id={`${prefix}.lastDiveDate`}
+                          type="date"
+                          {...form.register(`${prefix}.lastDiveDate`)}
+                        />
                       </Field>
                       <Field
                         id={`${prefix}.divesLogged`}
@@ -487,29 +622,56 @@ export function BookingForm() {
                         required
                         error={getFieldError(`${prefix}.divesLogged`)}
                       >
-                        <Input id={`${prefix}.divesLogged`} type="number" min="0" step="1" {...form.register(`${prefix}.divesLogged`)} />
+                        <Input
+                          id={`${prefix}.divesLogged`}
+                          type="number"
+                          min="0"
+                          step="1"
+                          {...form.register(`${prefix}.divesLogged`)}
+                        />
                       </Field>
                     </>
                   ) : null}
 
                   <Field id={`${prefix}.heightCm`} label="Height (cm)">
-                    <Input id={`${prefix}.heightCm`} type="number" min="0" {...form.register(`${prefix}.heightCm`)} />
+                    <Input
+                      id={`${prefix}.heightCm`}
+                      type="number"
+                      min="0"
+                      {...form.register(`${prefix}.heightCm`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.weightKg`} label="Weight (kg)">
-                    <Input id={`${prefix}.weightKg`} type="number" min="0" step="0.01" {...form.register(`${prefix}.weightKg`)} />
+                    <Input
+                      id={`${prefix}.weightKg`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      {...form.register(`${prefix}.weightKg`)}
+                    />
                   </Field>
                   <Field id={`${prefix}.shoeSize`} label="Shoe size">
-                    <Input id={`${prefix}.shoeSize`} type="number" min="0" step="0.5" {...form.register(`${prefix}.shoeSize`)} />
+                    <Input
+                      id={`${prefix}.shoeSize`}
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      {...form.register(`${prefix}.shoeSize`)}
+                    />
                   </Field>
                 </div>
               </div>
             );
           })}
           {customerError && customerError !== primaryContactMethodError ? (
-            <p className="text-sm text-destructive" role="alert">{customerError}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {customerError}
+            </p>
           ) : null}
           {hasPrimaryContactMethodError ? (
-            <p className="text-sm text-destructive" role="alert">{primaryContactMethodError}</p>
+            <p className="text-sm text-destructive" role="alert">
+              {primaryContactMethodError}
+            </p>
           ) : null}
           <Button
             type="button"
@@ -537,10 +699,26 @@ export function BookingForm() {
             )}
           />
         </Field>
-        <Field id="amount" label="Amount" required={isPaidDeposit} error={getFieldError('amount')}>
-          <Input id="amount" type="number" min="0.01" step="0.01" {...form.register('amount')} />
+        <Field
+          id="amount"
+          label="Amount"
+          required={isPaidDeposit}
+          error={getFieldError('amount')}
+        >
+          <Input
+            id="amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            {...form.register('amount')}
+          />
         </Field>
-        <Field id="currency" label="Currency" required={isPaidDeposit} error={getFieldError('currency')}>
+        <Field
+          id="currency"
+          label="Currency"
+          required={isPaidDeposit}
+          error={getFieldError('currency')}
+        >
           <Controller
             control={form.control}
             name="currency"
@@ -555,7 +733,12 @@ export function BookingForm() {
             )}
           />
         </Field>
-        <Field id="paidTo" label="Paid to" required={isPaidDeposit} error={getFieldError('paidTo')}>
+        <Field
+          id="paidTo"
+          label="Paid to"
+          required={isPaidDeposit}
+          error={getFieldError('paidTo')}
+        >
           <Input id="paidTo" {...form.register('paidTo')} />
         </Field>
         <Field id="paymentMethod" label="Payment method">
@@ -567,28 +750,43 @@ export function BookingForm() {
       </BookingFormSection>
 
       {errorMessages.length > 0 ? (
-        <div className="rounded-md border border-destructive/50 p-3 text-sm text-destructive" role="alert">
+        <div
+          className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+          role="alert"
+        >
           <p>Please fix the following before continuing:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            {errorMessages.map((message) => <li key={message}>{message}</li>)}
+            {errorMessages.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
           </ul>
         </div>
       ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button asChild type="button" variant="outline">
-          <Link href="/bookings" onClick={clearAutosave}>Cancel</Link>
+          <Link href="/bookings" onClick={clearAutosave}>
+            Cancel
+          </Link>
         </Button>
         <Button
           type="button"
           variant="outline"
           disabled={isSubmitting}
-          onClick={() => void form.handleSubmit((values) => submitBooking(values, 'draft'))()}
+          onClick={() =>
+            void form.handleSubmit((values) => submitBooking(values, 'draft'))()
+          }
         >
           {isSubmitting && submitIntent === 'draft' ? 'Saving…' : 'Save Draft'}
         </Button>
-        <Button type="submit" disabled={isSubmitting} onClick={() => setSubmitIntent('submit')}>
-          {isSubmitting && submitIntent === 'submit' ? 'Submitting…' : 'Submit for Approval'}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          onClick={() => setSubmitIntent('submit')}
+        >
+          {isSubmitting && submitIntent === 'submit'
+            ? 'Submitting…'
+            : 'Submit for Approval'}
         </Button>
       </div>
     </form>
