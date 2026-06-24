@@ -9,6 +9,7 @@ import {
   parseBookingStatusFilter,
 } from '@/features/bookings/queries';
 import { requireCurrentUser } from '@/lib/current-user';
+import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
 type BookingsPageProps = {
   searchParams: Promise<{ status?: string | string[] }>;
@@ -18,6 +19,7 @@ export default async function BookingsPage({
   searchParams,
 }: BookingsPageProps) {
   const currentUser = await requireCurrentUser();
+  requireDashboardRouteAccess(currentUser, 'bookings');
   const status = parseBookingStatusFilter((await searchParams).status);
   const bookingRequests = await getBookingRequests(currentUser, status);
 

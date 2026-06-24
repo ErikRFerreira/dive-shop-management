@@ -9,7 +9,7 @@ async function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-layout">
-      <DashboardSidebar />
+      <DashboardSidebar currentUser={currentUser} />
       <DashboardHeader currentUser={currentUser} />
 
       <main className="app-content">{children}</main>
