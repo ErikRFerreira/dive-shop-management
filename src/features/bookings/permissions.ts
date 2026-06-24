@@ -92,3 +92,28 @@ export function canResubmitBookingForApproval(
       currentUser.id === createdById)
   );
 }
+
+/** Returns whether a user may edit a booking without changing its workflow state. */
+export function canEditBooking(
+  currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  createdById: string,
+  status: BookingStatus,
+) {
+  if (
+    currentUser.role === UserRole.ADMIN ||
+    currentUser.role === UserRole.MANAGER
+  ) {
+    return (
+      status === BookingStatus.DRAFT ||
+      status === BookingStatus.PENDING_APPROVAL ||
+      status === BookingStatus.NEEDS_MORE_INFO
+    );
+  }
+
+  return (
+    currentUser.role === UserRole.CUSTOMER_SERVICE &&
+    currentUser.id === createdById &&
+    (status === BookingStatus.DRAFT ||
+      status === BookingStatus.NEEDS_MORE_INFO)
+  );
+}

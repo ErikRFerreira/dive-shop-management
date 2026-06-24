@@ -18,6 +18,7 @@ import { requireCurrentUser } from '@/lib/current-user';
 
 import {
   canCreateBookingRequest,
+  canEditBooking,
   canPerformBookingStatusTransition,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
@@ -27,6 +28,7 @@ import type { BookingFormValues } from './types';
 import {
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
+  updateBookingSchema,
   validateBookingIntake,
   type BookingIntakeFieldErrors,
 } from './validation';
@@ -40,6 +42,15 @@ import { redirect } from 'next/navigation';
  */
 export type CreateBookingActionResult =
   | { success: true; redirectTo: '/bookings' }
+  | {
+      success: false;
+      fieldErrors: BookingIntakeFieldErrors;
+      formError?: string;
+    };
+
+/** Result returned after an existing booking has been saved. */
+export type UpdateBookingActionResult =
+  | { success: true; redirectTo: `/bookings/${string}` }
   | {
       success: false;
       fieldErrors: BookingIntakeFieldErrors;
@@ -75,6 +86,7 @@ function revalidateBookingWorkflowPaths(bookingId: string) {
   revalidatePath('/bookings');
   revalidatePath(`/bookings/${bookingId}`);
   revalidatePath(`/bookings/${bookingId}/review`);
+  revalidatePath(`/bookings/${bookingId}/edit`);
 }
 
 /**
@@ -219,6 +231,236 @@ export async function submitBookingForApproval(
   values: BookingFormValues,
 ): Promise<CreateBookingActionResult> {
   return createBooking(values, BookingStatus.PENDING_APPROVAL);
+}
+
+/**
+ * Updates an editable booking and the intake records managed by the booking form.
+ * The action deliberately leaves the booking status and Needs More Info reason
+ * unchanged; returning a booking for approval remains a separate workflow step.
+ */
+export async function updateBooking(
+  bookingId: string,
+  values: BookingFormValues,
+): Promise<UpdateBookingActionResult> {
+  const bookingIdValidation = updateBookingSchema.safeParse({ bookingId });
+
+  if (!bookingIdValidation.success) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: bookingIdValidation.error.flatten().formErrors[0],
+    };
+  }
+
+  const currentUser = await requireCurrentUser();
+  const booking = await db.bookingRequest.findUnique({
+    where: { id: bookingIdValidation.data.bookingId },
+    select: {
+      id: true,
+      status: true,
+      createdById: true,
+      customers: {
+        select: {
+          customerId: true,
+        },
+      },
+      deposits: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'Booking request not found.',
+    };
+  }
+
+  if (!canEditBooking(currentUser, booking.createdById, booking.status)) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'You do not have permission to edit this booking.',
+    };
+  }
+
+  const bookingValues = normalizeBookingFormValues(values);
+  const validation = validateBookingIntake(
+    bookingValues,
+    booking.status === BookingStatus.DRAFT ? 'draft' : 'submit',
+  );
+
+  if (!validation.success) {
+    return {
+      success: false,
+      fieldErrors: validation.fieldErrors,
+      formError: validation.formErrors[0],
+    };
+  }
+
+  const linkedCustomerIds = new Set(
+    booking.customers.map((customer) => customer.customerId),
+  );
+  const submittedCustomerIds = bookingValues.customers.flatMap((customer) =>
+    customer.customerId ? [customer.customerId] : [],
+  );
+  const hasInvalidCustomerId = submittedCustomerIds.some(
+    (customerId) => !linkedCustomerIds.has(customerId),
+  );
+  const hasDuplicateCustomerId =
+    new Set(submittedCustomerIds).size !== submittedCustomerIds.length;
+
+  if (hasInvalidCustomerId || hasDuplicateCustomerId) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'Customer details changed unexpectedly. Refresh and try again.',
+    };
+  }
+
+  const didUpdate = await db.$transaction(async (transaction) => {
+    const firstActivity = bookingValues.activities[0];
+    const updateResult = await transaction.bookingRequest.updateMany({
+      where: {
+        id: booking.id,
+        status: booking.status,
+      },
+      data: {
+        activityType: firstActivity?.activityType ?? null,
+        specialtyCourse: firstActivity?.specialtyCourse ?? null,
+        source: bookingValues.source,
+        requestedDate: firstActivity?.requestedDate ?? null,
+        requestedTime: firstActivity?.requestedTime ?? null,
+        numberOfPeople: bookingValues.numberOfPeople,
+        referrerName: bookingValues.referrerName,
+        notes: bookingValues.rawBookingText,
+        internalNotes: bookingValues.internalNotes,
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      return false;
+    }
+
+    await transaction.bookingActivity.deleteMany({
+      where: { bookingRequestId: booking.id },
+    });
+
+    if (bookingValues.activities.length > 0) {
+      await transaction.bookingActivity.createMany({
+        data: bookingValues.activities.map((activity, sortOrder) => ({
+          bookingRequestId: booking.id,
+          activityType: activity.activityType,
+          specialtyCourse: activity.specialtyCourse,
+          requestedDate: activity.requestedDate,
+          requestedTime: activity.requestedTime,
+          notes: activity.notes,
+          sortOrder,
+        })),
+      });
+    }
+
+    const customerIds = await Promise.all(
+      bookingValues.customers.map(async (bookingCustomer) => {
+        const customerData = {
+          fullName: bookingCustomer.customerName,
+          chineseName: bookingCustomer.chineseName,
+          weChatId: bookingCustomer.weChatId,
+          whatsAppNumber: bookingCustomer.whatsAppNumber,
+          email: bookingCustomer.email,
+          phone: bookingCustomer.phone,
+          preferredLanguage: bookingCustomer.preferredLanguage,
+        };
+
+        if (bookingCustomer.customerId) {
+          await transaction.customer.update({
+            where: { id: bookingCustomer.customerId },
+            data: customerData,
+          });
+          return bookingCustomer.customerId;
+        }
+
+        const customer = await transaction.customer.create({
+          data: customerData,
+        });
+        return customer.id;
+      }),
+    );
+
+    await transaction.bookingCustomer.deleteMany({
+      where: { bookingRequestId: booking.id },
+    });
+
+    if (bookingValues.customers.length > 0) {
+      await transaction.bookingCustomer.createMany({
+        data: bookingValues.customers.map((bookingCustomer, index) => ({
+          bookingRequestId: booking.id,
+          customerId: customerIds[index],
+          role: bookingCustomer.role,
+          hotelAtBooking: bookingCustomer.hotelAtBooking,
+          equipmentNeeded: bookingCustomer.equipmentNeeded,
+          notes: bookingCustomer.customerNotes,
+          certificationAgency: bookingCustomer.certificationAgency,
+          certificationLevel: bookingCustomer.certificationLevel,
+          lastDiveAt: bookingCustomer.lastDiveDate,
+          heightCm: bookingCustomer.heightCm,
+          weightKg: bookingCustomer.weightKg,
+          shoeSize: bookingCustomer.shoeSize,
+          divesLogged: bookingCustomer.divesLogged,
+        })),
+      });
+    }
+
+    const newestDeposit = booking.deposits[0];
+    if (hasMeaningfulDeposit(bookingValues)) {
+      const depositData = {
+        amount: bookingValues.amount,
+        status: bookingValues.depositStatus,
+        currency: bookingValues.currency,
+        paidTo: bookingValues.paidTo,
+        paymentMethod: bookingValues.paymentMethod,
+        notes: bookingValues.paymentNotes,
+      };
+
+      if (newestDeposit) {
+        await transaction.deposit.update({
+          where: { id: newestDeposit.id },
+          data: depositData,
+        });
+      } else {
+        await transaction.deposit.create({
+          data: {
+            bookingRequestId: booking.id,
+            ...depositData,
+          },
+        });
+      }
+    } else if (newestDeposit) {
+      await transaction.deposit.delete({
+        where: { id: newestDeposit.id },
+      });
+    }
+
+    return true;
+  });
+
+  if (!didUpdate) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  return { success: true, redirectTo: `/bookings/${booking.id}` };
 }
 
 /**

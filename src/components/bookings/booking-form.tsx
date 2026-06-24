@@ -2,11 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import {
-  useForm,
-  useWatch,
-  type FieldPath,
-} from 'react-hook-form';
+import { useForm, useWatch, type FieldPath } from 'react-hook-form';
 
 import { BookingFormActions } from '@/components/bookings/booking-form-actions';
 import { collectBookingFormErrorMessages } from '@/components/bookings/booking-form-controls';
@@ -17,6 +13,7 @@ import { RawBookingSection } from '@/components/bookings/raw-booking-section';
 import {
   createBookingDraft,
   submitBookingForApproval,
+  updateBooking,
 } from '@/features/bookings/actions';
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
@@ -26,18 +23,35 @@ import {
   validateBookingIntake,
   type BookingIntakeFieldErrors,
 } from '@/features/bookings/validation';
-import { ActivityType, DepositStatus } from '@/generated/prisma/enums';
+import { ActivityType, BookingStatus, DepositStatus } from '@/generated/prisma/enums';
 
-type SubmitIntent = 'draft' | 'submit';
+type SubmitIntent = 'draft' | 'submit' | 'edit';
 
-export function BookingForm() {
+type CreateBookingFormProps = {
+  mode?: 'create';
+};
+
+type EditBookingFormProps = {
+  mode: 'edit';
+  bookingId: string;
+  initialValues: BookingFormValues;
+  initialStatus: BookingStatus;
+};
+
+type BookingFormProps = CreateBookingFormProps | EditBookingFormProps;
+
+export function BookingForm(props: BookingFormProps) {
+  const editProps = props.mode === 'edit' ? props : null;
+  const isEdit = editProps !== null;
   const router = useRouter();
-  const [submitIntent, setSubmitIntent] = useState<SubmitIntent>('draft');
+  const [submitIntent, setSubmitIntent] = useState<SubmitIntent>(
+    isEdit ? 'edit' : 'draft',
+  );
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const form = useForm<BookingFormValues>({
-    defaultValues: bookingFormDefaultValues,
+    defaultValues: editProps?.initialValues ?? bookingFormDefaultValues,
   });
-  const { clearAutosave } = useBookingFormAutosave(form);
+  const { clearAutosave } = useBookingFormAutosave(form, !isEdit);
   const activities =
     useWatch({ control: form.control, name: 'activities' }) ?? [];
   const depositStatus = useWatch({
@@ -77,17 +91,23 @@ export function BookingForm() {
     setSubmitIntent(intent);
     showValidationErrors({}, []);
 
+    const validationIntent =
+      intent === 'draft' ||
+      (editProps?.initialStatus === BookingStatus.DRAFT)
+        ? 'draft'
+        : 'submit';
     const validation = validateBookingIntake(
       normalizeBookingFormValues(values),
-      intent,
+      validationIntent,
     );
     if (!validation.success) {
       showValidationErrors(validation.fieldErrors, validation.formErrors);
       return;
     }
 
-    const result =
-      intent === 'draft'
+    const result = isEdit
+      ? await updateBooking(editProps!.bookingId, values)
+      : intent === 'draft'
         ? await createBookingDraft(values)
         : await submitBookingForApproval(values);
 
@@ -99,7 +119,9 @@ export function BookingForm() {
       return;
     }
 
-    clearAutosave();
+    if (!isEdit) {
+      clearAutosave();
+    }
     router.push(result.redirectTo);
   }
 
@@ -117,7 +139,9 @@ export function BookingForm() {
     <form
       className="space-y-6"
       noValidate
-      onSubmit={form.handleSubmit((values) => submitBooking(values, 'submit'))}
+      onSubmit={form.handleSubmit((values) =>
+        submitBooking(values, isEdit ? 'edit' : 'submit'),
+      )}
     >
       <RawBookingSection form={form} />
       <BookingDetailsSection
@@ -135,16 +159,27 @@ export function BookingForm() {
         isPaidDeposit={isPaidDeposit}
         getFieldError={getFieldError}
       />
-      <BookingFormActions
-        errorMessages={errorMessages}
-        isSubmitting={isSubmitting}
-        submitIntent={submitIntent}
-        onSaveDraft={() =>
-          void form.handleSubmit((values) => submitBooking(values, 'draft'))()
-        }
-        onSubmitForApproval={() => setSubmitIntent('submit')}
-        clearAutosave={clearAutosave}
-      />
+      {isEdit ? (
+        <BookingFormActions
+          mode="edit"
+          errorMessages={errorMessages}
+          isSubmitting={isSubmitting}
+          cancelHref={`/bookings/${editProps!.bookingId}`}
+          onSaveChanges={() => setSubmitIntent('edit')}
+        />
+      ) : (
+        <BookingFormActions
+          mode="create"
+          errorMessages={errorMessages}
+          isSubmitting={isSubmitting}
+          submitIntent={submitIntent === 'edit' ? 'draft' : submitIntent}
+          onSaveDraft={() =>
+            void form.handleSubmit((values) => submitBooking(values, 'draft'))()
+          }
+          onSubmitForApproval={() => setSubmitIntent('submit')}
+          clearAutosave={clearAutosave}
+        />
+      )}
     </form>
   );
 }

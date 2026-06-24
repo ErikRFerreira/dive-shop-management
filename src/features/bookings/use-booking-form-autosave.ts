@@ -34,6 +34,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export function useBookingFormAutosave(
   form: Pick<UseFormReturn<BookingFormValues>, 'reset' | 'watch'>,
+  enabled = true,
 ) {
   const hasRestored = useRef(false);
 
@@ -42,6 +43,10 @@ export function useBookingFormAutosave(
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let cancelled = false;
 
     try {
@@ -103,7 +108,7 @@ export function useBookingFormAutosave(
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [clearAutosave, form]);
+  }, [clearAutosave, enabled, form]);
 
   return { clearAutosave };
 }

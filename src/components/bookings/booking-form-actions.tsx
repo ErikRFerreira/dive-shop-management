@@ -4,22 +4,33 @@ import { Button } from '@/components/ui/button';
 
 type SubmitIntent = 'draft' | 'submit';
 
-type BookingFormActionsProps = {
+type SharedBookingFormActionsProps = {
   errorMessages: string[];
   isSubmitting: boolean;
+};
+
+type CreateBookingFormActionsProps = SharedBookingFormActionsProps & {
+  mode: 'create';
   submitIntent: SubmitIntent;
   onSaveDraft: () => void;
   onSubmitForApproval: () => void;
   clearAutosave: () => void;
 };
 
+type EditBookingFormActionsProps = SharedBookingFormActionsProps & {
+  mode: 'edit';
+  onSaveChanges: () => void;
+  cancelHref: string;
+};
+
+type BookingFormActionsProps =
+  | CreateBookingFormActionsProps
+  | EditBookingFormActionsProps;
+
 export function BookingFormActions({
   errorMessages,
   isSubmitting,
-  submitIntent,
-  onSaveDraft,
-  onSubmitForApproval,
-  clearAutosave,
+  ...props
 }: BookingFormActionsProps) {
   return (
     <>
@@ -39,27 +50,40 @@ export function BookingFormActions({
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button asChild type="button" variant="outline">
-          <Link href="/bookings" onClick={clearAutosave}>
+          <Link
+            href={props.mode === 'edit' ? props.cancelHref : '/bookings'}
+            onClick={props.mode === 'create' ? props.clearAutosave : undefined}
+          >
             Cancel
           </Link>
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isSubmitting}
-          onClick={onSaveDraft}
-        >
-          {isSubmitting && submitIntent === 'draft' ? 'Saving…' : 'Save Draft'}
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          onClick={onSubmitForApproval}
-        >
-          {isSubmitting && submitIntent === 'submit'
-            ? 'Submitting…'
-            : 'Submit for Approval'}
-        </Button>
+        {props.mode === 'edit' ? (
+          <Button disabled={isSubmitting} onClick={props.onSaveChanges} type="submit">
+            {isSubmitting ? 'Saving…' : 'Save changes'}
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={props.onSaveDraft}
+            >
+              {isSubmitting && props.submitIntent === 'draft'
+                ? 'Saving…'
+                : 'Save Draft'}
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              onClick={props.onSubmitForApproval}
+            >
+              {isSubmitting && props.submitIntent === 'submit'
+                ? 'Submitting…'
+                : 'Submit for Approval'}
+            </Button>
+          </>
+        )}
       </div>
     </>
   );

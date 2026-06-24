@@ -49,6 +49,11 @@ export const resubmitBookingForApprovalSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),
 });
 
+/** Validates the booking selected for an edit action. */
+export const updateBookingSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+});
+
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
@@ -103,7 +108,8 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
 function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   return values.customers.some((customer) =>
     Object.entries(customer).some(
-      ([field, value]) => field !== 'role' && value !== null,
+      ([field, value]) =>
+        field !== 'role' && field !== 'customerId' && value !== null,
     ),
   );
 }

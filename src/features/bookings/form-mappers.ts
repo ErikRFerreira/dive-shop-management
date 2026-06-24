@@ -9,6 +9,7 @@ import {
   PreferredLanguage,
 } from '@/generated/prisma/enums';
 import type { BookingFormValues, NormalizedBookingFormValues } from './types';
+import type { BookingDetailsItem } from './queries';
 
 function nullableText(value: string) {
   const normalized = value.trim();
@@ -42,6 +43,23 @@ function enumValue<T extends Record<string, string>>(
   return Object.values(values).includes(value) ? (value as T[keyof T]) : null;
 }
 
+function formDate(value: Date | null) {
+  return value ? value.toISOString().slice(0, 10) : '';
+}
+
+function formNumber(value: { toString: () => string } | number | null) {
+  return value === null ? '' : value.toString();
+}
+
+function formEnumValue<T extends Record<string, string>>(
+  values: T,
+  value: string | null,
+): T[keyof T] | '' {
+  return value !== null && Object.values(values).includes(value)
+    ? (value as T[keyof T])
+    : '';
+}
+
 export function normalizeBookingFormValues(
   values: BookingFormValues,
 ): NormalizedBookingFormValues {
@@ -59,6 +77,7 @@ export function normalizeBookingFormValues(
     referrerName: nullableText(values.referrerName),
     internalNotes: nullableText(values.internalNotes),
     customers: values.customers.map((customer) => ({
+      customerId: nullableText(customer.customerId ?? '') ?? undefined,
       role:
         enumValue(BookingCustomerRole, customer.role) ??
         BookingCustomerRole.PARTICIPANT,
@@ -112,4 +131,65 @@ export function hasMeaningfulDeposit(
     values.paymentMethod !== null ||
     values.paymentNotes !== null
   );
+}
+
+/** Converts a persisted booking and its relations into browser-safe form values. */
+export function mapBookingToFormValues(
+  booking: BookingDetailsItem,
+): BookingFormValues {
+  const activities =
+    booking.activities.length > 0
+      ? booking.activities
+      : [
+          {
+            activityType: booking.activityType,
+            specialtyCourse: booking.specialtyCourse,
+            requestedDate: booking.requestedDate,
+            requestedTime: booking.requestedTime,
+            notes: null,
+          },
+        ];
+  const deposit = booking.deposits[0];
+
+  return {
+    rawBookingText: booking.notes ?? '',
+    activities: activities.map((activity) => ({
+      activityType: activity.activityType ?? '',
+      specialtyCourse: activity.specialtyCourse ?? '',
+      requestedDate: formDate(activity.requestedDate),
+      requestedTime: activity.requestedTime ?? '',
+      notes: activity.notes ?? '',
+    })),
+    numberOfPeople: formNumber(booking.numberOfPeople),
+    source: booking.source ?? '',
+    referrerName: booking.referrerName ?? '',
+    internalNotes: booking.internalNotes ?? '',
+    customers: booking.customers.map((bookingCustomer) => ({
+      customerId: bookingCustomer.customerId,
+      role: bookingCustomer.role,
+      customerName: bookingCustomer.customer.fullName ?? '',
+      chineseName: bookingCustomer.customer.chineseName ?? '',
+      weChatId: bookingCustomer.customer.weChatId ?? '',
+      whatsAppNumber: bookingCustomer.customer.whatsAppNumber ?? '',
+      email: bookingCustomer.customer.email ?? '',
+      phone: bookingCustomer.customer.phone ?? '',
+      hotelAtBooking: bookingCustomer.hotelAtBooking ?? '',
+      equipmentNeeded: bookingCustomer.equipmentNeeded ?? '',
+      customerNotes: bookingCustomer.notes ?? '',
+      preferredLanguage: bookingCustomer.customer.preferredLanguage ?? '',
+      heightCm: formNumber(bookingCustomer.heightCm),
+      weightKg: formNumber(bookingCustomer.weightKg),
+      shoeSize: formNumber(bookingCustomer.shoeSize),
+      certificationLevel: bookingCustomer.certificationLevel ?? '',
+      certificationAgency: bookingCustomer.certificationAgency ?? '',
+      lastDiveDate: formDate(bookingCustomer.lastDiveAt),
+      divesLogged: formNumber(bookingCustomer.divesLogged),
+    })),
+    depositStatus: deposit?.status ?? DepositStatus.UNKNOWN,
+    amount: formNumber(deposit?.amount ?? null),
+    currency: formEnumValue(Currency, deposit?.currency ?? null),
+    paidTo: deposit?.paidTo ?? '',
+    paymentMethod: deposit?.paymentMethod ?? '',
+    paymentNotes: deposit?.notes ?? '',
+  };
 }

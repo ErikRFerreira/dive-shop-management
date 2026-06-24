@@ -1,5 +1,6 @@
 import BookingDetails from '@/components/bookings/booking-details';
 import {
+  canEditBooking,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
 } from '@/features/bookings/permissions';
@@ -27,6 +28,11 @@ async function BookingDetailsPage({ params }: Props) {
     <BookingDetails
       booking={booking}
       canReview={canReviewBookingRequest(currentUser)}
+      canEdit={canEditBooking(
+        currentUser,
+        booking.createdById,
+        booking.status,
+      )}
       canResubmit={
         booking.status === BookingStatus.NEEDS_MORE_INFO &&
         canResubmitBookingForApproval(currentUser, booking.createdById)

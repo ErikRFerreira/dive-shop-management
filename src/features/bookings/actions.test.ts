@@ -1,17 +1,33 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
-import { BookingStatus, UserRole } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingCustomerRole,
+  BookingSource,
+  BookingStatus,
+  UserRole,
+} from '@/generated/prisma/enums';
+import { bookingFormDefaultValues } from './form-values';
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn(),
   requireCurrentUser: vi.fn(),
+  transactionRunner: vi.fn(),
+  transaction: {
+    bookingRequest: { updateMany: vi.fn() },
+    bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
+    customer: { update: vi.fn(), create: vi.fn() },
+    bookingCustomer: { deleteMany: vi.fn(), createMany: vi.fn() },
+    deposit: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  },
   updateMany: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
+    $transaction: mocks.transactionRunner,
     bookingRequest: {
       findUnique: mocks.findUnique,
       updateMany: mocks.updateMany,
@@ -30,6 +46,7 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 import {
   markBookingNeedsMoreInfo,
   resubmitBookingForApproval,
+  updateBooking,
 } from './actions';
 
 const initialBookingWorkflowActionState = {};
@@ -48,6 +65,20 @@ beforeEach(() => {
     throw new Error(`redirect:${url}`);
   });
   mocks.updateMany.mockResolvedValue({ count: 1 });
+  mocks.transactionRunner.mockImplementation(
+    async (callback: (transaction: typeof mocks.transaction) => unknown) =>
+      callback(mocks.transaction),
+  );
+  mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.bookingActivity.deleteMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.bookingActivity.createMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.customer.update.mockResolvedValue({ id: 'customer-1' });
+  mocks.transaction.customer.create.mockResolvedValue({ id: 'customer-new' });
+  mocks.transaction.bookingCustomer.deleteMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.bookingCustomer.createMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.deposit.update.mockResolvedValue({ id: 'deposit-1' });
+  mocks.transaction.deposit.create.mockResolvedValue({ id: 'deposit-new' });
+  mocks.transaction.deposit.delete.mockResolvedValue({ id: 'deposit-1' });
 });
 
 test('marks a pending booking as Needs More Info with a trimmed reason', async () => {
@@ -183,4 +214,107 @@ test('returns a recoverable error when a workflow update is stale', async () => 
   ).resolves.toEqual({
     formError: 'This booking was updated by another user. Refresh and try again.',
   });
+});
+
+test('enforces edit permissions on the server for terminal bookings', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.SCHEDULED,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', bookingFormDefaultValues),
+  ).resolves.toEqual({
+    success: false,
+    fieldErrors: {},
+    formError: 'You do not have permission to edit this booking.',
+  });
+});
+
+test('validates draft edits on the server before opening a transaction', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', bookingFormDefaultValues),
+  ).resolves.toMatchObject({
+    success: false,
+    formError:
+      'Enter at least one booking, activity, or customer detail before saving a draft.',
+  });
+});
+
+test('updates related booking records in one transaction without changing status', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [{ customerId: 'customer-1' }],
+    deposits: [{ id: 'deposit-1' }],
+  });
+
+  const values = {
+    ...bookingFormDefaultValues,
+    rawBookingText: 'Updated customer request',
+    activities: [
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        requestedDate: '2026-07-14',
+      },
+    ],
+    numberOfPeople: '1',
+    source: BookingSource.EMAIL,
+    customers: [
+      {
+        ...bookingFormDefaultValues.customers[0],
+        customerId: 'customer-1',
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        customerName: 'Maria Santos',
+        email: 'maria@example.com',
+      },
+    ],
+  };
+
+  await expect(updateBooking('booking-1', values)).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  expect(mocks.transactionRunner).toHaveBeenCalledTimes(1);
+  expect(mocks.transaction.bookingActivity.deleteMany).toHaveBeenCalledWith({
+    where: { bookingRequestId: 'booking-1' },
+  });
+  expect(mocks.transaction.customer.update).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { id: 'customer-1' } }),
+  );
+  expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: [expect.objectContaining({ customerId: 'customer-1' })],
+    }),
+  );
+  expect(mocks.transaction.deposit.delete).toHaveBeenCalledWith({
+    where: { id: 'deposit-1' },
+  });
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1/edit');
 });

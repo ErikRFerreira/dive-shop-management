@@ -16,6 +16,7 @@ import {
 
 type Props = {
   booking: BookingDetailsItem;
+  canEdit: boolean;
   canReview: boolean;
   canResubmit: boolean;
 };
@@ -94,7 +95,7 @@ function Section({
   );
 }
 
-function BookingDetails({ booking, canReview, canResubmit }: Props) {
+function BookingDetails({ booking, canEdit, canReview, canResubmit }: Props) {
   const bookingCustomer =
     booking.customers.find(
       (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
@@ -123,6 +124,11 @@ function BookingDetails({ booking, canReview, canResubmit }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Booking details</h1>
           <div className="flex flex-wrap gap-2">
+            {canEdit ? (
+              <Button asChild variant="outline">
+                <Link href={`/bookings/${booking.id}/edit`}>Edit booking</Link>
+              </Button>
+            ) : null}
             {canReview ? (
               <Button asChild>
                 <Link href={`/bookings/${booking.id}/review`}>

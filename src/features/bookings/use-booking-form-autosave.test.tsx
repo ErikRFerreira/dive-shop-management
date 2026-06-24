@@ -12,6 +12,8 @@ import {
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingSource,
+  BookingStatus,
   Currency,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -23,6 +25,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/features/bookings/actions', () => ({
   createBookingDraft: vi.fn(),
   submitBookingForApproval: vi.fn(),
+  updateBooking: vi.fn(),
 }));
 
 afterEach(() => {
@@ -104,4 +107,48 @@ test('displays restored nested enum select values in the booking form', async ()
     expect(screen.getByLabelText('Preferred language').textContent).toContain('English');
     expect(screen.getByLabelText('Currency').textContent).toContain('Pesos');
   });
+});
+
+test('uses supplied values in edit mode without restoring new-booking autosave', () => {
+  window.localStorage.setItem(
+    NEW_BOOKING_FORM_AUTOSAVE_KEY,
+    JSON.stringify({ rawBookingText: 'Unsaved new booking' }),
+  );
+
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.DRAFT}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        rawBookingText: 'Saved booking',
+        activities: [
+          {
+            ...bookingFormDefaultValues.activities[0],
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            requestedDate: '2026-07-14',
+          },
+        ],
+        numberOfPeople: '1',
+        source: BookingSource.EMAIL,
+        customers: [
+          {
+            ...bookingFormDefaultValues.customers[0],
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            customerName: 'Maria Santos',
+            email: 'maria@example.com',
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'Save changes' })).not.toBeNull();
+  const editForm = screen
+    .getByRole('button', { name: 'Save changes' })
+    .closest('form');
+
+  expect(editForm?.textContent).not.toContain('Save Draft');
+  expect(editForm?.textContent).not.toContain('Submit for Approval');
 });
