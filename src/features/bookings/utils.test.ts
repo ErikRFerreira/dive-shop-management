@@ -4,6 +4,7 @@ import {
   buildBookingRequestWhere,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
+  summarizeBookingActivities,
 } from '@/features/bookings/utils';
 import {
   BookingCustomerRole,
@@ -44,6 +45,23 @@ test('falls back to the first booking customer or null', () => {
     ]),
   ).toBe(firstCustomer);
   expect(resolveDisplayCustomer([])).toBeNull();
+});
+
+test('summarizes multiple booking activities for list display', () => {
+  expect(
+    summarizeBookingActivities([
+      { activityType: 'OPEN_WATER_COURSE' },
+      { activityType: 'ADVANCED_OPEN_WATER_COURSE' },
+    ]),
+  ).toBe('Open Water Course + Advanced Open Water Course');
+  expect(
+    summarizeBookingActivities([
+      { activityType: 'OPEN_WATER_COURSE' },
+      { activityType: 'ADVANCED_OPEN_WATER_COURSE' },
+      { activityType: 'FUN_DIVE' },
+    ]),
+  ).toBe('Open Water Course + 2 more');
+  expect(summarizeBookingActivities([], 'FUN_DIVE')).toBe('Fun Dive');
 });
 
 /** Verifies that Customer Service is scoped while Admin and Manager are not. */

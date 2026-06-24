@@ -1,36 +1,22 @@
-/**
- * Booking intake validation for draft saving and approval submission.
- *
- * @module features/bookings/validation
- */
+/** Booking intake validation for draft saving and approval submission. */
 
 import { z } from 'zod';
 
 import {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
-import type {
-  BookingFormValues,
-  NormalizedBookingFormValues,
-} from './types';
+import type { NormalizedBookingFormValues } from './types';
 
-/** The supported validation intents for a booking intake form. */
 export type BookingIntakeIntent = 'draft' | 'submit';
 
-/** Field-level validation messages, keyed by booking form field name. */
-export type BookingIntakeFieldErrors = Partial<
-  Record<keyof BookingFormValues, string[]>
->;
+/** Errors keyed by React Hook Form paths, such as `activities.0.activityType`. */
+export type BookingIntakeFieldErrors = Record<string, string[]>;
 
-/**
- * The normalized validation outcome returned to the booking form and actions.
- *
- * @remarks `formErrors` contains errors not associated with one field.
- */
 export type BookingIntakeValidationResult =
   | { success: true; fieldErrors: BookingIntakeFieldErrors; formErrors: string[] }
   | {
@@ -39,91 +25,123 @@ export type BookingIntakeValidationResult =
       formErrors: string[];
     };
 
-const normalizedBookingIntakeSchema = z.object({
-  rawBookingText: z.string().nullable(),
+const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
   requestedDate: z.date().nullable(),
   requestedTime: z.string().nullable(),
-  numberOfPeople: z.number().int().nullable(),
-  source: z.enum(BookingSource).nullable(),
-  referrerName: z.string().nullable(),
-  internalNotes: z.string().nullable(),
+  notes: z.string().nullable(),
+});
+
+const customerSchema = z.object({
+  role: z.enum(BookingCustomerRole),
   customerName: z.string().nullable(),
   chineseName: z.string().nullable(),
   weChatId: z.string().nullable(),
   whatsAppNumber: z.string().nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
-  hotel: z.string().nullable(),
+  hotelAtBooking: z.string().nullable(),
+  equipmentNeeded: z.string().nullable(),
+  customerNotes: z.string().nullable(),
   preferredLanguage: z.enum(PreferredLanguage).nullable(),
   heightCm: z.number().int().nullable(),
   weightKg: z.number().nullable(),
   shoeSize: z.number().nullable(),
-  depositStatus: z.enum(DepositStatus),
-  amount: z.number().nullable(),
-  currency: z.enum(Currency).nullable(),
-  paidTo: z.string().nullable(),
-  paymentMethod: z.string().nullable(),
-  paymentNotes: z.string().nullable(),
   certificationLevel: z.string().nullable(),
   certificationAgency: z.string().nullable(),
   lastDiveDate: z.date().nullable(),
   divesLogged: z.number().int().nonnegative().nullable(),
 });
 
-const meaningfulDraftFields = [
-  'rawBookingText',
-  'activityType',
-  'customerName',
-  'chineseName',
-  'weChatId',
-  'whatsAppNumber',
-  'email',
-  'phone',
-] as const;
+const normalizedBookingIntakeSchema = z.object({
+  rawBookingText: z.string().nullable(),
+  activities: z.array(activitySchema),
+  numberOfPeople: z.number().int().nullable(),
+  source: z.enum(BookingSource).nullable(),
+  referrerName: z.string().nullable(),
+  internalNotes: z.string().nullable(),
+  customers: z.array(customerSchema),
+  depositStatus: z.enum(DepositStatus),
+  amount: z.number().nullable(),
+  currency: z.enum(Currency).nullable(),
+  paidTo: z.string().nullable(),
+  paymentMethod: z.string().nullable(),
+  paymentNotes: z.string().nullable(),
+});
 
-/**
- * Validates the minimum information needed to retain a non-empty draft.
- *
- * @remarks Drafts deliberately allow incomplete booking and deposit details.
- */
+function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
+  return values.activities.some((activity) =>
+    Object.values(activity).some((value) => value !== null),
+  );
+}
+
+function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
+  return values.customers.some((customer) =>
+    Object.entries(customer).some(
+      ([field, value]) => field !== 'role' && value !== null,
+    ),
+  );
+}
+
 export const draftBookingIntakeSchema = normalizedBookingIntakeSchema.superRefine(
   (values, context) => {
-    if (meaningfulDraftFields.some((field) => values[field] !== null)) {
-      return;
-    }
+    const hasMeaningfulValue =
+      values.rawBookingText !== null ||
+      values.numberOfPeople !== null ||
+      values.source !== null ||
+      values.referrerName !== null ||
+      values.internalNotes !== null ||
+      hasMeaningfulActivity(values) ||
+      hasMeaningfulCustomer(values);
 
-    context.addIssue({
-      code: 'custom',
-      message: 'Enter at least one booking or customer detail before saving a draft.',
-    });
+    if (!hasMeaningfulValue) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Enter at least one booking, activity, or customer detail before saving a draft.',
+      });
+    }
   },
 );
 
-/**
- * Validates booking intake fields required before administrative review.
- *
- * @remarks FUN_DIVE and paid-deposit requirements are conditional on their
- * corresponding activity and deposit status.
- */
 export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefine(
   (values, context) => {
-    if (values.activityType === null) {
+    if (values.activities.length === 0) {
       context.addIssue({
         code: 'custom',
-        path: ['activityType'],
-        message: 'Activity type is required before submitting for approval.',
+        path: ['activities'],
+        message: 'Add at least one activity before submitting for approval.',
       });
     }
 
-    if (values.requestedDate === null) {
-      context.addIssue({
-        code: 'custom',
-        path: ['requestedDate'],
-        message: 'Requested date is required before submitting for approval.',
-      });
-    }
+    values.activities.forEach((activity, index) => {
+      if (activity.activityType === null) {
+        context.addIssue({
+          code: 'custom',
+          path: ['activities', index, 'activityType'],
+          message: 'Activity type is required before submitting for approval.',
+        });
+      }
+
+      if (activity.requestedDate === null) {
+        context.addIssue({
+          code: 'custom',
+          path: ['activities', index, 'requestedDate'],
+          message: 'Requested date is required before submitting for approval.',
+        });
+      }
+
+      if (
+        activity.activityType === ActivityType.SPECIALTY_COURSE &&
+        activity.specialtyCourse === null
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['activities', index, 'specialtyCourse'],
+          message: 'Specialty course is required for this activity.',
+        });
+      }
+    });
 
     if (values.numberOfPeople === null || values.numberOfPeople < 1) {
       context.addIssue({
@@ -141,60 +159,76 @@ export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefi
       });
     }
 
-    if (values.customerName === null) {
+    if (values.customers.length === 0) {
       context.addIssue({
         code: 'custom',
-        path: ['customerName'],
-        message: 'Customer name is required before submitting for approval.',
+        path: ['customers'],
+        message: 'Add at least one customer or diver before submitting.',
       });
     }
 
-    if (
-      values.weChatId === null &&
-      values.whatsAppNumber === null &&
-      values.email === null &&
-      values.phone === null
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message:
-          'Provide at least one contact method: WeChat ID, WhatsApp number, email, or phone.',
-      });
-    }
-
-    if (
-      values.activityType === ActivityType.SPECIALTY_COURSE &&
-      values.specialtyCourse === null
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['specialtyCourse'],
-        message:
-          'Specialty course is required when submitting a Specialty Course booking.',
-      });
-    }
-
-    if (values.activityType === ActivityType.FUN_DIVE) {
-      const funDiveRequirements: Array<{
-        field: 'certificationLevel' | 'lastDiveDate' | 'divesLogged';
-        label: string;
-      }> = [
-        { field: 'certificationLevel', label: 'Certification level' },
-        { field: 'lastDiveDate', label: 'Last dive date' },
-        { field: 'divesLogged', label: 'Dives logged' },
-      ];
-
-      for (const { field, label } of funDiveRequirements) {
-        if (values[field] !== null) {
-          continue;
-        }
-
+    values.customers.forEach((customer, index) => {
+      if (customer.customerName === null) {
         context.addIssue({
           code: 'custom',
-          path: [field],
-          message: `${label} is required when submitting a Fun Dive booking.`,
+          path: ['customers', index, 'customerName'],
+          message: 'Customer name is required before submitting for approval.',
         });
       }
+    });
+
+    const primaryContacts = values.customers.filter(
+      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
+    );
+
+    if (primaryContacts.length !== 1) {
+      context.addIssue({
+        code: 'custom',
+        path: ['customers'],
+        message: 'Select exactly one primary contact before submitting.',
+      });
+    } else {
+      const primaryContact = primaryContacts[0];
+      if (
+        primaryContact.weChatId === null &&
+        primaryContact.whatsAppNumber === null &&
+        primaryContact.email === null &&
+        primaryContact.phone === null
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['customers'],
+          message:
+            'Provide at least one contact method for the primary contact: WeChat ID, WhatsApp number, email, or phone.',
+        });
+      }
+    }
+
+    if (
+      values.activities.some(
+        (activity) => activity.activityType === ActivityType.FUN_DIVE,
+      )
+    ) {
+      values.customers.forEach((customer, index) => {
+        const requirements: Array<{
+          field: 'certificationLevel' | 'lastDiveDate' | 'divesLogged';
+          label: string;
+        }> = [
+          { field: 'certificationLevel', label: 'Certification level' },
+          { field: 'lastDiveDate', label: 'Last dive date' },
+          { field: 'divesLogged', label: 'Dives logged' },
+        ];
+
+        requirements.forEach(({ field, label }) => {
+          if (customer[field] !== null) return;
+
+          context.addIssue({
+            code: 'custom',
+            path: ['customers', index, field],
+            message: `${label} is required when the booking includes a Fun Dive.`,
+          });
+        });
+      });
     }
 
     if (
@@ -234,38 +268,23 @@ export const submitBookingIntakeSchema = normalizedBookingIntakeSchema.superRefi
   },
 );
 
-/**
- * Converts Zod issues into the form's field- and form-level error contract.
- *
- * @param error - The failed Zod validation result.
- * @returns Structured validation errors suitable for form rendering.
- */
 function formatValidationErrors(error: z.ZodError): BookingIntakeValidationResult {
   const fieldErrors: BookingIntakeFieldErrors = {};
   const formErrors: string[] = [];
 
   for (const issue of error.issues) {
-    const field = issue.path[0];
-
-    if (typeof field !== 'string') {
+    if (issue.path.length === 0) {
       formErrors.push(issue.message);
       continue;
     }
 
-    const fieldName = field as keyof BookingFormValues;
-    fieldErrors[fieldName] = [...(fieldErrors[fieldName] ?? []), issue.message];
+    const field = issue.path.join('.');
+    fieldErrors[field] = [...(fieldErrors[field] ?? []), issue.message];
   }
 
   return { success: false, fieldErrors, formErrors };
 }
 
-/**
- * Validates normalized intake values for the requested booking workflow intent.
- *
- * @param values - Intake values after browser strings have been normalized.
- * @param intent - Whether the user is saving a draft or submitting for review.
- * @returns Structured field and form errors suitable for client display.
- */
 export function validateBookingIntake(
   values: NormalizedBookingFormValues,
   intent: BookingIntakeIntent,

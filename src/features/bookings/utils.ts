@@ -93,3 +93,40 @@ export function resolveDisplayCustomer<TCustomer>(
     null
   );
 }
+
+/** Returns a compact, human-readable summary for a booking's activities. */
+export function summarizeBookingActivities(
+  activities: Array<{ activityType: string | null }>,
+  fallbackActivityType?: string | null,
+) {
+  const labels = activities
+    .map((activity) => formatActivityType(activity.activityType))
+    .filter((label): label is string => label !== null);
+
+  if (labels.length === 0) {
+    const fallback = formatActivityType(fallbackActivityType ?? null);
+    return fallback ?? '—';
+  }
+
+  if (labels.length === 1) {
+    return labels[0];
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} + ${labels[1]}`;
+  }
+
+  return `${labels[0]} + ${labels.length - 1} more`;
+}
+
+function formatActivityType(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

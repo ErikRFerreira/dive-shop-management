@@ -90,30 +90,47 @@ model User {
 }
 
 model BookingRequest {
-  id             String          @id @default(cuid())
-  status         BookingStatus   @default(DRAFT)
-  activityType   ActivityType?
+  id              String            @id @default(cuid())
+  status          BookingStatus     @default(DRAFT)
+  activityType    ActivityType?
   specialtyCourse String?
-  source         BookingSource?
-  requestedDate  DateTime?       @db.Date
-  requestedTime  String?
-  numberOfPeople Int?
-  referrerName   String?
-  startAt        DateTime?
-  endAt          DateTime?
-  notes          String?         @db.Text
-  internalNotes  String?         @db.Text
-  createdById    String
-  createdBy      User            @relation("BookingCreatedBy", fields: [createdById], references: [id])
-  customers      BookingCustomer[]
-  deposits       Deposit[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  source          BookingSource?
+  requestedDate   DateTime?         @db.Date
+  requestedTime   String?
+  numberOfPeople  Int?
+  referrerName    String?
+  startAt         DateTime?
+  endAt           DateTime?
+  notes           String?           @db.Text
+  internalNotes   String?           @db.Text
+  createdById     String
+  createdBy       User              @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  activities      BookingActivity[]
+  customers       BookingCustomer[]
+  deposits        Deposit[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([status])
   @@index([createdById])
   @@index([requestedDate])
   @@index([startAt])
+}
+
+model BookingActivity {
+  id               String         @id @default(cuid())
+  bookingRequestId String
+  activityType     ActivityType?
+  specialtyCourse  String?
+  requestedDate    DateTime?      @db.Date
+  requestedTime    String?
+  notes            String?        @db.Text
+  sortOrder        Int
+  bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([bookingRequestId, sortOrder])
 }
 
 model Customer {
@@ -138,39 +155,42 @@ model Customer {
 }
 
 model BookingCustomer {
-  bookingRequestId   String
-  customerId         String
-  role               BookingCustomerRole @default(PARTICIPANT)
+  bookingRequestId    String
+  customerId          String
+  role                BookingCustomerRole @default(PARTICIPANT)
+  hotelAtBooking      String?
+  equipmentNeeded     String?             @db.Text
+  notes               String?             @db.Text
   certificationAgency String?
   certificationLevel  String?
   lastDiveAt          DateTime?
   heightCm            Int?
-  weightKg            Decimal?          @db.Decimal(5, 2)
-  shoeSize            Decimal?          @db.Decimal(4, 1)
+  weightKg            Decimal?            @db.Decimal(5, 2)
+  shoeSize            Decimal?            @db.Decimal(4, 1)
   divesLogged         Int?
-  bookingRequest     BookingRequest     @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
-  customer           Customer           @relation(fields: [customerId], references: [id])
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  bookingRequest      BookingRequest      @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  customer            Customer            @relation(fields: [customerId], references: [id])
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@id([bookingRequestId, customerId])
   @@index([customerId])
 }
 
 model Deposit {
-  id               String          @id @default(cuid())
+  id               String         @id @default(cuid())
   bookingRequestId String
-  amount           Decimal?        @db.Decimal(10, 2)
-  status           DepositStatus   @default(PENDING)
+  amount           Decimal?       @db.Decimal(10, 2)
+  status           DepositStatus  @default(PENDING)
   currency         String?
   paidTo           String?
   paymentMethod    String?
   dueAt            DateTime?
   paidAt           DateTime?
-  notes            String?         @db.Text
-  bookingRequest   BookingRequest  @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  notes            String?        @db.Text
+  bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([bookingRequestId])
   @@index([status])

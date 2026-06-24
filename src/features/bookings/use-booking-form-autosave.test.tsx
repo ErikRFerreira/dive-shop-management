@@ -11,6 +11,7 @@ import {
 } from '@/features/bookings/use-booking-form-autosave';
 import {
   ActivityType,
+  BookingCustomerRole,
   Currency,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -28,56 +29,70 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-test('restores enum select values from a saved booking draft', async () => {
+test('restores repeatable activity and customer values from a saved booking draft', async () => {
   window.localStorage.setItem(
     NEW_BOOKING_FORM_AUTOSAVE_KEY,
     JSON.stringify({
-      activityType: ActivityType.FUN_DIVE,
-      preferredLanguage: PreferredLanguage.ENGLISH,
+      activities: [
+        {
+          ...bookingFormDefaultValues.activities[0],
+          activityType: ActivityType.FUN_DIVE,
+        },
+      ],
+      customers: [
+        {
+          ...bookingFormDefaultValues.customers[0],
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          preferredLanguage: PreferredLanguage.ENGLISH,
+        },
+      ],
       currency: Currency.PESOS,
     }),
   );
 
   const { result } = renderHook(() => {
-    const form = useForm<BookingFormValues>({
-      defaultValues: bookingFormDefaultValues,
-    });
-
+    const form = useForm<BookingFormValues>({ defaultValues: bookingFormDefaultValues });
     useBookingFormAutosave(form);
-
     return form;
   });
 
   await waitFor(() => {
     expect(result.current.getValues()).toMatchObject({
-      activityType: ActivityType.FUN_DIVE,
-      preferredLanguage: PreferredLanguage.ENGLISH,
+      activities: [{ activityType: ActivityType.FUN_DIVE }],
+      customers: [{ preferredLanguage: PreferredLanguage.ENGLISH }],
       currency: Currency.PESOS,
     });
   });
 
   act(() => {
-    result.current.setValue('customerName', 'Maria Santos');
+    result.current.setValue('customers.0.customerName', 'Maria Santos');
   });
 
   expect(
-    JSON.parse(
-      window.localStorage.getItem(NEW_BOOKING_FORM_AUTOSAVE_KEY) ?? '{}',
-    ),
+    JSON.parse(window.localStorage.getItem(NEW_BOOKING_FORM_AUTOSAVE_KEY) ?? '{}'),
   ).toMatchObject({
-    activityType: ActivityType.FUN_DIVE,
-    preferredLanguage: PreferredLanguage.ENGLISH,
+    activities: [{ activityType: ActivityType.FUN_DIVE }],
+    customers: [{ customerName: 'Maria Santos' }],
     currency: Currency.PESOS,
-    customerName: 'Maria Santos',
   });
 });
 
-test('displays restored enum select values in the booking form', async () => {
+test('displays restored nested enum select values in the booking form', async () => {
   window.localStorage.setItem(
     NEW_BOOKING_FORM_AUTOSAVE_KEY,
     JSON.stringify({
-      activityType: ActivityType.FUN_DIVE,
-      preferredLanguage: PreferredLanguage.ENGLISH,
+      activities: [
+        {
+          ...bookingFormDefaultValues.activities[0],
+          activityType: ActivityType.FUN_DIVE,
+        },
+      ],
+      customers: [
+        {
+          ...bookingFormDefaultValues.customers[0],
+          preferredLanguage: PreferredLanguage.ENGLISH,
+        },
+      ],
       currency: Currency.PESOS,
     }),
   );
@@ -85,12 +100,8 @@ test('displays restored enum select values in the booking form', async () => {
   render(<BookingForm />);
 
   await waitFor(() => {
-    expect(screen.getByLabelText(/Activity type/).textContent).toContain(
-      'Fun Dive',
-    );
-    expect(screen.getByLabelText('Preferred language').textContent).toContain(
-      'English',
-    );
+    expect(screen.getByLabelText(/Activity type/).textContent).toContain('Fun Dive');
+    expect(screen.getByLabelText('Preferred language').textContent).toContain('English');
     expect(screen.getByLabelText('Currency').textContent).toContain('Pesos');
   });
 });
