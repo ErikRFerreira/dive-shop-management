@@ -3,8 +3,8 @@ import { expect, test } from 'vitest';
 import {
   bookingCustomerDefaultValues,
   bookingFormDefaultValues,
-  normalizeBookingFormValues,
-} from '@/features/bookings/intake';
+} from '@/features/bookings/form-values';
+import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   ActivityType,

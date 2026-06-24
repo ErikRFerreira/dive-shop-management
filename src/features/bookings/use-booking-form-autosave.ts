@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
-import { bookingFormDefaultValues } from '@/features/bookings/intake';
+import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 
 /** Versioned browser storage key for unsaved new-booking form values. */

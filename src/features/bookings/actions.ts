@@ -12,7 +12,7 @@ import { BookingStatus } from '@/generated/prisma/enums';
 import {
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
-} from '@/features/bookings/intake';
+} from '@/features/bookings/form-mappers';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
 

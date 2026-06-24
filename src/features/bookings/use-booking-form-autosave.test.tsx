@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { BookingForm } from '@/components/bookings/booking-form';
-import { bookingFormDefaultValues } from '@/features/bookings/intake';
+import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   NEW_BOOKING_FORM_AUTOSAVE_KEY,

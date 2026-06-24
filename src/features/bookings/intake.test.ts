@@ -3,10 +3,12 @@ import { expect, test } from 'vitest';
 import {
   bookingCustomerDefaultValues,
   bookingFormDefaultValues,
-  formatEnumLabel,
+} from '@/features/bookings/form-values';
+import { formatEnumLabel } from '@/features/bookings/form-options';
+import {
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
-} from '@/features/bookings/intake';
+} from '@/features/bookings/form-mappers';
 import {
   ActivityType,
   BookingCustomerRole,
