@@ -2,8 +2,9 @@ import Link from 'next/link';
 
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
-import { ActivityType, BookingCustomerRole } from '@/generated/prisma/enums';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { summarizeBookingActivities } from '@/features/bookings/utils';
+import { ActivityType, BookingCustomerRole } from '@/generated/prisma/enums';
 
 type Props = {
   booking: BookingDetailsItem;
@@ -46,14 +47,9 @@ function formatEnum(value: string | null | undefined) {
     : EMPTY_VALUE;
 }
 
-function formatCustomerName(
-  customer: BookingDetailsItem['displayCustomer'],
-) {
+function formatCustomerName(customer: BookingDetailsItem['displayCustomer']) {
   const fullName = customer?.fullName?.trim();
-
-  if (fullName) {
-    return fullName;
-  }
+  if (fullName) return fullName;
 
   return (
     [customer?.firstName, customer?.lastName]
@@ -95,7 +91,22 @@ function BookingDetails({ booking, canReview }: Props) {
       (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
     ) ?? booking.customers[0];
   const customerName = formatCustomerName(bookingCustomer?.customer ?? null);
-  const isFunDive = booking.activityType === ActivityType.FUN_DIVE;
+  const activities =
+    booking.activities.length > 0
+      ? booking.activities
+      : [
+          {
+            id: 'legacy-summary',
+            activityType: booking.activityType,
+            specialtyCourse: booking.specialtyCourse,
+            requestedDate: booking.requestedDate,
+            requestedTime: booking.requestedTime,
+            notes: null,
+          },
+        ];
+  const includesFunDive = activities.some(
+    (activity) => activity.activityType === ActivityType.FUN_DIVE,
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
@@ -105,7 +116,9 @@ function BookingDetails({ booking, canReview }: Props) {
           <div className="flex flex-wrap gap-2">
             {canReview ? (
               <Button asChild>
-                <Link href={`/bookings/${booking.id}/review`}>Review booking</Link>
+                <Link href={`/bookings/${booking.id}/review`}>
+                  Review booking
+                </Link>
               </Button>
             ) : null}
             <Button asChild variant="outline">
@@ -120,9 +133,14 @@ function BookingDetails({ booking, canReview }: Props) {
             label="Status"
             value={<BookingStatusBadge status={booking.status} />}
           />
-          <Field label="Activity type" value={formatEnum(booking.activityType)} />
-          <Field label="Requested date" value={formatDate(booking.requestedDate)} />
-          <Field label="Customer name" value={customerName} />
+          <Field
+            label="Activities"
+            value={summarizeBookingActivities(
+              booking.activities,
+              booking.activityType,
+            )}
+          />
+          <Field label="Primary customer" value={customerName} />
         </div>
 
         <div className="mt-6">
@@ -134,16 +152,39 @@ function BookingDetails({ booking, canReview }: Props) {
       </header>
 
       <Section title="Booking details">
-        <Field label="Activity type" value={formatEnum(booking.activityType)} />
-        <Field label="Specialty course" value={booking.specialtyCourse} />
-        <Field label="Requested date" value={formatDate(booking.requestedDate)} />
-        <Field label="Requested time" value={booking.requestedTime} />
         <Field label="Number of people" value={booking.numberOfPeople} />
         <Field label="Source/referrer" value={formatEnum(booking.source)} />
         <Field label="Referrer name" value={booking.referrerName} />
         <Field label="Customer service owner" value={booking.createdBy.name} />
         <Field label="Created date" value={formatDateTime(booking.createdAt)} />
         <Field label="Updated date" value={formatDateTime(booking.updatedAt)} />
+      </Section>
+
+      <Section title="Activities">
+        {activities.map((activity, index) => (
+          <div
+            className="space-y-4 rounded-lg border p-4 sm:col-span-2"
+            key={activity.id}
+          >
+            <h3 className="font-medium">Activity {index + 1}</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Activity type"
+                value={formatEnum(activity.activityType)}
+              />
+              <Field
+                label="Specialty course"
+                value={activity.specialtyCourse}
+              />
+              <Field
+                label="Requested date"
+                value={formatDate(activity.requestedDate)}
+              />
+              <Field label="Requested time" value={activity.requestedTime} />
+              <Field label="Activity notes" value={activity.notes} />
+            </div>
+          </div>
+        ))}
       </Section>
 
       <Section title="Customer/diver details">
@@ -161,7 +202,9 @@ function BookingDetails({ booking, canReview }: Props) {
                 key={customerBooking.customerId}
               >
                 <div>
-                  <h3 className="font-medium">{formatCustomerName(customer)}</h3>
+                  <h3 className="font-medium">
+                    {formatCustomerName(customer)}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     {formatEnum(customerBooking.role)}
                   </p>
@@ -170,18 +213,31 @@ function BookingDetails({ booking, canReview }: Props) {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Chinese name" value={customer.chineseName} />
                   <Field label="WeChat ID" value={customer.weChatId} />
-                  <Field label="WhatsApp number" value={customer.whatsAppNumber} />
+                  <Field
+                    label="WhatsApp number"
+                    value={customer.whatsAppNumber}
+                  />
                   <Field label="Email" value={customer.email} />
                   <Field label="Phone" value={customer.phone} />
-                  <Field label="Hotel" value={customer.hotel} />
+                  <Field
+                    label="Hotel for this booking"
+                    value={customerBooking.hotelAtBooking}
+                  />
                   <Field
                     label="Preferred language"
                     value={formatEnum(customer.preferredLanguage)}
                   />
-                  <Field label="Customer notes" value={customer.notes} />
+                  <Field
+                    label="Equipment needed"
+                    value={customerBooking.equipmentNeeded}
+                  />
+                  <Field
+                    label="Customer/diver notes"
+                    value={customerBooking.notes}
+                  />
                 </div>
 
-                {isFunDive ? (
+                {includesFunDive ? (
                   <div>
                     <h4 className="font-medium">Fun diver details</h4>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -206,7 +262,7 @@ function BookingDetails({ booking, canReview }: Props) {
                 ) : null}
 
                 <div>
-                  <h4 className="font-medium">Equipment details</h4>
+                  <h4 className="font-medium">Sizing details</h4>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Field
                       label="Height"
@@ -245,7 +301,10 @@ function BookingDetails({ booking, canReview }: Props) {
               className="grid gap-4 rounded-lg border p-4 sm:col-span-2 sm:grid-cols-2"
               key={deposit.id}
             >
-              <Field label="Deposit status" value={formatEnum(deposit.status)} />
+              <Field
+                label="Deposit status"
+                value={formatEnum(deposit.status)}
+              />
               <Field
                 label="Amount"
                 value={

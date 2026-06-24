@@ -18,7 +18,7 @@ import { bookingFormDefaultValues } from '@/features/bookings/intake';
 import type { BookingFormValues } from '@/features/bookings/types';
 
 /** Versioned browser storage key for unsaved new-booking form values. */
-export const NEW_BOOKING_FORM_AUTOSAVE_KEY = 'dive-shop:new-booking-form:v1';
+export const NEW_BOOKING_FORM_AUTOSAVE_KEY = 'dive-shop:new-booking-form:v2';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

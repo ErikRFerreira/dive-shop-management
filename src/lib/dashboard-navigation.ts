@@ -31,17 +31,18 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'bookings',
     href: '/bookings',
     label: 'Bookings',
-    allowedRoles: [
-      UserRole.ADMIN,
-      UserRole.MANAGER,
-      UserRole.CUSTOMER_SERVICE,
-    ],
+    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
   },
   {
     key: 'schedule',
     href: '/schedule',
     label: 'Schedule',
-    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.INSTRUCTOR],
+    allowedRoles: [
+      UserRole.ADMIN,
+      UserRole.MANAGER,
+      UserRole.INSTRUCTOR,
+      UserRole.CUSTOMER_SERVICE,
+    ],
   },
   {
     key: 'customers',
@@ -68,9 +69,7 @@ export function canAccessDashboardRoute(
 }
 
 /** Returns only the sidebar routes the current user is authorized to access. */
-export function getDashboardNavigation(
-  currentUser: Pick<CurrentUser, 'role'>,
-) {
+export function getDashboardNavigation(currentUser: Pick<CurrentUser, 'role'>) {
   return dashboardRoutes.filter((route) =>
     route.allowedRoles.includes(currentUser.role),
   );
