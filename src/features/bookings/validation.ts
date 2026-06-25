@@ -49,6 +49,18 @@ export const cancelBookingSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),
 });
 
+/** Validates the booking selected for the admin approval and scheduling step. */
+export const approveBookingSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  adminNotes: z.preprocess(
+    (value) => (typeof value === 'string' ? value : ''),
+    z
+      .string()
+      .trim()
+      .transform((value) => value || null),
+  ),
+});
+
 /** Validates the booking selected for a resubmission action. */
 export const resubmitBookingForApprovalSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),

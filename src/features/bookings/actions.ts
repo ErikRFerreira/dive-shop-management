@@ -31,6 +31,7 @@ import {
   updateBookingRequestWithIntake,
 } from './mutations';
 import {
+  canApproveBookingRequest,
   canCreateBookingRequest,
   canEditBooking,
   canPerformBookingStatusTransition,
@@ -41,6 +42,7 @@ import { assertCanTransitionBookingStatus } from './status';
 import { validateStoredBookingForSubmission } from './submission-validation';
 import type { BookingFormValues } from './types';
 import {
+  approveBookingSchema,
   cancelBookingSchema,
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
@@ -353,6 +355,163 @@ export async function resubmitEditedBookingForApproval(
     permissionError: 'You do not have permission to resubmit this booking.',
     requireResubmitPermission: true,
   });
+}
+
+/**
+ * Publishes a pending booking to the internal schedule.
+ *
+ * Approval is the admin review decision that moves a booking directly from
+ * Pending Approval to Scheduled for MVP 0.1. The booking status update and
+ * ScheduleItem creation must succeed in the same transaction so the system
+ * never stores a scheduled booking without a schedule row, or a schedule row
+ * for a booking that failed to leave the review queue.
+ *
+ * @param _previousState - Previous form action state supplied by React.
+ * @param formData - Form payload containing the `bookingId` to approve.
+ * @returns Field or form errors when validation, permission, status, duplicate
+ * schedule, or stale update checks fail. On success, revalidates booking and
+ * schedule paths and redirects to the booking detail page.
+ */
+export async function approveBooking(
+  _previousState: BookingWorkflowActionState,
+  formData: FormData,
+): Promise<BookingWorkflowActionState> {
+  const validation = approveBookingSchema.safeParse({
+    bookingId: formData.get('bookingId'),
+    adminNotes: formData.get('adminNotes'),
+  });
+
+  if (!validation.success) {
+    return getValidationErrors(validation.error);
+  }
+
+  const currentUser = await requireCurrentUser();
+
+  if (!canApproveBookingRequest(currentUser)) {
+    return {
+      formError: 'You do not have permission to approve this booking.',
+    };
+  }
+
+  const booking = await db.bookingRequest.findUnique({
+    where: { id: validation.data.bookingId },
+    select: {
+      id: true,
+      status: true,
+      requestedDate: true,
+      requestedTime: true,
+      activityType: true,
+      internalNotes: true,
+      adminNotes: true,
+      scheduleItem: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) {
+    return { formError: 'Booking request not found.' };
+  }
+
+  if (booking.status !== BookingStatus.PENDING_APPROVAL) {
+    return {
+      formError: 'Only pending approval bookings can be approved.',
+    };
+  }
+
+  if (booking.scheduleItem) {
+    return {
+      formError: 'This booking already has a schedule item.',
+    };
+  }
+
+  if (booking.requestedDate === null) {
+    return {
+      formError: 'Requested date is required before approving a booking.',
+    };
+  }
+
+  if (booking.activityType === null) {
+    return {
+      formError: 'Activity type is required before approving a booking.',
+    };
+  }
+
+  const requestedDate = booking.requestedDate;
+  const activityType = booking.activityType;
+  const adminNotes = validation.data.adminNotes;
+  const scheduleNotes = adminNotes ?? booking.internalNotes;
+
+  if (
+    !canPerformBookingStatusTransition(
+      currentUser,
+      booking.status,
+      BookingStatus.SCHEDULED,
+    )
+  ) {
+    return {
+      formError: 'You do not have permission to approve this booking.',
+    };
+  }
+
+  assertCanTransitionBookingStatus(booking.status, BookingStatus.SCHEDULED);
+
+  const transactionError = await db.$transaction(async (transaction) => {
+    const existingScheduleItem = await transaction.scheduleItem.findUnique({
+      where: {
+        bookingRequestId: booking.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingScheduleItem) {
+      return {
+        formError: 'This booking already has a schedule item.',
+      };
+    }
+
+    const updateResult = await transaction.bookingRequest.updateMany({
+      where: {
+        id: booking.id,
+        status: BookingStatus.PENDING_APPROVAL,
+      },
+      data: {
+        status: BookingStatus.SCHEDULED,
+        adminNotes,
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      return {
+        formError:
+          'This booking was updated by another user. Refresh and try again.',
+      };
+    }
+
+    await transaction.scheduleItem.create({
+      data: {
+        bookingRequestId: booking.id,
+        date: requestedDate,
+        startTime: booking.requestedTime,
+        activityType,
+        scheduleNotes,
+      },
+    });
+
+    return null;
+  });
+
+  if (transactionError) {
+    return transactionError;
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  revalidateSchedulePath();
+  redirect(`/bookings/${booking.id}`);
 }
 
 /**

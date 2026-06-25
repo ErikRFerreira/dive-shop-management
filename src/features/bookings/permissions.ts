@@ -51,6 +51,25 @@ export function canReviewBookingRequest(
 }
 
 /**
+ * Determines whether the current user may approve and publish a booking.
+ *
+ * Approval is the administrative handoff from the review queue to the internal
+ * schedule. Because that creates operational schedule data, only Admin and
+ * Manager users may perform it, and Server Actions must enforce this helper
+ * even when the approve button is hidden in the UI.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @returns `true` only for Admin and Manager users.
+ */
+export function canApproveBookingRequest(
+  currentUser: Pick<CurrentUser, 'role'>,
+) {
+  return (
+    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
+  );
+}
+
+/**
  * Determines whether the current user may perform a booking status transition.
  *
  * Future Server Actions must call this after loading the booking's current
