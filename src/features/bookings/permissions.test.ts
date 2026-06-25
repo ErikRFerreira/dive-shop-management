@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
 import {
+  canApproveBookingRequest,
   canEditBooking,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
@@ -14,6 +15,15 @@ test('allows only admin and manager users to access booking review', () => {
     false,
   );
   expect(canReviewBookingRequest({ role: UserRole.INSTRUCTOR })).toBe(false);
+});
+
+test('allows only admin and manager users to approve bookings', () => {
+  expect(canApproveBookingRequest({ role: UserRole.ADMIN })).toBe(true);
+  expect(canApproveBookingRequest({ role: UserRole.MANAGER })).toBe(true);
+  expect(canApproveBookingRequest({ role: UserRole.CUSTOMER_SERVICE })).toBe(
+    false,
+  );
+  expect(canApproveBookingRequest({ role: UserRole.INSTRUCTOR })).toBe(false);
 });
 
 test('allows only the owner in Customer Service to resubmit a booking', () => {

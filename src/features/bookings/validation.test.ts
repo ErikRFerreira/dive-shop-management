@@ -14,6 +14,7 @@ import {
   DepositStatus,
 } from '@/generated/prisma/enums';
 import {
+  approveBookingSchema,
   markBookingNeedsMoreInfoSchema,
   validateBookingIntake,
 } from './validation';
@@ -67,6 +68,30 @@ test('requires a booking ID and nonblank reason when requesting more information
       needsMoreInfoReason: '   ',
     }).success,
   ).toBe(false);
+});
+
+test('requires a booking ID when approving a booking', () => {
+  expect(
+    approveBookingSchema.safeParse({
+      bookingId: '   ',
+      adminNotes: 'Ready to schedule.',
+    }).success,
+  ).toBe(false);
+});
+
+test('trims optional admin notes when approving a booking', () => {
+  expect(
+    approveBookingSchema.safeParse({
+      bookingId: ' booking-1 ',
+      adminNotes: ' Ready to schedule. ',
+    }),
+  ).toMatchObject({
+    success: true,
+    data: {
+      bookingId: 'booking-1',
+      adminNotes: 'Ready to schedule.',
+    },
+  });
 });
 
 test('trims a valid reason when requesting more information', () => {

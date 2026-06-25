@@ -103,12 +103,14 @@ model BookingRequest {
   endAt           DateTime?
   notes           String?           @db.Text
   internalNotes   String?           @db.Text
+  adminNotes      String?           @db.Text
   needsMoreInfoReason String?       @db.Text
   createdById     String
   createdBy       User              @relation("BookingCreatedBy", fields: [createdById], references: [id])
   activities      BookingActivity[]
   customers       BookingCustomer[]
   deposits        Deposit[]
+  scheduleItem    ScheduleItem?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -195,4 +197,19 @@ model Deposit {
 
   @@index([bookingRequestId])
   @@index([status])
+}
+
+model ScheduleItem {
+  id               String         @id @default(cuid())
+  bookingRequestId String         @unique
+  bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  date             DateTime       @db.Date
+  startTime        String?
+  activityType     ActivityType
+  scheduleNotes    String?        @db.Text
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([date])
+  @@index([activityType])
 }

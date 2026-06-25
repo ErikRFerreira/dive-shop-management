@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   transactionRunner: vi.fn(),
   transaction: {
     bookingRequest: { updateMany: vi.fn() },
+    scheduleItem: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
     bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
     customer: { update: vi.fn(), create: vi.fn() },
     bookingCustomer: { deleteMany: vi.fn(), createMany: vi.fn() },
@@ -46,6 +47,7 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 import {
   cancelBooking,
+  approveBooking,
   markBookingNeedsMoreInfo,
   resubmitEditedBookingForApproval,
   resubmitBookingForApproval,
@@ -142,6 +144,29 @@ function persistedSubmittableBooking(overrides = {}) {
   };
 }
 
+function pendingApprovableBooking(overrides = {}) {
+  return {
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL,
+    requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+    requestedTime: '09:00',
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    internalNotes: 'Customer prefers a morning slot.',
+    scheduleItem: null,
+    ...overrides,
+  };
+}
+
+function scheduledBooking(overrides = {}) {
+  return {
+    id: 'booking-1',
+    status: BookingStatus.SCHEDULED,
+    adminNotes: 'Approved for the morning schedule.',
+    scheduleItem: { id: 'schedule-1' },
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.redirect.mockImplementation((url: string) => {
@@ -153,6 +178,9 @@ beforeEach(() => {
       callback(mocks.transaction),
   );
   mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.scheduleItem.findUnique.mockResolvedValue(null);
+  mocks.transaction.scheduleItem.create.mockResolvedValue({ id: 'schedule-1' });
+  mocks.transaction.scheduleItem.deleteMany.mockResolvedValue({ count: 1 });
   mocks.transaction.bookingActivity.deleteMany.mockResolvedValue({ count: 1 });
   mocks.transaction.bookingActivity.createMany.mockResolvedValue({ count: 1 });
   mocks.transaction.customer.update.mockResolvedValue({ id: 'customer-1' });
@@ -226,6 +254,231 @@ test('does not allow a Customer Service user to mark a booking as Needs More Inf
   expect(mocks.findUnique).not.toHaveBeenCalled();
 });
 
+test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
+  'allows %s to approve a pending booking and create a schedule item',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+    mocks.findUnique.mockResolvedValue(pendingApprovableBooking());
+
+    await expect(
+      approveBooking(
+        initialBookingWorkflowActionState,
+        formData({
+          bookingId: 'booking-1',
+          adminNotes: ' Approved for the morning schedule. ',
+        }),
+      ),
+    ).rejects.toThrow('redirect:/bookings/booking-1');
+
+    expect(mocks.transaction.scheduleItem.findUnique).toHaveBeenCalledWith({
+      where: {
+        bookingRequestId: 'booking-1',
+      },
+      select: {
+        id: true,
+      },
+    });
+    expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'booking-1',
+        status: BookingStatus.PENDING_APPROVAL,
+      },
+      data: {
+        status: BookingStatus.SCHEDULED,
+        adminNotes: 'Approved for the morning schedule.',
+      },
+    });
+    expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledWith({
+      data: {
+        bookingRequestId: 'booking-1',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        startTime: '09:00',
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        scheduleNotes: 'Approved for the morning schedule.',
+      },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/review',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/edit',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+  },
+);
+
+test('does not allow a Customer Service user to approve a booking', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'You do not have permission to approve this booking.',
+  });
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('uses existing internal notes for schedule notes when admin notes are blank', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(pendingApprovableBooking());
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1', adminNotes: '   ' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: {
+        status: BookingStatus.SCHEDULED,
+        adminNotes: null,
+      },
+    }),
+  );
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        scheduleNotes: 'Customer prefers a morning slot.',
+      }),
+    }),
+  );
+});
+
+test.each([
+  BookingStatus.DRAFT,
+  BookingStatus.NEEDS_MORE_INFO,
+  BookingStatus.CANCELLED,
+  BookingStatus.SCHEDULED,
+] as const)('does not approve a %s booking', async (status) => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      status,
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'Only pending approval bookings can be approved.',
+  });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('does not approve a booking that already has a schedule item', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      scheduleItem: { id: 'schedule-1' },
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'This booking already has a schedule item.',
+  });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('does not create a duplicate schedule item if one appears inside the transaction', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(pendingApprovableBooking());
+  mocks.transaction.scheduleItem.findUnique.mockResolvedValue({
+    id: 'schedule-1',
+  });
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'This booking already has a schedule item.',
+  });
+  expect(mocks.transaction.bookingRequest.updateMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.scheduleItem.create).not.toHaveBeenCalled();
+});
+
+test('does not create a schedule item when the approval update is stale', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(pendingApprovableBooking());
+  mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 0 });
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'This booking was updated by another user. Refresh and try again.',
+  });
+  expect(mocks.transaction.scheduleItem.create).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['requestedDate', null, 'Requested date is required before approving a booking.'],
+  ['activityType', null, 'Activity type is required before approving a booking.'],
+] as const)(
+  'requires %s before approving a booking',
+  async (field, value, expectedError) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: 'admin-1',
+      role: UserRole.ADMIN,
+    });
+    mocks.findUnique.mockResolvedValue(
+      pendingApprovableBooking({
+        [field]: value,
+      }),
+    );
+
+    await expect(
+      approveBooking(
+        initialBookingWorkflowActionState,
+        formData({ bookingId: 'booking-1' }),
+      ),
+    ).resolves.toEqual({
+      formError: expectedError,
+    });
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+  },
+);
+
 test.each([
   [UserRole.ADMIN, BookingStatus.PENDING_APPROVAL],
   [UserRole.ADMIN, BookingStatus.NEEDS_MORE_INFO],
@@ -265,6 +518,80 @@ test.each([
   expect(mocks.transaction.bookingActivity.deleteMany).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.deleteMany).not.toHaveBeenCalled();
   expect(mocks.transaction.deposit.delete).not.toHaveBeenCalled();
+  expect(mocks.transaction.scheduleItem.deleteMany).not.toHaveBeenCalled();
+});
+
+test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
+  'allows %s to cancel a scheduled booking and remove its schedule item',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+    mocks.findUnique.mockResolvedValue(scheduledBooking());
+
+    await expect(
+      cancelBooking(
+        initialBookingWorkflowActionState,
+        formData({
+          bookingId: 'booking-1',
+          adminNotes: ' Customer cancelled after scheduling. ',
+        }),
+      ),
+    ).rejects.toThrow('redirect:/bookings/booking-1');
+
+    expect(mocks.transactionRunner).toHaveBeenCalledTimes(1);
+    expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+      },
+      data: {
+        status: BookingStatus.CANCELLED,
+        adminNotes: 'Customer cancelled after scheduling.',
+      },
+    });
+    expect(mocks.transaction.scheduleItem.deleteMany).toHaveBeenCalledWith({
+      where: {
+        bookingRequestId: 'booking-1',
+      },
+    });
+    expect(mocks.transaction.bookingActivity.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingCustomer.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.transaction.deposit.delete).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/review',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/edit',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+  },
+);
+
+test('preserves existing admin notes when cancelling a scheduled booking without new notes', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(scheduledBooking());
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1', adminNotes: '   ' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: {
+        status: BookingStatus.CANCELLED,
+      },
+    }),
+  );
 });
 
 test('does not allow a Customer Service user to cancel a booking', async () => {
@@ -287,7 +614,6 @@ test('does not allow a Customer Service user to cancel a booking', async () => {
 
 test.each([
   BookingStatus.DRAFT,
-  BookingStatus.SCHEDULED,
   BookingStatus.CANCELLED,
 ] as const)('does not cancel a %s booking', async (status) => {
   mocks.requireCurrentUser.mockResolvedValue({
@@ -306,7 +632,7 @@ test.each([
     ),
   ).resolves.toEqual({
     formError:
-      'Only pending approval or needs more info bookings can be cancelled.',
+      'Only pending approval, needs more info, or scheduled bookings can be cancelled.',
   });
   expect(mocks.updateMany).not.toHaveBeenCalled();
 });
@@ -383,6 +709,25 @@ test('blocks standalone resubmit when the stored booking is missing submit detai
     'Add at least one customer or diver before submitting.',
   );
   expect(mocks.updateMany).not.toHaveBeenCalled();
+});
+
+test('does not remove a schedule item when a scheduled cancellation update is stale', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(scheduledBooking());
+  mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 0 });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'This booking was updated by another user. Refresh and try again.',
+  });
+  expect(mocks.transaction.scheduleItem.deleteMany).not.toHaveBeenCalled();
 });
 
 test('does not allow a non-owner Customer Service user to resubmit', async () => {

@@ -29,6 +29,7 @@ const bookingStatusTransitions: Partial<
     BookingStatus.PENDING_APPROVAL,
     BookingStatus.CANCELLED,
   ],
+  [BookingStatus.SCHEDULED]: [BookingStatus.CANCELLED],
 };
 
 /**

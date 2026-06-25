@@ -33,8 +33,35 @@ export function canCreateBookingRequest(
   return currentUser.role === UserRole.CUSTOMER_SERVICE;
 }
 
-/** Returns whether the current user may access the booking review workflow. */
+/**
+ * Determines whether the current user is allowed to review a booking request.
+ * Admin and Manager users may review any booking request. Customer Service
+ * users may review only booking requests they originally created.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @returns `true` for Admin and Manager users, and for Customer Service users
+ * who created the booking request.
+ */
 export function canReviewBookingRequest(
+  currentUser: Pick<CurrentUser, 'role'>,
+) {
+  return (
+    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
+  );
+}
+
+/**
+ * Determines whether the current user may approve and publish a booking.
+ *
+ * Approval is the administrative handoff from the review queue to the internal
+ * schedule. Because that creates operational schedule data, only Admin and
+ * Manager users may perform it, and Server Actions must enforce this helper
+ * even when the approve button is hidden in the UI.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @returns `true` only for Admin and Manager users.
+ */
+export function canApproveBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
   return (
@@ -80,6 +107,10 @@ export function canPerformBookingStatusTransition(
  *
  * Admin and Manager users may resubmit any visible booking. Customer Service
  * users may resubmit only booking requests they originally created.
+ *
+ * @param currentUser - The authenticated user's ID and role.
+ * @param createdById - The ID of the user who created the booking request.
+ * @returns `true` if the user may resubmit the booking for approval.
  */
 export function canResubmitBookingForApproval(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
@@ -93,7 +124,17 @@ export function canResubmitBookingForApproval(
   );
 }
 
-/** Returns whether a user may edit a booking without changing its workflow state. */
+/**
+ * Determines whether a user may edit a booking without changing its workflow state.
+ *
+ * Admin and Manager users may edit any visible booking. Customer Service
+ * users may edit only booking requests they originally created.
+ *
+ * @param currentUser - The authenticated user's ID and role.
+ * @param createdById - The ID of the user who created the booking request.
+ * @param status - The current status of the booking request.
+ * @returns `true` if the user may edit the booking.
+ */
 export function canEditBooking(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
   createdById: string,
@@ -113,7 +154,6 @@ export function canEditBooking(
   return (
     currentUser.role === UserRole.CUSTOMER_SERVICE &&
     currentUser.id === createdById &&
-    (status === BookingStatus.DRAFT ||
-      status === BookingStatus.NEEDS_MORE_INFO)
+    (status === BookingStatus.DRAFT || status === BookingStatus.NEEDS_MORE_INFO)
   );
 }

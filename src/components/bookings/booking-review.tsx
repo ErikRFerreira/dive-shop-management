@@ -17,6 +17,7 @@ import { ActivityType } from '@/generated/prisma/enums';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
+  canApprove: boolean;
 };
 
 type ReviewActivity = Pick<
@@ -39,7 +40,7 @@ function getReviewActivities(booking: BookingDetailsItem): ReviewActivity[] {
       ];
 }
 
-export function BookingReview({ booking }: BookingReviewProps) {
+export function BookingReview({ booking, canApprove }: BookingReviewProps) {
   const activities = getReviewActivities(booking);
   const includesFunDive = activities.some(
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
@@ -92,6 +93,8 @@ export function BookingReview({ booking }: BookingReviewProps) {
         />
         <BookingReviewSidebar
           bookingId={booking.id}
+          canApprove={canApprove}
+          adminNotes={booking.adminNotes}
           rawBookingText={booking.notes}
           missingInformation={missingInformation}
           status={booking.status}

@@ -3,17 +3,28 @@
 import { useActionState, useState } from 'react';
 
 import {
+  approveBooking,
   cancelBooking,
   markBookingNeedsMoreInfo,
   resubmitBookingForApproval,
 } from '@/features/bookings/actions';
 import type { BookingWorkflowActionState } from '@/features/bookings/actions';
+import { BookingStatus } from '@/generated/prisma/enums';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
 type BookingIdProps = {
   bookingId: string;
+};
+
+type ApproveBookingFormProps = BookingIdProps & {
+  defaultAdminNotes?: string | null;
+};
+
+type CancelBookingFormProps = BookingIdProps & {
+  defaultAdminNotes?: string | null;
+  status: BookingStatus;
 };
 
 const initialBookingWorkflowActionState: BookingWorkflowActionState = {};
@@ -24,6 +35,38 @@ function ActionError({ message }: { message?: string }) {
       {message}
     </p>
   ) : null;
+}
+
+/** Form used by administrators to approve and publish a booking to the schedule. */
+export function ApproveBookingForm({
+  bookingId,
+  defaultAdminNotes,
+}: ApproveBookingFormProps) {
+  const [state, formAction, pending] = useActionState(
+    approveBooking,
+    initialBookingWorkflowActionState,
+  );
+
+  return (
+    <form action={formAction} className="grid gap-3">
+      <input name="bookingId" type="hidden" value={bookingId} />
+      <div className="grid gap-2">
+        <label className="text-sm font-medium" htmlFor="admin-notes">
+          Admin notes
+        </label>
+        <Textarea
+          defaultValue={defaultAdminNotes ?? ''}
+          id="admin-notes"
+          name="adminNotes"
+          placeholder="Add review notes for the internal schedule."
+        />
+      </div>
+      <ActionError message={state.formError} />
+      <Button disabled={pending} type="submit">
+        {pending ? 'Approving...' : 'Approve & Schedule'}
+      </Button>
+    </form>
+  );
 }
 
 /** Form used by administrators to request missing booking details. */
@@ -47,14 +90,21 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
   }
 
   return (
-    <form action={formAction} className="grid gap-3" noValidate onSubmit={handleSubmit}>
+    <form
+      action={formAction}
+      className="grid gap-3"
+      noValidate
+      onSubmit={handleSubmit}
+    >
       <input name="bookingId" type="hidden" value={bookingId} />
       <div className="grid gap-2">
         <label className="text-sm font-medium" htmlFor="needs-more-info-reason">
           Reason
         </label>
         <Textarea
-          aria-describedby={reasonError ? 'needs-more-info-reason-error' : undefined}
+          aria-describedby={
+            reasonError ? 'needs-more-info-reason-error' : undefined
+          }
           aria-invalid={Boolean(reasonError)}
           id="needs-more-info-reason"
           name="needsMoreInfoReason"
@@ -69,7 +119,10 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
           value={reason}
         />
         {reasonError ? (
-          <p className="text-sm text-destructive" id="needs-more-info-reason-error">
+          <p
+            className="text-sm text-destructive"
+            id="needs-more-info-reason-error"
+          >
             {reasonError}
           </p>
         ) : null}
@@ -83,21 +136,47 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
 }
 
 /** Form used by administrators to cancel or reject a booking request. */
-export function CancelBookingForm({ bookingId }: BookingIdProps) {
+export function CancelBookingForm({
+  bookingId,
+  defaultAdminNotes,
+  status,
+}: CancelBookingFormProps) {
   const [state, formAction, pending] = useActionState(
     cancelBooking,
     initialBookingWorkflowActionState,
   );
+  const isScheduled = status === BookingStatus.SCHEDULED;
 
   return (
     <form action={formAction} className="grid gap-3">
       <input name="bookingId" type="hidden" value={bookingId} />
+      {isScheduled ? (
+        <div className="grid gap-2">
+          <label
+            className="text-sm font-medium"
+            htmlFor="cancel-admin-notes"
+          >
+            Admin notes
+          </label>
+          <Textarea
+            defaultValue={defaultAdminNotes ?? ''}
+            id="cancel-admin-notes"
+            name="adminNotes"
+            placeholder="Add cancellation notes for the booking record."
+          />
+        </div>
+      ) : null}
       <p className="text-sm text-muted-foreground">
-        Cancelling does not delete the booking, customer, diver, or deposit data.
+        Cancelling does not delete the booking, customer, diver, or deposit
+        data.
       </p>
       <ActionError message={state.formError} />
       <Button disabled={pending} type="submit" variant="destructive">
-        {pending ? 'Cancelling...' : 'Cancel / Reject'}
+        {pending
+          ? 'Cancelling...'
+          : isScheduled
+            ? 'Cancel Scheduled Booking'
+            : 'Cancel / Reject'}
       </Button>
     </form>
   );
@@ -114,7 +193,11 @@ export function ResubmitBookingForApprovalForm({ bookingId }: BookingIdProps) {
     <form action={formAction} className="mt-4">
       <input name="bookingId" type="hidden" value={bookingId} />
       <ActionError message={state.formError} />
-      <Button className={state.formError ? 'mt-3' : undefined} disabled={pending} type="submit">
+      <Button
+        className={state.formError ? 'mt-3' : undefined}
+        disabled={pending}
+        type="submit"
+      >
         {pending ? 'Resubmitting…' : 'Resubmit for Approval'}
       </Button>
     </form>

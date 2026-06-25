@@ -47,6 +47,25 @@ export const markBookingNeedsMoreInfoSchema = z.object({
 /** Validates the booking selected for a cancellation action. */
 export const cancelBookingSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  adminNotes: z.preprocess(
+    (value) => (typeof value === 'string' ? value : ''),
+    z
+      .string()
+      .trim()
+      .transform((value) => value || null),
+  ),
+});
+
+/** Validates the booking selected for the admin approval and scheduling step. */
+export const approveBookingSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  adminNotes: z.preprocess(
+    (value) => (typeof value === 'string' ? value : ''),
+    z
+      .string()
+      .trim()
+      .transform((value) => value || null),
+  ),
 });
 
 /** Validates the booking selected for a resubmission action. */
@@ -104,12 +123,24 @@ const normalizedBookingIntakeSchema = z.object({
   paymentNotes: z.string().nullable(),
 });
 
+/**
+ * Checks if the booking intake form has at least one meaningful activity, customer, or deposit information.
+ *
+ * @param values - The normalized booking form values to check for meaningful data.
+ * @returns  True if there is at least one meaningful activity, customer, or deposit information; otherwise, false.
+ */
 function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
   return values.activities.some((activity) =>
     Object.values(activity).some((value) => value !== null),
   );
 }
 
+/**
+ * Checks if the booking intake form has at least one meaningful customer with non-null values for fields other than 'role' and 'customerId'.
+ *
+ * @param values - The normalized booking form values to check for meaningful customer data.
+ * @returns - True if there is at least one meaningful customer; otherwise, false.
+ */
 function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   return values.customers.some((customer) =>
     Object.entries(customer).some(
@@ -119,6 +150,12 @@ function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   );
 }
 
+/**
+ * Checks if the booking intake form has any meaningful deposit information, including deposit status, amount, currency, paidTo, paymentMethod, or paymentNotes.
+ *
+ * @param values - The normalized booking form values to check for meaningful deposit information.
+ * @returns True if there is any meaningful deposit information; otherwise, false.
+ */
 function hasMeaningfulDeposit(values: NormalizedBookingFormValues) {
   return (
     values.depositStatus !== DepositStatus.UNKNOWN ||
@@ -130,6 +167,15 @@ function hasMeaningfulDeposit(values: NormalizedBookingFormValues) {
   );
 }
 
+/**
+ * Validates the deposit information in the booking intake form based on the deposit status.
+ * If the deposit status is 'PAID' or 'PARTIALLY_PAID', it checks for required fields such as amount, currency, and paidTo,
+ * and adds issues to the validation context if any of these fields are missing or invalid.
+ *
+ * @param values - The normalized booking form values to validate for deposit information.
+ * @param context - The Zod refinement context used to add validation issues for missing or invalid deposit information.
+ * @returns void
+ */
 function validatePaidDeposit(
   values: NormalizedBookingFormValues,
   context: z.RefinementCtx,
@@ -324,6 +370,12 @@ export const submitBookingIntakeSchema =
     }
   });
 
+/**
+ * Formats Zod validation errors into a structured result containing field-specific errors and general form errors.
+ *
+ * @param error - The ZodError object containing validation issues.
+ * @returns A BookingIntakeValidationResult object with success status, field errors, and form errors.
+ */
 function formatValidationErrors(
   error: z.ZodError,
 ): BookingIntakeValidationResult {
@@ -343,6 +395,13 @@ function formatValidationErrors(
   return { success: false, fieldErrors, formErrors };
 }
 
+/**
+ * Validates the booking intake form values based on the specified intent ('draft' or 'submit').
+ *
+ * @param values - The normalized booking form values to validate.
+ * @param intent - The intent of the validation, either 'draft' for saving a draft or 'submit' for submitting for approval.
+ * @returns A BookingIntakeValidationResult object indicating whether the validation was successful, along with any field-specific or general form errors.
+ */
 export function validateBookingIntake(
   values: NormalizedBookingFormValues,
   intent: BookingIntakeIntent,

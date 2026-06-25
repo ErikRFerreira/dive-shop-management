@@ -1,7 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { BookingReview } from '@/components/bookings/booking-review';
-import { canReviewBookingRequest } from '@/features/bookings/permissions';
+import {
+  canApproveBookingRequest,
+  canReviewBookingRequest,
+} from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
 import { requireCurrentUser } from '@/lib/current-user';
 
@@ -23,7 +26,12 @@ async function ReviewBooking({ params }: Props) {
     notFound();
   }
 
-  return <BookingReview booking={booking} />;
+  return (
+    <BookingReview
+      booking={booking}
+      canApprove={canApproveBookingRequest(currentUser)}
+    />
+  );
 }
 
 export default ReviewBooking;
