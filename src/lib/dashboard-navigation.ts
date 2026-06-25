@@ -37,12 +37,7 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'schedule',
     href: '/schedule',
     label: 'Schedule',
-    allowedRoles: [
-      UserRole.ADMIN,
-      UserRole.MANAGER,
-      UserRole.INSTRUCTOR,
-      UserRole.CUSTOMER_SERVICE,
-    ],
+    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.INSTRUCTOR],
   },
   {
     key: 'customers',
