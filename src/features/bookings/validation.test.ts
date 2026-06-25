@@ -3,8 +3,8 @@ import { expect, test } from 'vitest';
 import {
   bookingCustomerDefaultValues,
   bookingFormDefaultValues,
-  normalizeBookingFormValues,
-} from '@/features/bookings/intake';
+} from '@/features/bookings/form-values';
+import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   ActivityType,
@@ -13,7 +13,10 @@ import {
   Currency,
   DepositStatus,
 } from '@/generated/prisma/enums';
-import { validateBookingIntake } from './validation';
+import {
+  markBookingNeedsMoreInfoSchema,
+  validateBookingIntake,
+} from './validation';
 
 function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
   return normalizeBookingFormValues({
@@ -50,7 +53,35 @@ test('allows an incomplete draft when raw booking text exists', () => {
     'draft',
   );
 
-  expect(result).toMatchObject({ success: true, fieldErrors: {}, formErrors: [] });
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
+});
+
+test('requires a booking ID and nonblank reason when requesting more information', () => {
+  expect(
+    markBookingNeedsMoreInfoSchema.safeParse({
+      bookingId: '',
+      needsMoreInfoReason: '   ',
+    }).success,
+  ).toBe(false);
+});
+
+test('trims a valid reason when requesting more information', () => {
+  const result = markBookingNeedsMoreInfoSchema.safeParse({
+    bookingId: ' booking-1 ',
+    needsMoreInfoReason: ' Please confirm the diver certification. ',
+  });
+
+  expect(result).toMatchObject({
+    success: true,
+    data: {
+      bookingId: 'booking-1',
+      needsMoreInfoReason: 'Please confirm the diver certification.',
+    },
+  });
 });
 
 test('blocks a completely empty draft', () => {
@@ -61,12 +92,17 @@ test('blocks a completely empty draft', () => {
 
   expect(result).toMatchObject({
     success: false,
-    formErrors: ['Enter at least one booking, activity, or customer detail before saving a draft.'],
+    formErrors: [
+      'Enter at least one booking, activity, or customer detail before saving a draft.',
+    ],
   });
 });
 
 test('requires an activity and its requested date for submission', () => {
-  const result = validateBookingIntake(validSubmitValues({ activities: [] }), 'submit');
+  const result = validateBookingIntake(
+    validSubmitValues({ activities: [] }),
+    'submit',
+  );
 
   expect(result).toMatchObject({
     success: false,
@@ -159,9 +195,6 @@ test('requires Fun Dive details for every entered customer', () => {
       'customers.1.certificationLevel': [
         'Certification level is required when the booking includes a Fun Dive.',
       ],
-      'customers.1.lastDiveDate': [
-        'Last dive date is required when the booking includes a Fun Dive.',
-      ],
       'customers.1.divesLogged': [
         'Dives logged is required when the booking includes a Fun Dive.',
       ],
@@ -188,17 +221,24 @@ test('requires a specialty course for each Specialty Course activity', () => {
   expect(result).toMatchObject({
     success: false,
     fieldErrors: {
-      'activities.0.specialtyCourse': ['Specialty course is required for this activity.'],
+      'activities.0.specialtyCourse': [
+        'Specialty course is required for this activity.',
+      ],
     },
   });
 });
 
-test.each([DepositStatus.PAID, DepositStatus.PARTIALLY_PAID])(
-  '%s deposits require amount, currency, and paid to',
-  (depositStatus) => {
+test.each([
+  ['draft', DepositStatus.PAID],
+  ['draft', DepositStatus.PARTIALLY_PAID],
+  ['submit', DepositStatus.PAID],
+  ['submit', DepositStatus.PARTIALLY_PAID],
+] as const)(
+  '%s %s deposits require amount, currency, and paid to',
+  (intent, depositStatus) => {
     const result = validateBookingIntake(
       validSubmitValues({ depositStatus }),
-      'submit',
+      intent,
     );
 
     expect(result).toMatchObject({
@@ -264,5 +304,9 @@ test('accepts a valid multi-activity, multi-customer submission', () => {
     'submit',
   );
 
-  expect(result).toMatchObject({ success: true, fieldErrors: {}, formErrors: [] });
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
 });

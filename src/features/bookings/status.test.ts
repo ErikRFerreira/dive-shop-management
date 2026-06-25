@@ -10,6 +10,7 @@ import {
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
 
 const validTransitions = [
+  [BookingStatus.DRAFT, BookingStatus.PENDING_APPROVAL],
   [BookingStatus.PENDING_APPROVAL, BookingStatus.NEEDS_MORE_INFO],
   [BookingStatus.PENDING_APPROVAL, BookingStatus.CANCELLED],
   [BookingStatus.PENDING_APPROVAL, BookingStatus.SCHEDULED],
@@ -30,7 +31,6 @@ test.each(validTransitions)(
 
 /** Verifies unsupported, reversed, and terminal booking transitions are denied. */
 test.each([
-  [BookingStatus.DRAFT, BookingStatus.PENDING_APPROVAL],
   [BookingStatus.PENDING_APPROVAL, BookingStatus.DRAFT],
   [BookingStatus.NEEDS_MORE_INFO, BookingStatus.SCHEDULED],
   [BookingStatus.SCHEDULED, BookingStatus.CANCELLED],
@@ -44,10 +44,10 @@ test.each([
 test('throws an error naming both statuses for an invalid transition', () => {
   expect(() =>
     assertCanTransitionBookingStatus(
-      BookingStatus.DRAFT,
       BookingStatus.PENDING_APPROVAL,
+      BookingStatus.DRAFT,
     ),
-  ).toThrow('Invalid booking status transition: DRAFT -> PENDING_APPROVAL.');
+  ).toThrow('Invalid booking status transition: PENDING_APPROVAL -> DRAFT.');
 });
 
 /** Verifies admin review transitions are restricted to the intended roles. */
@@ -69,6 +69,13 @@ test('enforces booking transition permissions by role', () => {
     ).toBe(false);
   }
 
+  expect(
+    canPerformBookingStatusTransition(
+      customerService,
+      BookingStatus.DRAFT,
+      BookingStatus.PENDING_APPROVAL,
+    ),
+  ).toBe(false);
   expect(
     canPerformBookingStatusTransition(
       customerService,

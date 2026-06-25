@@ -14,15 +14,28 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
-import { bookingFormDefaultValues } from '@/features/bookings/intake';
+import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 
 /** Versioned browser storage key for unsaved new-booking form values. */
 export const NEW_BOOKING_FORM_AUTOSAVE_KEY = 'dive-shop:new-booking-form:v2';
 
+/** Versioned browser storage key for unsaved edits to one existing booking. */
+export function getBookingEditFormAutosaveKey(bookingId: string) {
+  return `dive-shop:booking-edit-form:${bookingId}:v2`;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
+
+type BookingFormAutosaveOptions =
+  | boolean
+  | {
+      enabled?: boolean;
+      storageKey?: string;
+      restoreBaseValues?: BookingFormValues;
+    };
 
 /**
  * Restores and persists unsaved booking form values in browser localStorage.
@@ -34,20 +47,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export function useBookingFormAutosave(
   form: Pick<UseFormReturn<BookingFormValues>, 'reset' | 'watch'>,
+  options: BookingFormAutosaveOptions = true,
 ) {
   const hasRestored = useRef(false);
+  const autosaveOptions =
+    typeof options === 'boolean' ? { enabled: options } : options;
+  const enabled = autosaveOptions.enabled ?? true;
+  const storageKey =
+    autosaveOptions.storageKey ?? NEW_BOOKING_FORM_AUTOSAVE_KEY;
+  const restoreBaseValues =
+    autosaveOptions.restoreBaseValues ?? bookingFormDefaultValues;
 
   const clearAutosave = useCallback(() => {
-    window.localStorage.removeItem(NEW_BOOKING_FORM_AUTOSAVE_KEY);
-  }, []);
+    window.localStorage.removeItem(storageKey);
+  }, [storageKey]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let cancelled = false;
+    hasRestored.current = false;
 
     try {
-      const savedValues = window.localStorage.getItem(
-        NEW_BOOKING_FORM_AUTOSAVE_KEY,
-      );
+      const savedValues = window.localStorage.getItem(storageKey);
 
       if (savedValues) {
         const parsedValues: unknown = JSON.parse(savedValues);
@@ -59,7 +83,7 @@ export function useBookingFormAutosave(
             }
 
             form.reset({
-              ...bookingFormDefaultValues,
+              ...restoreBaseValues,
               ...(parsedValues as Partial<BookingFormValues>),
             });
             hasRestored.current = true;
@@ -71,7 +95,7 @@ export function useBookingFormAutosave(
             }
 
             window.localStorage.setItem(
-              NEW_BOOKING_FORM_AUTOSAVE_KEY,
+              storageKey,
               JSON.stringify(values),
             );
           });
@@ -94,7 +118,7 @@ export function useBookingFormAutosave(
       }
 
       window.localStorage.setItem(
-        NEW_BOOKING_FORM_AUTOSAVE_KEY,
+        storageKey,
         JSON.stringify(values),
       );
     });
@@ -103,7 +127,7 @@ export function useBookingFormAutosave(
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [clearAutosave, form]);
+  }, [clearAutosave, enabled, form, restoreBaseValues, storageKey]);
 
   return { clearAutosave };
 }

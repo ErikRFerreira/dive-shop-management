@@ -37,6 +37,8 @@ export type BookingActivityFormValues = {
 
 /** Browser values for one customer or diver in a booking. */
 export type BookingCustomerFormValues = {
+  /** Existing customer ID when editing an already-linked customer. */
+  customerId?: string;
   role: BookingCustomerRole;
   customerName: string;
   chineseName: string;
@@ -83,6 +85,7 @@ export type NormalizedBookingActivityFormValues = {
 };
 
 export type NormalizedBookingCustomerFormValues = {
+  customerId?: string;
   role: BookingCustomerRole;
   customerName: string | null;
   chineseName: string | null;

@@ -21,7 +21,7 @@ async function NewBooking() {
           Capture the request before submitting it for administrative review.
         </p>
       </div>
-      <BookingForm />
+      <BookingForm mode="create" />
     </div>
   );
 }

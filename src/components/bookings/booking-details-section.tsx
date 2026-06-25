@@ -1,0 +1,195 @@
+import {
+  Controller,
+  type FieldPath,
+  type UseFormReturn,
+  useFieldArray,
+} from 'react-hook-form';
+
+import { BookingFormSection } from '@/components/bookings/booking-form-section';
+import {
+  BookingFormField,
+  EnumSelect,
+} from '@/components/bookings/booking-form-controls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  activityTypeOptions,
+  bookingSourceOptions,
+} from '@/features/bookings/form-options';
+import { bookingActivityDefaultValues } from '@/features/bookings/form-values';
+import type {
+  BookingActivityFormValues,
+  BookingFormValues,
+} from '@/features/bookings/types';
+import { ActivityType } from '@/generated/prisma/enums';
+
+type BookingDetailsSectionProps = {
+  form: UseFormReturn<BookingFormValues>;
+  activities: BookingActivityFormValues[];
+  getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
+};
+
+export function BookingDetailsSection({
+  form,
+  activities,
+  getFieldError,
+}: BookingDetailsSectionProps) {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'activities',
+  });
+
+  return (
+    <>
+      <BookingFormSection title="Booking Details">
+        <BookingFormField
+          id="source"
+          label="Source"
+          required
+          error={getFieldError('source')}
+        >
+          <Controller
+            control={form.control}
+            name="source"
+            render={({ field }) => (
+              <EnumSelect
+                id={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                values={bookingSourceOptions}
+                placeholder="Select source"
+              />
+            )}
+          />
+        </BookingFormField>
+        <BookingFormField
+          id="numberOfPeople"
+          label="Number of people"
+          required
+          error={getFieldError('numberOfPeople')}
+        >
+          <Input
+            id="numberOfPeople"
+            type="number"
+            min="1"
+            step="1"
+            {...form.register('numberOfPeople')}
+          />
+        </BookingFormField>
+        <BookingFormField id="referrerName" label="Referrer name (optional)">
+          <Input id="referrerName" {...form.register('referrerName')} />
+        </BookingFormField>
+        <BookingFormField
+          id="internalNotes"
+          label="Internal notes"
+          className="grid gap-2 md:col-span-2"
+        >
+          <Textarea id="internalNotes" {...form.register('internalNotes')} />
+        </BookingFormField>
+      </BookingFormSection>
+
+      <BookingFormSection title="Activities">
+        <div className="space-y-4 md:col-span-2">
+          {fields.map((activity: { id: string }, index: number) => {
+            const prefix = `activities.${index}` as const;
+            const isSpecialtyCourse =
+              activities[index]?.activityType === ActivityType.SPECIALTY_COURSE;
+
+            return (
+              <div className="rounded-lg border p-4" key={activity.id}>
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <h3 className="font-medium">Activity {index + 1}</h3>
+                  {fields.length > 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => remove(index)}
+                    >
+                      Remove activity
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <BookingFormField
+                    id={`${prefix}.activityType`}
+                    label="Activity type"
+                    required
+                    error={getFieldError(`${prefix}.activityType`)}
+                  >
+                    <Controller
+                      control={form.control}
+                      name={`${prefix}.activityType`}
+                      render={({ field }) => (
+                        <EnumSelect
+                          id={field.name}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          values={activityTypeOptions}
+                          placeholder="Select activity"
+                        />
+                      )}
+                    />
+                  </BookingFormField>
+                  {isSpecialtyCourse ? (
+                    <BookingFormField
+                      id={`${prefix}.specialtyCourse`}
+                      label="Specialty course"
+                      required
+                      error={getFieldError(`${prefix}.specialtyCourse`)}
+                    >
+                      <Input
+                        id={`${prefix}.specialtyCourse`}
+                        {...form.register(`${prefix}.specialtyCourse`)}
+                      />
+                    </BookingFormField>
+                  ) : null}
+                  <BookingFormField
+                    id={`${prefix}.requestedDate`}
+                    label="Requested start date"
+                    required
+                    error={getFieldError(`${prefix}.requestedDate`)}
+                  >
+                    <Input
+                      id={`${prefix}.requestedDate`}
+                      type="date"
+                      {...form.register(`${prefix}.requestedDate`)}
+                    />
+                  </BookingFormField>
+                  <BookingFormField
+                    id={`${prefix}.requestedTime`}
+                    label="Requested time (optional)"
+                  >
+                    <Input
+                      id={`${prefix}.requestedTime`}
+                      type="time"
+                      {...form.register(`${prefix}.requestedTime`)}
+                    />
+                  </BookingFormField>
+                  <BookingFormField
+                    id={`${prefix}.notes`}
+                    label="Activity notes"
+                    className="grid gap-2 md:col-span-2"
+                  >
+                    <Textarea
+                      id={`${prefix}.notes`}
+                      {...form.register(`${prefix}.notes`)}
+                    />
+                  </BookingFormField>
+                </div>
+              </div>
+            );
+          })}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => append({ ...bookingActivityDefaultValues })}
+          >
+            Add activity
+          </Button>
+        </div>
+      </BookingFormSection>
+    </>
+  );
+}

@@ -1,14 +1,24 @@
 import Link from 'next/link';
 
+import {
+  ResubmitBookingForApprovalForm,
+} from '@/components/bookings/booking-workflow-forms';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
+import { MissingInfoPanel } from '@/components/bookings/missing-info-panel';
 import { Button } from '@/components/ui/button';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
-import { ActivityType, BookingCustomerRole } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingCustomerRole,
+  BookingStatus,
+} from '@/generated/prisma/enums';
 
 type Props = {
   booking: BookingDetailsItem;
+  canEdit: boolean;
   canReview: boolean;
+  canResubmit: boolean;
 };
 
 const EMPTY_VALUE = '—';
@@ -85,7 +95,7 @@ function Section({
   );
 }
 
-function BookingDetails({ booking, canReview }: Props) {
+function BookingDetails({ booking, canEdit, canReview, canResubmit }: Props) {
   const bookingCustomer =
     booking.customers.find(
       (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
@@ -114,6 +124,11 @@ function BookingDetails({ booking, canReview }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Booking details</h1>
           <div className="flex flex-wrap gap-2">
+            {canEdit ? (
+              <Button asChild variant="outline">
+                <Link href={`/bookings/${booking.id}/edit`}>Edit booking</Link>
+              </Button>
+            ) : null}
             {canReview ? (
               <Button asChild>
                 <Link href={`/bookings/${booking.id}/review`}>
@@ -149,6 +164,15 @@ function BookingDetails({ booking, canReview }: Props) {
             {booking.notes || EMPTY_VALUE}
           </p>
         </div>
+
+        {booking.status === BookingStatus.NEEDS_MORE_INFO ? (
+          <div className="mt-6">
+            <MissingInfoPanel reason={booking.needsMoreInfoReason} />
+            {canResubmit ? (
+              <ResubmitBookingForApprovalForm bookingId={booking.id} />
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       <Section title="Booking details">

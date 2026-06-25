@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
+import { MarkNeedsMoreInfoForm } from '@/components/bookings/booking-workflow-forms';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -535,9 +536,7 @@ async function ReviewBooking({ params }: Props) {
                 <Button disabled type="button">
                   Approve
                 </Button>
-                <Button disabled type="button" variant="outline">
-                  Mark as Needs More Info
-                </Button>
+                <MarkNeedsMoreInfoForm bookingId={booking.id} />
                 <Button disabled type="button" variant="destructive">
                   Cancel / Reject
                 </Button>

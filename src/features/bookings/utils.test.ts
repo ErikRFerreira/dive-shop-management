@@ -22,6 +22,12 @@ test('accepts only supported single booking status filters', () => {
   expect(parseBookingStatusFilter('unknown')).toBeUndefined();
 });
 
+test('accepts Needs More Info as a booking status filter', () => {
+  expect(parseBookingStatusFilter(BookingStatus.NEEDS_MORE_INFO)).toBe(
+    BookingStatus.NEEDS_MORE_INFO,
+  );
+});
+
 /** Verifies that a primary contact takes precedence over earlier participants. */
 test('uses the primary contact as the display customer', () => {
   const firstCustomer = { id: 'first' };
