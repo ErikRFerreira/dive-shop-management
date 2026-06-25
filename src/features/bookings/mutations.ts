@@ -1,3 +1,10 @@
+/**
+ * Purpose: Implements the mutations for creating and updating booking requests,
+ * including handling related entities such as customers, activities, and deposits.
+ *
+ * @module features/bookings/mutations
+ */
+
 import { BookingStatus } from '@/generated/prisma/enums';
 import {
   hasMeaningfulDeposit,
@@ -17,9 +24,19 @@ import type { NormalizedBookingFormValues } from './types';
 
 type BookingMutationTransaction = Pick<
   typeof db,
-  'bookingRequest' | 'bookingActivity' | 'customer' | 'bookingCustomer' | 'deposit'
+  | 'bookingRequest'
+  | 'bookingActivity'
+  | 'customer'
+  | 'bookingCustomer'
+  | 'deposit'
 >;
 
+/**
+ * Loads a booking request along with its related customers and deposits for editing purposes.
+ *
+ * @param bookingId - The ID of the booking request to load.
+ * @returns A promise that resolves to the editable booking request, or null if not found.
+ */
 export async function loadEditableBooking(bookingId: string) {
   return db.bookingRequest.findUnique({
     where: { id: bookingId },
@@ -48,6 +65,13 @@ export type EditableBooking = NonNullable<
   Awaited<ReturnType<typeof loadEditableBooking>>
 >;
 
+/**
+ * Creates customers for a booking request.
+ *
+ * @param transaction - The database transaction object.
+ * @param bookingRequestId - The ID of the booking request.
+ * @param bookingValues - The normalized booking form values.
+ */
 async function createCustomersForBooking(
   transaction: BookingMutationTransaction,
   bookingRequestId: string,
@@ -70,6 +94,13 @@ async function createCustomersForBooking(
   );
 }
 
+/**
+ * Replaces the activities for a booking request.
+ *
+ * @param transaction - The database transaction object.
+ * @param bookingRequestId - The ID of the booking request.
+ * @param bookingValues - The normalized booking form values.
+ */
 async function replaceActivities(
   transaction: BookingMutationTransaction,
   bookingRequestId: string,
@@ -89,6 +120,13 @@ async function replaceActivities(
   }
 }
 
+/**
+ * Replaces the customers for a booking request.
+ *
+ * @param transaction - The database transaction object.
+ * @param bookingRequestId - The ID of the booking request.
+ * @param bookingValues - The normalized booking form values.
+ */
 async function replaceCustomers(
   transaction: BookingMutationTransaction,
   bookingRequestId: string,
@@ -128,6 +166,14 @@ async function replaceCustomers(
   }
 }
 
+/**
+ * Synchronizes the newest deposit for a booking request.
+ *
+ * @param transaction - The database transaction object.
+ * @param bookingRequestId - The ID of the booking request.
+ * @param newestDepositId - The ID of the newest deposit, if any.
+ * @param bookingValues - The normalized booking form values.
+ */
 async function syncNewestDeposit(
   transaction: BookingMutationTransaction,
   bookingRequestId: string,
@@ -157,6 +203,13 @@ async function syncNewestDeposit(
   }
 }
 
+/**
+ * Creates a booking request with intake data.
+ *
+ * @param bookingValues - The normalized booking form values.
+ * @param status - The status of the booking request.
+ * @param createdById - The ID of the user who created the booking request.
+ */
 export async function createBookingRequestWithIntake(
   bookingValues: ReturnType<typeof normalizeBookingFormValues>,
   status: typeof BookingStatus.DRAFT | typeof BookingStatus.PENDING_APPROVAL,
@@ -174,7 +227,11 @@ export async function createBookingRequestWithIntake(
       },
     });
 
-    await createCustomersForBooking(transaction, bookingRequest.id, bookingValues);
+    await createCustomersForBooking(
+      transaction,
+      bookingRequest.id,
+      bookingValues,
+    );
 
     if (hasMeaningfulDeposit(bookingValues)) {
       await transaction.deposit.create({
@@ -187,6 +244,14 @@ export async function createBookingRequestWithIntake(
   });
 }
 
+/**
+ * Updates a booking request with intake data.
+ *
+ * @param booking - The editable booking request.
+ * @param bookingValues - The normalized booking form values.
+ * @param nextStatus - The next status of the booking request, if any.
+ * @returns A promise that resolves to true if the update was successful, or false otherwise.
+ */
 export async function updateBookingRequestWithIntake(
   booking: EditableBooking,
   bookingValues: ReturnType<typeof normalizeBookingFormValues>,

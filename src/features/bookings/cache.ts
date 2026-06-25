@@ -1,3 +1,9 @@
+/**
+ * Purpose: Provides utility functions for revalidating Next.js paths related to booking workflows.
+ *
+ * @module features/bookings/cache
+ */
+
 import { revalidatePath } from 'next/cache';
 
 export function revalidateBookingWorkflowPaths(bookingId: string) {

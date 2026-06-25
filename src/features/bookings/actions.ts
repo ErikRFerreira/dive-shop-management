@@ -54,6 +54,12 @@ export type {
   UpdateBookingActionResult,
 } from './action-results';
 
+/**
+ * Persists one booking request and its related intake records atomically.
+ *
+ * @param status - The workflow status assigned when the booking is created.
+ * @returns The validation intent based on the booking status.
+ */
 function getEditSaveValidationIntent(status: BookingStatus) {
   return status === BookingStatus.PENDING_APPROVAL ? 'submit' : 'draft';
 }
@@ -67,6 +73,13 @@ type UpdateEditableBookingOptions = {
   requireResubmitPermission?: boolean;
 };
 
+/**
+ * Validates that the submitted customer IDs match the linked customer IDs for the booking.
+ *
+ * @param booking - The editable booking object containing the linked customer IDs.
+ * @param bookingValues - The normalized booking form values containing the submitted customer IDs.
+ * @returns An UpdateBookingActionResult indicating success or failure, or null if validation passes.
+ */
 function validateSubmittedCustomerIds(
   booking: EditableBooking,
   bookingValues: ReturnType<typeof normalizeBookingFormValues>,
@@ -94,6 +107,15 @@ function validateSubmittedCustomerIds(
   };
 }
 
+/**
+ * Updates an editable booking and the intake records managed by the booking form.
+ *
+ * @param bookingId - The ID of the booking request to update.
+ * @param values - The browser-safe booking intake values to normalize, validate, and persist.
+ * @param options - Optional parameters for expected status, next status, validation intent, and error messages.
+ * @returns - A validation, authorization, or stale-update failure result;
+ * otherwise the booking detail path for client-side navigation.
+ */
 async function updateEditableBooking(
   bookingId: string,
   values: BookingFormValues,
@@ -137,12 +159,12 @@ async function updateEditableBooking(
   );
   const canTransition =
     !options.nextStatus ||
-    (canPerformBookingStatusTransition(
+    canPerformBookingStatusTransition(
       currentUser,
       booking.status,
       options.nextStatus,
     ) ||
-      (booking.status === BookingStatus.DRAFT && canEdit));
+    (booking.status === BookingStatus.DRAFT && canEdit);
   const canResubmit =
     !options.requireResubmitPermission ||
     canResubmitBookingForApproval(currentUser, booking.createdById);
@@ -190,7 +212,8 @@ async function updateEditableBooking(
     return {
       success: false,
       fieldErrors: {},
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 
@@ -325,7 +348,8 @@ export async function resubmitEditedBookingForApproval(
     expectedStatus: BookingStatus.NEEDS_MORE_INFO,
     nextStatus: BookingStatus.PENDING_APPROVAL,
     validationIntent: 'submit',
-    invalidStatusError: 'Only bookings needing more information can be resubmitted.',
+    invalidStatusError:
+      'Only bookings needing more information can be resubmitted.',
     permissionError: 'You do not have permission to resubmit this booking.',
     requireResubmitPermission: true,
   });
@@ -378,7 +402,8 @@ export async function markBookingNeedsMoreInfo(
 
   if (booking.status !== BookingStatus.PENDING_APPROVAL) {
     return {
-      formError: 'Only pending approval bookings can be marked as needing more information.',
+      formError:
+        'Only pending approval bookings can be marked as needing more information.',
     };
   }
 
@@ -412,7 +437,8 @@ export async function markBookingNeedsMoreInfo(
 
   if (result.count !== 1) {
     return {
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 
@@ -501,7 +527,8 @@ export async function cancelBooking(
 
   if (result.count !== 1) {
     return {
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 
@@ -578,7 +605,9 @@ export async function resubmitBookingForApproval(
     ) ||
     !canResubmitBookingForApproval(currentUser, booking.createdById)
   ) {
-    return { formError: 'You do not have permission to resubmit this booking.' };
+    return {
+      formError: 'You do not have permission to resubmit this booking.',
+    };
   }
 
   assertCanTransitionBookingStatus(
@@ -606,7 +635,8 @@ export async function resubmitBookingForApproval(
 
   if (result.count !== 1) {
     return {
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 

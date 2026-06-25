@@ -1,4 +1,8 @@
-/** Default browser values for booking intake forms. */
+/**
+ * Purpose: Defines the default values for booking-related forms, including activity and customer information.
+ *
+ * @module features/bookings/form-values
+ */
 
 import { BookingCustomerRole, DepositStatus } from '@/generated/prisma/enums';
 import type {

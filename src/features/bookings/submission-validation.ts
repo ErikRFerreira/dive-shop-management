@@ -1,3 +1,11 @@
+/**
+ * Purpose: This module provides functions to validate stored booking data before submission.
+ * It includes mapping stored booking data to normalized form values and validating the booking intake for any missing,
+ * or invalid information.
+ *
+ * @module features/bookings/submission-validation
+ */
+
 import { Currency, DepositStatus } from '@/generated/prisma/enums';
 
 import type { NormalizedBookingFormValues } from './types';
@@ -53,12 +61,24 @@ type StoredBookingForSubmission = {
   }>;
 };
 
+/**
+ * Maps a string value to a Currency enum value or returns null if the value is not a valid currency.
+ *
+ * @param value - The string value to map to a Currency enum value.
+ * @returns A Currency enum value if the input is valid, otherwise null.
+ */
 function currencyOrNull(value: string | null): Currency | null {
   return value !== null && Object.values(Currency).includes(value as Currency)
     ? (value as Currency)
     : null;
 }
 
+/**
+ * Converts a decimal-like value to a number or returns null if the value is not a valid number.
+ *
+ * @param value - The value to convert to a number.
+ * @returns A number if the input is valid, otherwise null.
+ */
 function decimalToNumber(value: { toString: () => string } | number | null) {
   if (value === null) return null;
 
@@ -66,6 +86,12 @@ function decimalToNumber(value: { toString: () => string } | number | null) {
   return Number.isFinite(number) ? number : null;
 }
 
+/**
+ * Maps stored booking data to normalized form values for validation and submission.
+ *
+ * @param booking - The stored booking data to map.
+ * @returns The normalized booking form values.
+ */
 function mapStoredBookingToNormalizedValues(
   booking: StoredBookingForSubmission,
 ): NormalizedBookingFormValues {
@@ -126,8 +152,17 @@ function mapStoredBookingToNormalizedValues(
   };
 }
 
+/**
+ * Validates a stored booking for submission by mapping it to normalized form values and checking for any missing or invalid information.
+ *
+ * @param booking - The stored booking data to validate.
+ * @returns An array of warning messages for any missing or invalid information.
+ */
 export function validateStoredBookingForSubmission(
   booking: StoredBookingForSubmission,
 ) {
-  return validateBookingIntake(mapStoredBookingToNormalizedValues(booking), 'submit');
+  return validateBookingIntake(
+    mapStoredBookingToNormalizedValues(booking),
+    'submit',
+  );
 }

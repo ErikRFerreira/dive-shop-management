@@ -1,3 +1,11 @@
+/**
+ * Purpose: This module provides a function to validate booking details,
+ * and return a list of warnings for any missing or invalid information.
+ * It checks for required fields in activities, customers, deposits, and other booking-related data.
+ *
+ * @module features/bookings/review-requirements
+ */
+
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import {
   ActivityType,
@@ -5,17 +13,35 @@ import {
   DepositStatus,
 } from '@/generated/prisma/enums';
 
+/**
+ * Checks if a string has non-whitespace text.
+ *
+ * @param value - The string to check.
+ * @returns True if the string has non-whitespace text, false otherwise.
+ */
 function hasText(value: string | null | undefined) {
   return Boolean(value?.trim());
 }
 
+/**
+ * Checks if a customer has a valid name.
+ *
+ * @param customer - The customer to check.
+ * @returns True if the customer has a valid name, false otherwise.
+ */
 function hasCustomerName(customer: BookingDetailsItem['displayCustomer']) {
   return Boolean(
     customer?.fullName?.trim() ||
-      [customer?.firstName, customer?.lastName].some(hasText),
+    [customer?.firstName, customer?.lastName].some(hasText),
   );
 }
 
+/**
+ * Validates the booking details and returns a list of warnings for any missing or invalid information.
+ *
+ * @param booking - The booking details to validate.
+ * @returns An array of warning messages for any missing or invalid information.
+ */
 export function getMissingBookingReviewInformation(
   booking: BookingDetailsItem,
 ) {

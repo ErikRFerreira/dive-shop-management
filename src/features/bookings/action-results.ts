@@ -1,3 +1,10 @@
+/**
+ * Purpose: Defines the types and utility functions for handling action results related to booking operations,
+ * including creation and updating of bookings, as well as validation error handling.
+ *
+ * @module features/bookings/action-results
+ */
+
 import type { BookingIntakeFieldErrors } from './validation';
 
 /**
@@ -29,6 +36,12 @@ export type BookingWorkflowActionState = {
   formError?: string;
 };
 
+/**
+ * Converts a Zod validation error into a shape consumable by the booking workflow forms.
+ *
+ * @param error - The Zod validation error to convert.
+ * @returns The converted validation error in a shape consumable by the booking workflow forms.
+ */
 export function getValidationErrors(error: {
   flatten: () => {
     fieldErrors: Record<string, string[] | undefined>;

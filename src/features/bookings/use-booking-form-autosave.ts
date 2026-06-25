@@ -25,6 +25,12 @@ export function getBookingEditFormAutosaveKey(bookingId: string) {
   return `dive-shop:booking-edit-form:${bookingId}:v2`;
 }
 
+/**
+ * Checks if a value is a plain object (i.e., a record with string keys and unknown values).
+ *
+ * @param value - The value to check.
+ * @returns True if the value is a plain object, otherwise false.
+ */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -94,10 +100,7 @@ export function useBookingFormAutosave(
               return;
             }
 
-            window.localStorage.setItem(
-              storageKey,
-              JSON.stringify(values),
-            );
+            window.localStorage.setItem(storageKey, JSON.stringify(values));
           });
 
           return () => {
@@ -117,10 +120,7 @@ export function useBookingFormAutosave(
         return;
       }
 
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify(values),
-      );
+      window.localStorage.setItem(storageKey, JSON.stringify(values));
     });
 
     return () => {

@@ -1,5 +1,18 @@
+/**
+ * Purpose: This file contains functions to map booking-related form values to
+ * the corresponding data structures used for persistence in the database.
+ *
+ * @module features/bookings/persistence-mappers
+ */
+
 import type { NormalizedBookingFormValues } from './types';
 
+/**
+ * Maps normalized booking form values to the data structure used for creating a booking request.
+ *
+ * @param bookingValues - The normalized booking form values.
+ * @returns An object containing the mapped booking request data.
+ */
 export function mapBookingRequestIntakeData(
   bookingValues: NormalizedBookingFormValues,
 ) {
@@ -18,6 +31,13 @@ export function mapBookingRequestIntakeData(
   };
 }
 
+/**
+ * Maps a single booking activity to the data structure used for creating a booking activity.
+ *
+ * @param activity - The normalized booking activity form values.
+ * @param sortOrder - The sort order of the activity within the booking request.
+ * @returns An object containing the mapped booking activity data.
+ */
 export function mapBookingActivityCreateData(
   activity: NormalizedBookingFormValues['activities'][number],
   sortOrder: number,
@@ -32,6 +52,13 @@ export function mapBookingActivityCreateData(
   };
 }
 
+/**
+ * Maps multiple booking activities to the data structure used for creating booking activities.
+ *
+ * @param bookingRequestId - The ID of the booking request.
+ * @param activities - The normalized booking activity form values.
+ * @returns An array of objects containing the mapped booking activity data.
+ */
 export function mapBookingActivityCreateManyData(
   bookingRequestId: string,
   activities: NormalizedBookingFormValues['activities'],
@@ -42,6 +69,12 @@ export function mapBookingActivityCreateManyData(
   }));
 }
 
+/**
+ * Maps a single booking customer to the data structure used for creating a booking customer.
+ *
+ * @param bookingCustomer - The normalized booking customer form values.
+ * @returns An object containing the mapped booking customer data.
+ */
 export function mapCustomerData(
   bookingCustomer: NormalizedBookingFormValues['customers'][number],
 ) {
@@ -56,6 +89,14 @@ export function mapCustomerData(
   };
 }
 
+/**
+ * Maps multiple booking customers to the data structure used for creating booking customers.
+ *
+ * @param bookingRequestId - The ID of the booking request.
+ * @param bookingCustomers - The normalized booking customer form values.
+ * @param customerIds - An array of customer IDs corresponding to the booking customers.
+ * @returns An array of objects containing the mapped booking customer data.
+ */
 export function mapBookingCustomerCreateManyData(
   bookingRequestId: string,
   bookingCustomers: NormalizedBookingFormValues['customers'],
@@ -78,6 +119,12 @@ export function mapBookingCustomerCreateManyData(
   }));
 }
 
+/**
+ * Maps deposit-related booking values to the data structure used for creating a deposit.
+ *
+ * @param bookingValues - The normalized booking form values.
+ * @returns An object containing the mapped deposit data.
+ */
 export function mapDepositData(
   bookingValues: Pick<
     NormalizedBookingFormValues,
