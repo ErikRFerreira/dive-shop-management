@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { BookingForm } from '@/components/bookings/booking-form';
+import { submitEditedBookingForApproval } from '@/features/bookings/actions';
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
@@ -41,6 +42,7 @@ vi.mock('@/features/bookings/actions', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
   window.localStorage.clear();
 });
 
@@ -207,6 +209,58 @@ test('persists edit mode changes to the booking-specific autosave key', async ()
     ).toMatchObject({ rawBookingText: 'Temporary edit' });
   });
   expect(window.localStorage.getItem(NEW_BOOKING_FORM_AUTOSAVE_KEY)).toBeNull();
+});
+
+test('retries draft edit submission after fixing the primary contact method', async () => {
+  vi.mocked(submitEditedBookingForApproval).mockResolvedValue({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.DRAFT}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        activities: [
+          {
+            ...bookingFormDefaultValues.activities[0],
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            requestedDate: '2026-07-14',
+          },
+        ],
+        numberOfPeople: '1',
+        source: BookingSource.EMAIL,
+        customers: [
+          {
+            ...bookingFormDefaultValues.customers[0],
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            customerName: 'Maria Santos',
+          },
+        ],
+      }}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
+
+  expect(
+    await screen.findAllByText(
+      /Provide at least one contact method for the primary contact/,
+    ),
+  ).not.toHaveLength(0);
+  expect(submitEditedBookingForApproval).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText('Email'), {
+    target: { value: 'maria@example.com' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
+
+  await waitFor(() => {
+    expect(submitEditedBookingForApproval).toHaveBeenCalledTimes(1);
+  });
 });
 
 test('shows resubmit action only for editable Needs More Info bookings', () => {

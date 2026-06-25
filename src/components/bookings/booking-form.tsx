@@ -139,6 +139,12 @@ export function BookingForm(props: BookingFormProps) {
     router.push(result.redirectTo);
   }
 
+  function submitCurrentForm(intent: SubmitIntent) {
+    setSubmitIntent(intent);
+    showValidationErrors({}, []);
+    void form.handleSubmit((values) => submitBooking(values, intent))();
+  }
+
   const isPaidDeposit =
     depositStatus === DepositStatus.PAID ||
     depositStatus === DepositStatus.PARTIALLY_PAID;
@@ -153,9 +159,10 @@ export function BookingForm(props: BookingFormProps) {
     <form
       className="space-y-6"
       noValidate
-      onSubmit={form.handleSubmit((values) =>
-        submitBooking(values, isEdit ? 'edit' : 'submit'),
-      )}
+      onSubmit={(event) => {
+        event.preventDefault();
+        submitCurrentForm(isEdit ? 'edit' : 'submit');
+      }}
     >
       <RawBookingSection form={form} />
       <BookingDetailsSection
@@ -181,17 +188,9 @@ export function BookingForm(props: BookingFormProps) {
           initialStatus={editProps!.initialStatus}
           submitIntent={submitIntent}
           cancelHref={`/bookings/${editProps!.bookingId}`}
-          onSaveChanges={() =>
-            void form.handleSubmit((values) => submitBooking(values, 'edit'))()
-          }
-          onSubmitForApproval={() =>
-            void form.handleSubmit((values) => submitBooking(values, 'submit'))()
-          }
-          onResubmitForApproval={() =>
-            void form.handleSubmit((values) =>
-              submitBooking(values, 'resubmit'),
-            )()
-          }
+          onSaveChanges={() => submitCurrentForm('edit')}
+          onSubmitForApproval={() => submitCurrentForm('submit')}
+          onResubmitForApproval={() => submitCurrentForm('resubmit')}
           clearAutosave={clearAutosave}
         />
       ) : (
@@ -200,9 +199,7 @@ export function BookingForm(props: BookingFormProps) {
           errorMessages={errorMessages}
           isSubmitting={isSubmitting}
           submitIntent={submitIntent === 'edit' ? 'draft' : submitIntent}
-          onSaveDraft={() =>
-            void form.handleSubmit((values) => submitBooking(values, 'draft'))()
-          }
+          onSaveDraft={() => submitCurrentForm('draft')}
           onSubmitForApproval={() => setSubmitIntent('submit')}
           clearAutosave={clearAutosave}
         />
