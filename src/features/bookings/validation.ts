@@ -35,6 +35,25 @@ export type BookingIntakeValidationResult =
       formErrors: string[];
     };
 
+/** Validates the information an admin must provide when requesting follow-up. */
+export const markBookingNeedsMoreInfoSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  needsMoreInfoReason: z
+    .string()
+    .trim()
+    .min(1, 'A reason is required when requesting more information.'),
+});
+
+/** Validates the booking selected for a resubmission action. */
+export const resubmitBookingForApprovalSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+});
+
+/** Validates the booking selected for an edit action. */
+export const updateBookingSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+});
+
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
@@ -89,9 +108,63 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
 function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   return values.customers.some((customer) =>
     Object.entries(customer).some(
-      ([field, value]) => field !== 'role' && value !== null,
+      ([field, value]) =>
+        field !== 'role' && field !== 'customerId' && value !== null,
     ),
   );
+}
+
+function hasMeaningfulDeposit(values: NormalizedBookingFormValues) {
+  return (
+    values.depositStatus !== DepositStatus.UNKNOWN ||
+    values.amount !== null ||
+    values.currency !== null ||
+    values.paidTo !== null ||
+    values.paymentMethod !== null ||
+    values.paymentNotes !== null
+  );
+}
+
+function validatePaidDeposit(
+  values: NormalizedBookingFormValues,
+  context: z.RefinementCtx,
+) {
+  if (
+    values.depositStatus !== DepositStatus.PAID &&
+    values.depositStatus !== DepositStatus.PARTIALLY_PAID
+  ) {
+    return;
+  }
+
+  if (values.amount === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['amount'],
+      message: 'Deposit amount is required when a deposit is paid.',
+    });
+  } else if (values.amount <= 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['amount'],
+      message: 'Deposit amount must be a positive number.',
+    });
+  }
+
+  if (values.currency === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['currency'],
+      message: 'Deposit currency is required when a deposit is paid.',
+    });
+  }
+
+  if (values.paidTo === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['paidTo'],
+      message: 'Paid to is required when a deposit is paid.',
+    });
+  }
 }
 
 export const draftBookingIntakeSchema =
@@ -103,7 +176,8 @@ export const draftBookingIntakeSchema =
       values.referrerName !== null ||
       values.internalNotes !== null ||
       hasMeaningfulActivity(values) ||
-      hasMeaningfulCustomer(values);
+      hasMeaningfulCustomer(values) ||
+      hasMeaningfulDeposit(values);
 
     if (!hasMeaningfulValue) {
       context.addIssue({
@@ -112,10 +186,14 @@ export const draftBookingIntakeSchema =
           'Enter at least one booking, activity, or customer detail before saving a draft.',
       });
     }
+
+    validatePaidDeposit(values, context);
   });
 
 export const submitBookingIntakeSchema =
   normalizedBookingIntakeSchema.superRefine((values, context) => {
+    validatePaidDeposit(values, context);
+
     if (values.activities.length === 0) {
       context.addIssue({
         code: 'custom',
@@ -225,7 +303,6 @@ export const submitBookingIntakeSchema =
           label: string;
         }> = [
           { field: 'certificationLevel', label: 'Certification level' },
-          { field: 'lastDiveDate', label: 'Last dive date' },
           { field: 'divesLogged', label: 'Dives logged' },
         ];
 
@@ -239,41 +316,6 @@ export const submitBookingIntakeSchema =
           });
         });
       });
-    }
-
-    if (
-      values.depositStatus === DepositStatus.PAID ||
-      values.depositStatus === DepositStatus.PARTIALLY_PAID
-    ) {
-      if (values.amount === null) {
-        context.addIssue({
-          code: 'custom',
-          path: ['amount'],
-          message: 'Deposit amount is required when a deposit is paid.',
-        });
-      } else if (values.amount <= 0) {
-        context.addIssue({
-          code: 'custom',
-          path: ['amount'],
-          message: 'Deposit amount must be a positive number.',
-        });
-      }
-
-      if (values.currency === null) {
-        context.addIssue({
-          code: 'custom',
-          path: ['currency'],
-          message: 'Deposit currency is required when a deposit is paid.',
-        });
-      }
-
-      if (values.paidTo === null) {
-        context.addIssue({
-          code: 'custom',
-          path: ['paidTo'],
-          message: 'Paid to is required when a deposit is paid.',
-        });
-      }
     }
   });
 

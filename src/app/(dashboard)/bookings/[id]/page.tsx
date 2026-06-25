@@ -1,6 +1,11 @@
 import BookingDetails from '@/components/bookings/booking-details';
-import { canReviewBookingRequest } from '@/features/bookings/permissions';
+import {
+  canEditBooking,
+  canResubmitBookingForApproval,
+  canReviewBookingRequest,
+} from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
+import { BookingStatus } from '@/generated/prisma/enums';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 import { notFound } from 'next/navigation';
@@ -23,6 +28,15 @@ async function BookingDetailsPage({ params }: Props) {
     <BookingDetails
       booking={booking}
       canReview={canReviewBookingRequest(currentUser)}
+      canEdit={canEditBooking(
+        currentUser,
+        booking.createdById,
+        booking.status,
+      )}
+      canResubmit={
+        booking.status === BookingStatus.NEEDS_MORE_INFO &&
+        canResubmitBookingForApproval(currentUser, booking.createdById)
+      }
     />
   );
 }
