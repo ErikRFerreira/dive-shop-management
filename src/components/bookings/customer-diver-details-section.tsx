@@ -67,10 +67,7 @@ function CustomerFields({
           {...form.register(`${prefix}.weChatId`)}
         />
       </BookingFormField>
-      <BookingFormField
-        id={`${prefix}.whatsAppNumber`}
-        label="WhatsApp number"
-      >
+      <BookingFormField id={`${prefix}.whatsAppNumber`} label="WhatsApp number">
         <Input
           id={`${prefix}.whatsAppNumber`}
           {...contactInputProps}
@@ -124,7 +121,10 @@ function CustomerFields({
   );
 }
 
-function EquipmentFields({ form, index }: Pick<CustomerFieldsProps, 'form' | 'index'>) {
+function EquipmentFields({
+  form,
+  index,
+}: Pick<CustomerFieldsProps, 'form' | 'index'>) {
   const prefix = `customers.${index}` as const;
 
   return (
@@ -143,7 +143,10 @@ function EquipmentFields({ form, index }: Pick<CustomerFieldsProps, 'form' | 'in
   );
 }
 
-function CustomerNotesField({ form, index }: Pick<CustomerFieldsProps, 'form' | 'index'>) {
+function CustomerNotesField({
+  form,
+  index,
+}: Pick<CustomerFieldsProps, 'form' | 'index'>) {
   const prefix = `customers.${index}` as const;
 
   return (
@@ -230,7 +233,6 @@ function FunDiverFields({
       <BookingFormField
         id={`${prefix}.lastDiveDate`}
         label="Last dive date"
-        required
         error={getFieldError(`${prefix}.lastDiveDate`)}
       >
         <Input
@@ -266,7 +268,8 @@ export function CustomerDiverDetailsSection({
     control: form.control,
     name: 'customers',
   });
-  const customers = useWatch({ control: form.control, name: 'customers' }) ?? [];
+  const customers =
+    useWatch({ control: form.control, name: 'customers' }) ?? [];
   const customerError = getFieldError('customers');
   const hasPrimaryContactMethodError =
     customerError === primaryContactMethodError;

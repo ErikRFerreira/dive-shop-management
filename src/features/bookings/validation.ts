@@ -303,7 +303,6 @@ export const submitBookingIntakeSchema =
           label: string;
         }> = [
           { field: 'certificationLevel', label: 'Certification level' },
-          { field: 'lastDiveDate', label: 'Last dive date' },
           { field: 'divesLogged', label: 'Dives logged' },
         ];
 
@@ -318,7 +317,6 @@ export const submitBookingIntakeSchema =
         });
       });
     }
-
   });
 
 function formatValidationErrors(

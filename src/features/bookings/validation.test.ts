@@ -53,7 +53,11 @@ test('allows an incomplete draft when raw booking text exists', () => {
     'draft',
   );
 
-  expect(result).toMatchObject({ success: true, fieldErrors: {}, formErrors: [] });
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
 });
 
 test('requires a booking ID and nonblank reason when requesting more information', () => {
@@ -88,12 +92,17 @@ test('blocks a completely empty draft', () => {
 
   expect(result).toMatchObject({
     success: false,
-    formErrors: ['Enter at least one booking, activity, or customer detail before saving a draft.'],
+    formErrors: [
+      'Enter at least one booking, activity, or customer detail before saving a draft.',
+    ],
   });
 });
 
 test('requires an activity and its requested date for submission', () => {
-  const result = validateBookingIntake(validSubmitValues({ activities: [] }), 'submit');
+  const result = validateBookingIntake(
+    validSubmitValues({ activities: [] }),
+    'submit',
+  );
 
   expect(result).toMatchObject({
     success: false,
@@ -186,9 +195,6 @@ test('requires Fun Dive details for every entered customer', () => {
       'customers.1.certificationLevel': [
         'Certification level is required when the booking includes a Fun Dive.',
       ],
-      'customers.1.lastDiveDate': [
-        'Last dive date is required when the booking includes a Fun Dive.',
-      ],
       'customers.1.divesLogged': [
         'Dives logged is required when the booking includes a Fun Dive.',
       ],
@@ -215,7 +221,9 @@ test('requires a specialty course for each Specialty Course activity', () => {
   expect(result).toMatchObject({
     success: false,
     fieldErrors: {
-      'activities.0.specialtyCourse': ['Specialty course is required for this activity.'],
+      'activities.0.specialtyCourse': [
+        'Specialty course is required for this activity.',
+      ],
     },
   });
 });
@@ -296,5 +304,9 @@ test('accepts a valid multi-activity, multi-customer submission', () => {
     'submit',
   );
 
-  expect(result).toMatchObject({ success: true, fieldErrors: {}, formErrors: [] });
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
 });
