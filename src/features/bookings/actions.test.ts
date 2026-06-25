@@ -45,6 +45,7 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 import {
+  cancelBooking,
   markBookingNeedsMoreInfo,
   resubmitEditedBookingForApproval,
   resubmitBookingForApproval,
@@ -223,6 +224,112 @@ test('does not allow a Customer Service user to mark a booking as Needs More Inf
     formError: 'You do not have permission to request more information.',
   });
   expect(mocks.findUnique).not.toHaveBeenCalled();
+});
+
+test.each([
+  [UserRole.ADMIN, BookingStatus.PENDING_APPROVAL],
+  [UserRole.ADMIN, BookingStatus.NEEDS_MORE_INFO],
+  [UserRole.MANAGER, BookingStatus.PENDING_APPROVAL],
+] as const)('allows %s to cancel a %s booking', async (role, status) => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: `${role.toLowerCase()}-1`,
+    role,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status,
+  });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.updateMany).toHaveBeenCalledWith({
+    where: {
+      id: 'booking-1',
+      status,
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+    },
+  });
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1/review');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1/edit');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingActivity.deleteMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.deleteMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.deposit.delete).not.toHaveBeenCalled();
+});
+
+test('does not allow a Customer Service user to cancel a booking', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'You do not have permission to cancel this booking.',
+  });
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.updateMany).not.toHaveBeenCalled();
+});
+
+test.each([
+  BookingStatus.DRAFT,
+  BookingStatus.SCHEDULED,
+  BookingStatus.CANCELLED,
+] as const)('does not cancel a %s booking', async (status) => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status,
+  });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError:
+      'Only pending approval or needs more info bookings can be cancelled.',
+  });
+  expect(mocks.updateMany).not.toHaveBeenCalled();
+});
+
+test('returns a recoverable error when a cancellation update is stale', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL,
+  });
+  mocks.updateMany.mockResolvedValue({ count: 0 });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).resolves.toEqual({
+    formError: 'This booking was updated by another user. Refresh and try again.',
+  });
 });
 
 test('allows the owner to resubmit while preserving the stored reason', async () => {

@@ -1,5 +1,8 @@
 import { EMPTY_VALUE } from '@/components/bookings/booking-review-display';
-import { MarkNeedsMoreInfoForm } from '@/components/bookings/booking-workflow-forms';
+import {
+  CancelBookingForm,
+  MarkNeedsMoreInfoForm,
+} from '@/components/bookings/booking-workflow-forms';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,20 +12,27 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { BookingStatus } from '@/generated/prisma/enums';
 
 type BookingReviewSidebarProps = {
   bookingId: string;
   rawBookingText: string | null;
   missingInformation: string[];
-  isReviewable: boolean;
+  status: BookingStatus;
 };
 
 export function BookingReviewSidebar({
   bookingId,
   rawBookingText,
   missingInformation,
-  isReviewable,
+  status,
 }: BookingReviewSidebarProps) {
+  const canRequestMoreInfo = status === BookingStatus.PENDING_APPROVAL;
+  const canCancel =
+    status === BookingStatus.PENDING_APPROVAL ||
+    status === BookingStatus.NEEDS_MORE_INFO;
+  const hasDecisionActions = canRequestMoreInfo || canCancel;
+
   return (
     <aside className="space-y-6">
       <Card>
@@ -71,20 +81,22 @@ export function BookingReviewSidebar({
         <CardHeader>
           <CardTitle>Admin decision</CardTitle>
           <CardDescription>
-            {isReviewable
-              ? 'Decision actions will be enabled in a later issue.'
+            {hasDecisionActions
+              ? 'Review the booking and choose the appropriate workflow action.'
               : 'This booking is not currently pending admin review.'}
           </CardDescription>
         </CardHeader>
-        {isReviewable ? (
+        {hasDecisionActions ? (
           <CardContent className="grid gap-2">
-            <Button disabled type="button">
-              Approve
-            </Button>
-            <MarkNeedsMoreInfoForm bookingId={bookingId} />
-            <Button disabled type="button" variant="destructive">
-              Cancel / Reject
-            </Button>
+            {canRequestMoreInfo ? (
+              <Button disabled type="button">
+                Approve
+              </Button>
+            ) : null}
+            {canRequestMoreInfo ? (
+              <MarkNeedsMoreInfoForm bookingId={bookingId} />
+            ) : null}
+            {canCancel ? <CancelBookingForm bookingId={bookingId} /> : null}
           </CardContent>
         ) : null}
       </Card>

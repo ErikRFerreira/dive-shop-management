@@ -44,6 +44,11 @@ export const markBookingNeedsMoreInfoSchema = z.object({
     .min(1, 'A reason is required when requesting more information.'),
 });
 
+/** Validates the booking selected for a cancellation action. */
+export const cancelBookingSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+});
+
 /** Validates the booking selected for a resubmission action. */
 export const resubmitBookingForApprovalSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),

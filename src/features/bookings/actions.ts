@@ -26,6 +26,7 @@ import {
 import { assertCanTransitionBookingStatus } from './status';
 import type { BookingFormValues, NormalizedBookingFormValues } from './types';
 import {
+  cancelBookingSchema,
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
   updateBookingSchema,
@@ -767,6 +768,87 @@ export async function markBookingNeedsMoreInfo(
   }
 
   revalidateBookingWorkflowPaths(booking.id);
+  redirect(`/bookings/${booking.id}`);
+}
+
+/**
+ * Cancels a booking request during admin review without deleting any related
+ * booking, customer, diver, or deposit records.
+ */
+export async function cancelBooking(
+  _previousState: BookingWorkflowActionState,
+  formData: FormData,
+): Promise<BookingWorkflowActionState> {
+  const validation = cancelBookingSchema.safeParse({
+    bookingId: formData.get('bookingId'),
+  });
+
+  if (!validation.success) {
+    return getValidationErrors(validation.error);
+  }
+
+  const currentUser = await requireCurrentUser();
+
+  if (!canReviewBookingRequest(currentUser)) {
+    return {
+      formError: 'You do not have permission to cancel this booking.',
+    };
+  }
+
+  const booking = await db.bookingRequest.findUnique({
+    where: { id: validation.data.bookingId },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  if (!booking) {
+    return { formError: 'Booking request not found.' };
+  }
+
+  if (
+    booking.status !== BookingStatus.PENDING_APPROVAL &&
+    booking.status !== BookingStatus.NEEDS_MORE_INFO
+  ) {
+    return {
+      formError:
+        'Only pending approval or needs more info bookings can be cancelled.',
+    };
+  }
+
+  if (
+    !canPerformBookingStatusTransition(
+      currentUser,
+      booking.status,
+      BookingStatus.CANCELLED,
+    )
+  ) {
+    return {
+      formError: 'You do not have permission to cancel this booking.',
+    };
+  }
+
+  assertCanTransitionBookingStatus(booking.status, BookingStatus.CANCELLED);
+
+  const result = await db.bookingRequest.updateMany({
+    where: {
+      id: booking.id,
+      status: booking.status,
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+    },
+  });
+
+  if (result.count !== 1) {
+    return {
+      formError: 'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  revalidatePath('/schedule');
   redirect(`/bookings/${booking.id}`);
 }
 

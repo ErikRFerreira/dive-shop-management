@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 
 import {
+  cancelBooking,
   markBookingNeedsMoreInfo,
   resubmitBookingForApproval,
 } from '@/features/bookings/actions';
@@ -76,6 +77,27 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
       <ActionError message={state.formError} />
       <Button disabled={pending} type="submit" variant="outline">
         {pending ? 'Marking…' : 'Mark as Needs More Info'}
+      </Button>
+    </form>
+  );
+}
+
+/** Form used by administrators to cancel or reject a booking request. */
+export function CancelBookingForm({ bookingId }: BookingIdProps) {
+  const [state, formAction, pending] = useActionState(
+    cancelBooking,
+    initialBookingWorkflowActionState,
+  );
+
+  return (
+    <form action={formAction} className="grid gap-3">
+      <input name="bookingId" type="hidden" value={bookingId} />
+      <p className="text-sm text-muted-foreground">
+        Cancelling does not delete the booking, customer, diver, or deposit data.
+      </p>
+      <ActionError message={state.formError} />
+      <Button disabled={pending} type="submit" variant="destructive">
+        {pending ? 'Cancelling...' : 'Cancel / Reject'}
       </Button>
     </form>
   );
