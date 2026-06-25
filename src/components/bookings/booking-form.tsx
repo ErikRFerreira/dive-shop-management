@@ -20,7 +20,11 @@ import {
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import type { BookingFormValues } from '@/features/bookings/types';
-import { useBookingFormAutosave } from '@/features/bookings/use-booking-form-autosave';
+import {
+  getBookingEditFormAutosaveKey,
+  NEW_BOOKING_FORM_AUTOSAVE_KEY,
+  useBookingFormAutosave,
+} from '@/features/bookings/use-booking-form-autosave';
 import {
   validateBookingIntake,
   type BookingIntakeFieldErrors,
@@ -53,7 +57,12 @@ export function BookingForm(props: BookingFormProps) {
   const form = useForm<BookingFormValues>({
     defaultValues: editProps?.initialValues ?? bookingFormDefaultValues,
   });
-  const { clearAutosave } = useBookingFormAutosave(form, !isEdit);
+  const { clearAutosave } = useBookingFormAutosave(form, {
+    storageKey: editProps
+      ? getBookingEditFormAutosaveKey(editProps.bookingId)
+      : NEW_BOOKING_FORM_AUTOSAVE_KEY,
+    restoreBaseValues: editProps?.initialValues ?? bookingFormDefaultValues,
+  });
   const activities =
     useWatch({ control: form.control, name: 'activities' }) ?? [];
   const depositStatus = useWatch({
@@ -126,9 +135,7 @@ export function BookingForm(props: BookingFormProps) {
       return;
     }
 
-    if (!isEdit) {
-      clearAutosave();
-    }
+    clearAutosave();
     router.push(result.redirectTo);
   }
 
@@ -185,6 +192,7 @@ export function BookingForm(props: BookingFormProps) {
               submitBooking(values, 'resubmit'),
             )()
           }
+          clearAutosave={clearAutosave}
         />
       ) : (
         <BookingFormActions

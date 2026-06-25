@@ -1,6 +1,7 @@
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   renderHook,
   screen,
@@ -13,6 +14,7 @@ import { BookingForm } from '@/components/bookings/booking-form';
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
+  getBookingEditFormAutosaveKey,
   NEW_BOOKING_FORM_AUTOSAVE_KEY,
   useBookingFormAutosave,
 } from '@/features/bookings/use-booking-form-autosave';
@@ -119,10 +121,16 @@ test('displays restored nested enum select values in the booking form', async ()
   });
 });
 
-test('uses supplied values in edit mode without restoring new-booking autosave', () => {
+test('uses edit-specific autosave in edit mode without restoring new-booking autosave', async () => {
+  const editAutosaveKey = getBookingEditFormAutosaveKey('booking-1');
+
   window.localStorage.setItem(
     NEW_BOOKING_FORM_AUTOSAVE_KEY,
     JSON.stringify({ rawBookingText: 'Unsaved new booking' }),
+  );
+  window.localStorage.setItem(
+    editAutosaveKey,
+    JSON.stringify({ rawBookingText: 'Unsaved edit for this booking' }),
   );
 
   render(
@@ -154,6 +162,14 @@ test('uses supplied values in edit mode without restoring new-booking autosave',
     />,
   );
 
+  await waitFor(() => {
+    expect(
+      document.querySelector<HTMLTextAreaElement>(
+        'textarea[name="rawBookingText"]',
+      )?.value,
+    ).toBe('Unsaved edit for this booking');
+  });
+
   expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
   const editForm = screen
     .getByRole('button', { name: 'Save Changes' })
@@ -161,6 +177,36 @@ test('uses supplied values in edit mode without restoring new-booking autosave',
 
   expect(editForm?.textContent).not.toContain('Save Draft');
   expect(editForm?.textContent).toContain('Submit for Approval');
+});
+
+test('persists edit mode changes to the booking-specific autosave key', async () => {
+  const editAutosaveKey = getBookingEditFormAutosaveKey('booking-1');
+
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.DRAFT}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        rawBookingText: 'Saved booking',
+      }}
+    />,
+  );
+
+  fireEvent.change(
+    document.querySelector<HTMLTextAreaElement>(
+      'textarea[name="rawBookingText"]',
+    )!,
+    { target: { value: 'Temporary edit' } },
+  );
+
+  await waitFor(() => {
+    expect(
+      JSON.parse(window.localStorage.getItem(editAutosaveKey) ?? '{}'),
+    ).toMatchObject({ rawBookingText: 'Temporary edit' });
+  });
+  expect(window.localStorage.getItem(NEW_BOOKING_FORM_AUTOSAVE_KEY)).toBeNull();
 });
 
 test('shows resubmit action only for editable Needs More Info bookings', () => {

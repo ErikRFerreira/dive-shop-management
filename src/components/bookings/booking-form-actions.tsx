@@ -25,6 +25,7 @@ type EditBookingFormActionsProps = SharedBookingFormActionsProps & {
   onSaveChanges: () => void;
   onSubmitForApproval: () => void;
   onResubmitForApproval: () => void;
+  clearAutosave: () => void;
   cancelHref: string;
 };
 
@@ -57,7 +58,7 @@ export function BookingFormActions({
         <Button asChild type="button" variant="outline">
           <Link
             href={props.mode === 'edit' ? props.cancelHref : '/bookings'}
-            onClick={props.mode === 'create' ? props.clearAutosave : undefined}
+            onClick={props.clearAutosave}
           >
             Cancel
           </Link>
