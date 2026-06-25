@@ -9,6 +9,7 @@ import {
   resubmitBookingForApproval,
 } from '@/features/bookings/actions';
 import type { BookingWorkflowActionState } from '@/features/bookings/actions';
+import { BookingStatus } from '@/generated/prisma/enums';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +20,11 @@ type BookingIdProps = {
 
 type ApproveBookingFormProps = BookingIdProps & {
   defaultAdminNotes?: string | null;
+};
+
+type CancelBookingFormProps = BookingIdProps & {
+  defaultAdminNotes?: string | null;
+  status: BookingStatus;
 };
 
 const initialBookingWorkflowActionState: BookingWorkflowActionState = {};
@@ -45,6 +51,9 @@ export function ApproveBookingForm({
     <form action={formAction} className="grid gap-3">
       <input name="bookingId" type="hidden" value={bookingId} />
       <div className="grid gap-2">
+        <label className="text-sm font-medium" htmlFor="admin-notes">
+          Admin notes
+        </label>
         <Textarea
           defaultValue={defaultAdminNotes ?? ''}
           id="admin-notes"
@@ -127,22 +136,47 @@ export function MarkNeedsMoreInfoForm({ bookingId }: BookingIdProps) {
 }
 
 /** Form used by administrators to cancel or reject a booking request. */
-export function CancelBookingForm({ bookingId }: BookingIdProps) {
+export function CancelBookingForm({
+  bookingId,
+  defaultAdminNotes,
+  status,
+}: CancelBookingFormProps) {
   const [state, formAction, pending] = useActionState(
     cancelBooking,
     initialBookingWorkflowActionState,
   );
+  const isScheduled = status === BookingStatus.SCHEDULED;
 
   return (
     <form action={formAction} className="grid gap-3">
       <input name="bookingId" type="hidden" value={bookingId} />
+      {isScheduled ? (
+        <div className="grid gap-2">
+          <label
+            className="text-sm font-medium"
+            htmlFor="cancel-admin-notes"
+          >
+            Admin notes
+          </label>
+          <Textarea
+            defaultValue={defaultAdminNotes ?? ''}
+            id="cancel-admin-notes"
+            name="adminNotes"
+            placeholder="Add cancellation notes for the booking record."
+          />
+        </div>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         Cancelling does not delete the booking, customer, diver, or deposit
         data.
       </p>
       <ActionError message={state.formError} />
       <Button disabled={pending} type="submit" variant="destructive">
-        {pending ? 'Cancelling...' : 'Cancel / Reject'}
+        {pending
+          ? 'Cancelling...'
+          : isScheduled
+            ? 'Cancel Scheduled Booking'
+            : 'Cancel / Reject'}
       </Button>
     </form>
   );

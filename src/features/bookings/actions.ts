@@ -606,11 +606,13 @@ export async function markBookingNeedsMoreInfo(
 }
 
 /**
- * Cancels a booking request during admin review without deleting any related
- * booking, customer, diver, or deposit records.
+ * Cancels a booking request without deleting any related booking, customer,
+ * diver, or deposit records.
  *
- * Only pending approval and Needs More Info bookings can be cancelled by users
- * with review permission.
+ * Pending Approval and Needs More Info bookings are removed from the review
+ * workflow with a status update. Scheduled bookings are unpublished from the
+ * internal schedule in the same transaction as the status change, so a booking
+ * cannot remain scheduled after its ScheduleItem is removed.
  *
  * @param _previousState - Previous form action state supplied by React.
  * @param formData - Form payload containing the `bookingId` to cancel.
@@ -624,6 +626,7 @@ export async function cancelBooking(
 ): Promise<BookingWorkflowActionState> {
   const validation = cancelBookingSchema.safeParse({
     bookingId: formData.get('bookingId'),
+    adminNotes: formData.get('adminNotes'),
   });
 
   if (!validation.success) {
@@ -643,6 +646,12 @@ export async function cancelBooking(
     select: {
       id: true,
       status: true,
+      adminNotes: true,
+      scheduleItem: {
+        select: {
+          id: true,
+        },
+      },
     },
   });
 
@@ -652,11 +661,12 @@ export async function cancelBooking(
 
   if (
     booking.status !== BookingStatus.PENDING_APPROVAL &&
-    booking.status !== BookingStatus.NEEDS_MORE_INFO
+    booking.status !== BookingStatus.NEEDS_MORE_INFO &&
+    booking.status !== BookingStatus.SCHEDULED
   ) {
     return {
       formError:
-        'Only pending approval or needs more info bookings can be cancelled.',
+        'Only pending approval, needs more info, or scheduled bookings can be cancelled.',
     };
   }
 
@@ -674,14 +684,53 @@ export async function cancelBooking(
 
   assertCanTransitionBookingStatus(booking.status, BookingStatus.CANCELLED);
 
+  const adminNotes = validation.data.adminNotes;
+  const updateData = {
+    status: BookingStatus.CANCELLED,
+    ...(adminNotes !== null ? { adminNotes } : {}),
+  };
+
+  if (booking.status === BookingStatus.SCHEDULED) {
+    const transactionError = await db.$transaction(async (transaction) => {
+      const result = await transaction.bookingRequest.updateMany({
+        where: {
+          id: booking.id,
+          status: BookingStatus.SCHEDULED,
+        },
+        data: updateData,
+      });
+
+      if (result.count !== 1) {
+        return {
+          formError:
+            'This booking was updated by another user. Refresh and try again.',
+        };
+      }
+
+      await transaction.scheduleItem.deleteMany({
+        where: {
+          bookingRequestId: booking.id,
+        },
+      });
+
+      return null;
+    });
+
+    if (transactionError) {
+      return transactionError;
+    }
+
+    revalidateBookingWorkflowPaths(booking.id);
+    revalidateSchedulePath();
+    redirect(`/bookings/${booking.id}`);
+  }
+
   const result = await db.bookingRequest.updateMany({
     where: {
       id: booking.id,
       status: booking.status,
     },
-    data: {
-      status: BookingStatus.CANCELLED,
-    },
+    data: updateData,
   });
 
   if (result.count !== 1) {

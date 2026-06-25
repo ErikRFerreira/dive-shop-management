@@ -55,7 +55,12 @@ test('shows an inline error and blocks whitespace-only reasons', () => {
 });
 
 test('shows cancellation preservation helper text', () => {
-  render(<CancelBookingForm bookingId="booking-1" />);
+  render(
+    <CancelBookingForm
+      bookingId="booking-1"
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
 
   expect(
     screen.getByText(
@@ -65,9 +70,38 @@ test('shows cancellation preservation helper text', () => {
 });
 
 test('submits cancellation through the workflow action', () => {
-  render(<CancelBookingForm bookingId="booking-1" />);
+  render(
+    <CancelBookingForm
+      bookingId="booking-1"
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
 
   const button = screen.getByRole('button', { name: 'Cancel / Reject' });
+  const form = button.closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  expect(mocks.cancelBooking).toHaveBeenCalled();
+});
+
+test('submits scheduled cancellation with optional admin notes', () => {
+  render(
+    <CancelBookingForm
+      bookingId="booking-1"
+      defaultAdminNotes="Approved for morning schedule."
+      status={BookingStatus.SCHEDULED}
+    />,
+  );
+
+  expect((screen.getByLabelText('Admin notes') as HTMLTextAreaElement).value).toBe(
+    'Approved for morning schedule.',
+  );
+  const button = screen.getByRole('button', {
+    name: 'Cancel Scheduled Booking',
+  });
   const form = button.closest('form');
 
   expect(form).not.toBeNull();
@@ -136,5 +170,23 @@ test('shows approval in the review sidebar only for approvers on pending booking
     />,
   );
 
+  expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
+});
+
+test('shows cancellation in the review sidebar for scheduled bookings', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes="Approved for morning schedule."
+      canApprove
+      missingInformation={[]}
+      rawBookingText={null}
+      status={BookingStatus.SCHEDULED}
+    />,
+  );
+
+  expect(
+    screen.queryByRole('button', { name: 'Cancel Scheduled Booking' }),
+  ).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
 });

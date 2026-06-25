@@ -35,7 +35,8 @@ export function BookingReviewSidebar({
   const canRequestMoreInfo = status === BookingStatus.PENDING_APPROVAL;
   const canCancel =
     status === BookingStatus.PENDING_APPROVAL ||
-    status === BookingStatus.NEEDS_MORE_INFO;
+    status === BookingStatus.NEEDS_MORE_INFO ||
+    status === BookingStatus.SCHEDULED;
   const hasDecisionActions =
     canApprovePendingBooking || canRequestMoreInfo || canCancel;
 
@@ -107,7 +108,13 @@ export function BookingReviewSidebar({
             {canRequestMoreInfo ? (
               <MarkNeedsMoreInfoForm bookingId={bookingId} />
             ) : null}
-            {canCancel ? <CancelBookingForm bookingId={bookingId} /> : null}
+            {canCancel ? (
+              <CancelBookingForm
+                bookingId={bookingId}
+                defaultAdminNotes={adminNotes}
+                status={status}
+              />
+            ) : null}
           </CardContent>
         ) : null}
       </Card>

@@ -47,6 +47,13 @@ export const markBookingNeedsMoreInfoSchema = z.object({
 /** Validates the booking selected for a cancellation action. */
 export const cancelBookingSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  adminNotes: z.preprocess(
+    (value) => (typeof value === 'string' ? value : ''),
+    z
+      .string()
+      .trim()
+      .transform((value) => value || null),
+  ),
 });
 
 /** Validates the booking selected for the admin approval and scheduling step. */
