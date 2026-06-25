@@ -1,4 +1,9 @@
-/** Select options and display labels used by booking intake forms. */
+/**
+ * Purpose: This module contains constants and utility functions for booking form options.
+ *
+ * @module features/bookings/form-options
+ *
+ */
 
 import {
   ActivityType,
@@ -14,6 +19,12 @@ export const currencyOptions = Object.values(Currency);
 export const depositStatusOptions = Object.values(DepositStatus);
 export const preferredLanguageOptions = Object.values(PreferredLanguage);
 
+/**
+ * Formats a string value to a more human-readable label by capitalizing the first letter of each word and replacing underscores with spaces.
+ *
+ * @param value - The string value to format.
+ * @returns The formatted label or '—' if the value is null or undefined.
+ */
 export function formatEnumLabel(value: string | null | undefined) {
   if (!value) return '—';
 

@@ -6,17 +6,32 @@
 
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
-import { BookingStatus, Currency, DepositStatus } from '@/generated/prisma/enums';
-import {
-  hasMeaningfulDeposit,
-  normalizeBookingFormValues,
-} from '@/features/bookings/form-mappers';
+import { BookingStatus } from '@/generated/prisma/enums';
+import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
 
 import {
+  getValidationErrors,
+  type BookingWorkflowActionState,
+  type CreateBookingActionResult,
+  type UpdateBookingActionResult,
+} from './action-results';
+import {
+  revalidateBookingListPath,
+  revalidateBookingWorkflowPaths,
+  revalidateSchedulePath,
+} from './cache';
+import {
+  createBookingRequestWithIntake,
+  type EditableBooking,
+  loadEditableBooking,
+  updateBookingRequestWithIntake,
+} from './mutations';
+import {
+  canApproveBookingRequest,
   canCreateBookingRequest,
   canEditBooking,
   canPerformBookingStatusTransition,
@@ -24,97 +39,29 @@ import {
   canReviewBookingRequest,
 } from './permissions';
 import { assertCanTransitionBookingStatus } from './status';
-import type { BookingFormValues, NormalizedBookingFormValues } from './types';
+import { validateStoredBookingForSubmission } from './submission-validation';
+import type { BookingFormValues } from './types';
 import {
+  approveBookingSchema,
+  cancelBookingSchema,
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
   updateBookingSchema,
   validateBookingIntake,
-  type BookingIntakeFieldErrors,
 } from './validation';
-import { redirect } from 'next/navigation';
+
+export type {
+  BookingWorkflowActionState,
+  CreateBookingActionResult,
+  UpdateBookingActionResult,
+} from './action-results';
 
 /**
- * Result returned to the intake form after a booking creation attempt.
+ * Persists one booking request and its related intake records atomically.
  *
- * @remarks Successful actions revalidate the booking list and return its path
- * so the client can clear browser-only autosave before navigating.
+ * @param status - The workflow status assigned when the booking is created.
+ * @returns The validation intent based on the booking status.
  */
-export type CreateBookingActionResult =
-  | { success: true; redirectTo: '/bookings' }
-  | {
-      success: false;
-      fieldErrors: BookingIntakeFieldErrors;
-      formError?: string;
-    };
-
-/** Result returned after an existing booking has been saved. */
-export type UpdateBookingActionResult =
-  | { success: true; redirectTo: `/bookings/${string}` }
-  | {
-      success: false;
-      fieldErrors: BookingIntakeFieldErrors;
-      formError?: string;
-    };
-
-/** Result shape consumed by the focused booking workflow forms. */
-export type BookingWorkflowActionState = {
-  fieldErrors?: Record<string, string[]>;
-  formError?: string;
-};
-
-function getValidationErrors(error: {
-  flatten: () => {
-    fieldErrors: Record<string, string[] | undefined>;
-    formErrors: string[];
-  };
-}): BookingWorkflowActionState {
-  const flattened = error.flatten();
-  const fieldErrors = Object.fromEntries(
-    Object.entries(flattened.fieldErrors).filter(
-      (entry): entry is [string, string[]] => entry[1] !== undefined,
-    ),
-  );
-
-  return {
-    fieldErrors,
-    formError: flattened.formErrors[0],
-  };
-}
-
-function revalidateBookingWorkflowPaths(bookingId: string) {
-  revalidatePath('/bookings');
-  revalidatePath(`/bookings/${bookingId}`);
-  revalidatePath(`/bookings/${bookingId}/review`);
-  revalidatePath(`/bookings/${bookingId}/edit`);
-}
-
-async function loadEditableBooking(bookingId: string) {
-  return db.bookingRequest.findUnique({
-    where: { id: bookingId },
-    select: {
-      id: true,
-      status: true,
-      createdById: true,
-      customers: {
-        select: {
-          customerId: true,
-        },
-      },
-      deposits: {
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          id: true,
-        },
-      },
-    },
-  });
-}
-
-type EditableBooking = NonNullable<Awaited<ReturnType<typeof loadEditableBooking>>>;
-
 function getEditSaveValidationIntent(status: BookingStatus) {
   return status === BookingStatus.PENDING_APPROVAL ? 'submit' : 'draft';
 }
@@ -128,6 +75,13 @@ type UpdateEditableBookingOptions = {
   requireResubmitPermission?: boolean;
 };
 
+/**
+ * Validates that the submitted customer IDs match the linked customer IDs for the booking.
+ *
+ * @param booking - The editable booking object containing the linked customer IDs.
+ * @param bookingValues - The normalized booking form values containing the submitted customer IDs.
+ * @returns An UpdateBookingActionResult indicating success or failure, or null if validation passes.
+ */
 function validateSubmittedCustomerIds(
   booking: EditableBooking,
   bookingValues: ReturnType<typeof normalizeBookingFormValues>,
@@ -155,6 +109,15 @@ function validateSubmittedCustomerIds(
   };
 }
 
+/**
+ * Updates an editable booking and the intake records managed by the booking form.
+ *
+ * @param bookingId - The ID of the booking request to update.
+ * @param values - The browser-safe booking intake values to normalize, validate, and persist.
+ * @param options - Optional parameters for expected status, next status, validation intent, and error messages.
+ * @returns - A validation, authorization, or stale-update failure result;
+ * otherwise the booking detail path for client-side navigation.
+ */
 async function updateEditableBooking(
   bookingId: string,
   values: BookingFormValues,
@@ -198,12 +161,12 @@ async function updateEditableBooking(
   );
   const canTransition =
     !options.nextStatus ||
-    (canPerformBookingStatusTransition(
+    canPerformBookingStatusTransition(
       currentUser,
       booking.status,
       options.nextStatus,
     ) ||
-      (booking.status === BookingStatus.DRAFT && canEdit));
+    (booking.status === BookingStatus.DRAFT && canEdit);
   const canResubmit =
     !options.requireResubmitPermission ||
     canResubmitBookingForApproval(currentUser, booking.createdById);
@@ -241,138 +204,18 @@ async function updateEditableBooking(
     return customerIdError;
   }
 
-  const didUpdate = await db.$transaction(async (transaction) => {
-    const firstActivity = bookingValues.activities[0];
-    const updateResult = await transaction.bookingRequest.updateMany({
-      where: {
-        id: booking.id,
-        status: booking.status,
-      },
-      data: {
-        status: options.nextStatus,
-        activityType: firstActivity?.activityType ?? null,
-        specialtyCourse: firstActivity?.specialtyCourse ?? null,
-        source: bookingValues.source,
-        requestedDate: firstActivity?.requestedDate ?? null,
-        requestedTime: firstActivity?.requestedTime ?? null,
-        numberOfPeople: bookingValues.numberOfPeople,
-        referrerName: bookingValues.referrerName,
-        notes: bookingValues.rawBookingText,
-        internalNotes: bookingValues.internalNotes,
-      },
-    });
-
-    if (updateResult.count !== 1) {
-      return false;
-    }
-
-    await transaction.bookingActivity.deleteMany({
-      where: { bookingRequestId: booking.id },
-    });
-
-    if (bookingValues.activities.length > 0) {
-      await transaction.bookingActivity.createMany({
-        data: bookingValues.activities.map((activity, sortOrder) => ({
-          bookingRequestId: booking.id,
-          activityType: activity.activityType,
-          specialtyCourse: activity.specialtyCourse,
-          requestedDate: activity.requestedDate,
-          requestedTime: activity.requestedTime,
-          notes: activity.notes,
-          sortOrder,
-        })),
-      });
-    }
-
-    const customerIds = await Promise.all(
-      bookingValues.customers.map(async (bookingCustomer) => {
-        const customerData = {
-          fullName: bookingCustomer.customerName,
-          chineseName: bookingCustomer.chineseName,
-          weChatId: bookingCustomer.weChatId,
-          whatsAppNumber: bookingCustomer.whatsAppNumber,
-          email: bookingCustomer.email,
-          phone: bookingCustomer.phone,
-          preferredLanguage: bookingCustomer.preferredLanguage,
-        };
-
-        if (bookingCustomer.customerId) {
-          await transaction.customer.update({
-            where: { id: bookingCustomer.customerId },
-            data: customerData,
-          });
-          return bookingCustomer.customerId;
-        }
-
-        const customer = await transaction.customer.create({
-          data: customerData,
-        });
-        return customer.id;
-      }),
-    );
-
-    await transaction.bookingCustomer.deleteMany({
-      where: { bookingRequestId: booking.id },
-    });
-
-    if (bookingValues.customers.length > 0) {
-      await transaction.bookingCustomer.createMany({
-        data: bookingValues.customers.map((bookingCustomer, index) => ({
-          bookingRequestId: booking.id,
-          customerId: customerIds[index],
-          role: bookingCustomer.role,
-          hotelAtBooking: bookingCustomer.hotelAtBooking,
-          equipmentNeeded: bookingCustomer.equipmentNeeded,
-          notes: bookingCustomer.customerNotes,
-          certificationAgency: bookingCustomer.certificationAgency,
-          certificationLevel: bookingCustomer.certificationLevel,
-          lastDiveAt: bookingCustomer.lastDiveDate,
-          heightCm: bookingCustomer.heightCm,
-          weightKg: bookingCustomer.weightKg,
-          shoeSize: bookingCustomer.shoeSize,
-          divesLogged: bookingCustomer.divesLogged,
-        })),
-      });
-    }
-
-    const newestDeposit = booking.deposits[0];
-    if (hasMeaningfulDeposit(bookingValues)) {
-      const depositData = {
-        amount: bookingValues.amount,
-        status: bookingValues.depositStatus,
-        currency: bookingValues.currency,
-        paidTo: bookingValues.paidTo,
-        paymentMethod: bookingValues.paymentMethod,
-        notes: bookingValues.paymentNotes,
-      };
-
-      if (newestDeposit) {
-        await transaction.deposit.update({
-          where: { id: newestDeposit.id },
-          data: depositData,
-        });
-      } else {
-        await transaction.deposit.create({
-          data: {
-            bookingRequestId: booking.id,
-            ...depositData,
-          },
-        });
-      }
-    } else if (newestDeposit) {
-      await transaction.deposit.delete({
-        where: { id: newestDeposit.id },
-      });
-    }
-
-    return true;
-  });
+  const didUpdate = await updateBookingRequestWithIntake(
+    booking,
+    bookingValues,
+    options.nextStatus,
+  );
 
   if (!didUpdate) {
     return {
       success: false,
       fieldErrors: {},
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 
@@ -417,84 +260,9 @@ async function createBooking(
     };
   }
 
-  await db.$transaction(async (transaction) => {
-    const firstActivity = bookingValues.activities[0];
-    const bookingRequest = await transaction.bookingRequest.create({
-      data: {
-        status,
-        activityType: firstActivity?.activityType ?? null,
-        specialtyCourse: firstActivity?.specialtyCourse ?? null,
-        source: bookingValues.source,
-        requestedDate: firstActivity?.requestedDate ?? null,
-        requestedTime: firstActivity?.requestedTime ?? null,
-        numberOfPeople: bookingValues.numberOfPeople,
-        referrerName: bookingValues.referrerName,
-        notes: bookingValues.rawBookingText,
-        internalNotes: bookingValues.internalNotes,
-        createdById: currentUser.id,
-        activities: {
-          create: bookingValues.activities.map((activity, sortOrder) => ({
-            activityType: activity.activityType,
-            specialtyCourse: activity.specialtyCourse,
-            requestedDate: activity.requestedDate,
-            requestedTime: activity.requestedTime,
-            notes: activity.notes,
-            sortOrder,
-          })),
-        },
-      },
-    });
+  await createBookingRequestWithIntake(bookingValues, status, currentUser.id);
 
-    await Promise.all(
-      bookingValues.customers.map(async (bookingCustomer) => {
-        const customer = await transaction.customer.create({
-          data: {
-            fullName: bookingCustomer.customerName,
-            chineseName: bookingCustomer.chineseName,
-            weChatId: bookingCustomer.weChatId,
-            whatsAppNumber: bookingCustomer.whatsAppNumber,
-            email: bookingCustomer.email,
-            phone: bookingCustomer.phone,
-            preferredLanguage: bookingCustomer.preferredLanguage,
-          },
-        });
-
-        await transaction.bookingCustomer.create({
-          data: {
-            bookingRequestId: bookingRequest.id,
-            customerId: customer.id,
-            role: bookingCustomer.role,
-            hotelAtBooking: bookingCustomer.hotelAtBooking,
-            equipmentNeeded: bookingCustomer.equipmentNeeded,
-            notes: bookingCustomer.customerNotes,
-            certificationAgency: bookingCustomer.certificationAgency,
-            certificationLevel: bookingCustomer.certificationLevel,
-            lastDiveAt: bookingCustomer.lastDiveDate,
-            heightCm: bookingCustomer.heightCm,
-            weightKg: bookingCustomer.weightKg,
-            shoeSize: bookingCustomer.shoeSize,
-            divesLogged: bookingCustomer.divesLogged,
-          },
-        });
-      }),
-    );
-
-    if (hasMeaningfulDeposit(bookingValues)) {
-      await transaction.deposit.create({
-        data: {
-          bookingRequestId: bookingRequest.id,
-          amount: bookingValues.amount,
-          status: bookingValues.depositStatus,
-          currency: bookingValues.currency,
-          paidTo: bookingValues.paidTo,
-          paymentMethod: bookingValues.paymentMethod,
-          notes: bookingValues.paymentNotes,
-        },
-      });
-    }
-  });
-
-  revalidatePath('/bookings');
+  revalidateBookingListPath();
   return { success: true, redirectTo: '/bookings' };
 }
 
@@ -528,6 +296,11 @@ export async function submitBookingForApproval(
  * Updates an editable booking and the intake records managed by the booking form.
  * The action deliberately leaves the booking status and Needs More Info reason
  * unchanged; returning a booking for approval remains a separate workflow step.
+ *
+ * @param bookingId - Booking request to update.
+ * @param values - Browser-safe booking intake values to normalize, validate, and persist.
+ * @returns A validation, authorization, or stale-update failure result; otherwise
+ * the booking detail path for client-side navigation.
  */
 export async function updateBooking(
   bookingId: string,
@@ -536,7 +309,15 @@ export async function updateBooking(
   return updateEditableBooking(bookingId, values);
 }
 
-/** Saves a draft edit and atomically submits it for administrative review. */
+/**
+ * Saves edits to a draft booking and atomically moves it into the pending
+ * approval queue.
+ *
+ * @param bookingId - Draft booking request to update and submit.
+ * @param values - Browser-safe booking intake values to validate with submit rules.
+ * @returns A validation, authorization, invalid-status, or stale-update failure
+ * result; otherwise the booking detail path for client-side navigation.
+ */
 export async function submitEditedBookingForApproval(
   bookingId: string,
   values: BookingFormValues,
@@ -550,7 +331,17 @@ export async function submitEditedBookingForApproval(
   });
 }
 
-/** Saves a Needs More Info edit and atomically returns it for review. */
+/**
+ * Saves edits to a Needs More Info booking and atomically returns it to pending
+ * approval.
+ *
+ * The stored Needs More Info reason is preserved for reviewer context.
+ *
+ * @param bookingId - Needs More Info booking request to update and resubmit.
+ * @param values - Browser-safe booking intake values to validate with submit rules.
+ * @returns A validation, authorization, invalid-status, or stale-update failure
+ * result; otherwise the booking detail path for client-side navigation.
+ */
 export async function resubmitEditedBookingForApproval(
   bookingId: string,
   values: BookingFormValues,
@@ -559,132 +350,168 @@ export async function resubmitEditedBookingForApproval(
     expectedStatus: BookingStatus.NEEDS_MORE_INFO,
     nextStatus: BookingStatus.PENDING_APPROVAL,
     validationIntent: 'submit',
-    invalidStatusError: 'Only bookings needing more information can be resubmitted.',
+    invalidStatusError:
+      'Only bookings needing more information can be resubmitted.',
     permissionError: 'You do not have permission to resubmit this booking.',
     requireResubmitPermission: true,
   });
 }
 
-function currencyOrNull(value: string | null): Currency | null {
-  return value !== null && Object.values(Currency).includes(value as Currency)
-    ? (value as Currency)
-    : null;
-}
+/**
+ * Publishes a pending booking to the internal schedule.
+ *
+ * Approval is the admin review decision that moves a booking directly from
+ * Pending Approval to Scheduled for MVP 0.1. The booking status update and
+ * ScheduleItem creation must succeed in the same transaction so the system
+ * never stores a scheduled booking without a schedule row, or a schedule row
+ * for a booking that failed to leave the review queue.
+ *
+ * @param _previousState - Previous form action state supplied by React.
+ * @param formData - Form payload containing the `bookingId` to approve.
+ * @returns Field or form errors when validation, permission, status, duplicate
+ * schedule, or stale update checks fail. On success, revalidates booking and
+ * schedule paths and redirects to the booking detail page.
+ */
+export async function approveBooking(
+  _previousState: BookingWorkflowActionState,
+  formData: FormData,
+): Promise<BookingWorkflowActionState> {
+  const validation = approveBookingSchema.safeParse({
+    bookingId: formData.get('bookingId'),
+    adminNotes: formData.get('adminNotes'),
+  });
 
-function decimalToNumber(value: { toString: () => string } | number | null) {
-  if (value === null) return null;
+  if (!validation.success) {
+    return getValidationErrors(validation.error);
+  }
 
-  const number = Number(value.toString());
-  return Number.isFinite(number) ? number : null;
-}
+  const currentUser = await requireCurrentUser();
 
-function validateStoredBookingForSubmission(booking: {
-  activityType: NormalizedBookingFormValues['activities'][number]['activityType'];
-  specialtyCourse: string | null;
-  requestedDate: Date | null;
-  requestedTime: string | null;
-  numberOfPeople: number | null;
-  source: NormalizedBookingFormValues['source'];
-  referrerName: string | null;
-  notes: string | null;
-  internalNotes: string | null;
-  activities: Array<{
-    activityType: NormalizedBookingFormValues['activities'][number]['activityType'];
-    specialtyCourse: string | null;
-    requestedDate: Date | null;
-    requestedTime: string | null;
-    notes: string | null;
-  }>;
-  customers: Array<{
-    customerId: string;
-    role: NormalizedBookingFormValues['customers'][number]['role'];
-    hotelAtBooking: string | null;
-    equipmentNeeded: string | null;
-    notes: string | null;
-    certificationAgency: string | null;
-    certificationLevel: string | null;
-    lastDiveAt: Date | null;
-    heightCm: number | null;
-    weightKg: { toString: () => string } | number | null;
-    shoeSize: { toString: () => string } | number | null;
-    divesLogged: number | null;
-    customer: {
-      fullName: string | null;
-      chineseName: string | null;
-      weChatId: string | null;
-      whatsAppNumber: string | null;
-      email: string | null;
-      phone: string | null;
-      preferredLanguage: NormalizedBookingFormValues['customers'][number]['preferredLanguage'];
+  if (!canApproveBookingRequest(currentUser)) {
+    return {
+      formError: 'You do not have permission to approve this booking.',
     };
-  }>;
-  deposits: Array<{
-    amount: { toString: () => string } | number | null;
-    status: DepositStatus;
-    currency: string | null;
-    paidTo: string | null;
-    paymentMethod: string | null;
-    notes: string | null;
-  }>;
-}) {
-  const activities =
-    booking.activities.length > 0
-      ? booking.activities
-      : [
-          {
-            activityType: booking.activityType,
-            specialtyCourse: booking.specialtyCourse,
-            requestedDate: booking.requestedDate,
-            requestedTime: booking.requestedTime,
-            notes: null,
-          },
-        ];
-  const deposit = booking.deposits[0];
+  }
 
-  return validateBookingIntake(
-    {
-      rawBookingText: booking.notes,
-      activities: activities.map((activity) => ({
-        activityType: activity.activityType,
-        specialtyCourse: activity.specialtyCourse,
-        requestedDate: activity.requestedDate,
-        requestedTime: activity.requestedTime,
-        notes: activity.notes,
-      })),
-      numberOfPeople: booking.numberOfPeople,
-      source: booking.source,
-      referrerName: booking.referrerName,
-      internalNotes: booking.internalNotes,
-      customers: booking.customers.map((bookingCustomer) => ({
-        customerId: bookingCustomer.customerId,
-        role: bookingCustomer.role,
-        customerName: bookingCustomer.customer.fullName,
-        chineseName: bookingCustomer.customer.chineseName,
-        weChatId: bookingCustomer.customer.weChatId,
-        whatsAppNumber: bookingCustomer.customer.whatsAppNumber,
-        email: bookingCustomer.customer.email,
-        phone: bookingCustomer.customer.phone,
-        hotelAtBooking: bookingCustomer.hotelAtBooking,
-        equipmentNeeded: bookingCustomer.equipmentNeeded,
-        customerNotes: bookingCustomer.notes,
-        preferredLanguage: bookingCustomer.customer.preferredLanguage,
-        heightCm: bookingCustomer.heightCm,
-        weightKg: decimalToNumber(bookingCustomer.weightKg),
-        shoeSize: decimalToNumber(bookingCustomer.shoeSize),
-        certificationLevel: bookingCustomer.certificationLevel,
-        certificationAgency: bookingCustomer.certificationAgency,
-        lastDiveDate: bookingCustomer.lastDiveAt,
-        divesLogged: bookingCustomer.divesLogged,
-      })),
-      depositStatus: deposit?.status ?? DepositStatus.UNKNOWN,
-      amount: decimalToNumber(deposit?.amount ?? null),
-      currency: currencyOrNull(deposit?.currency ?? null),
-      paidTo: deposit?.paidTo ?? null,
-      paymentMethod: deposit?.paymentMethod ?? null,
-      paymentNotes: deposit?.notes ?? null,
+  const booking = await db.bookingRequest.findUnique({
+    where: { id: validation.data.bookingId },
+    select: {
+      id: true,
+      status: true,
+      requestedDate: true,
+      requestedTime: true,
+      activityType: true,
+      internalNotes: true,
+      adminNotes: true,
+      scheduleItem: {
+        select: {
+          id: true,
+        },
+      },
     },
-    'submit',
-  );
+  });
+
+  if (!booking) {
+    return { formError: 'Booking request not found.' };
+  }
+
+  if (booking.status !== BookingStatus.PENDING_APPROVAL) {
+    return {
+      formError: 'Only pending approval bookings can be approved.',
+    };
+  }
+
+  if (booking.scheduleItem) {
+    return {
+      formError: 'This booking already has a schedule item.',
+    };
+  }
+
+  if (booking.requestedDate === null) {
+    return {
+      formError: 'Requested date is required before approving a booking.',
+    };
+  }
+
+  if (booking.activityType === null) {
+    return {
+      formError: 'Activity type is required before approving a booking.',
+    };
+  }
+
+  const requestedDate = booking.requestedDate;
+  const activityType = booking.activityType;
+  const adminNotes = validation.data.adminNotes;
+  const scheduleNotes = adminNotes ?? booking.internalNotes;
+
+  if (
+    !canPerformBookingStatusTransition(
+      currentUser,
+      booking.status,
+      BookingStatus.SCHEDULED,
+    )
+  ) {
+    return {
+      formError: 'You do not have permission to approve this booking.',
+    };
+  }
+
+  assertCanTransitionBookingStatus(booking.status, BookingStatus.SCHEDULED);
+
+  const transactionError = await db.$transaction(async (transaction) => {
+    const existingScheduleItem = await transaction.scheduleItem.findUnique({
+      where: {
+        bookingRequestId: booking.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingScheduleItem) {
+      return {
+        formError: 'This booking already has a schedule item.',
+      };
+    }
+
+    const updateResult = await transaction.bookingRequest.updateMany({
+      where: {
+        id: booking.id,
+        status: BookingStatus.PENDING_APPROVAL,
+      },
+      data: {
+        status: BookingStatus.SCHEDULED,
+        adminNotes,
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      return {
+        formError:
+          'This booking was updated by another user. Refresh and try again.',
+      };
+    }
+
+    await transaction.scheduleItem.create({
+      data: {
+        bookingRequestId: booking.id,
+        date: requestedDate,
+        startTime: booking.requestedTime,
+        activityType,
+        scheduleNotes,
+      },
+    });
+
+    return null;
+  });
+
+  if (transactionError) {
+    return transactionError;
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  revalidateSchedulePath();
+  redirect(`/bookings/${booking.id}`);
 }
 
 /**
@@ -692,6 +519,12 @@ function validateStoredBookingForSubmission(booking: {
  *
  * The expected status is included in both the read and write path so a stale
  * form cannot overwrite a decision made by another reviewer.
+ *
+ * @param _previousState - Previous form action state supplied by React.
+ * @param formData - Form payload containing `bookingId` and `needsMoreInfoReason`.
+ * @returns Field or form errors when validation, permission, status, or stale
+ * update checks fail. On success, revalidates booking workflow paths and redirects
+ * to the booking detail page.
  */
 export async function markBookingNeedsMoreInfo(
   _previousState: BookingWorkflowActionState,
@@ -728,7 +561,8 @@ export async function markBookingNeedsMoreInfo(
 
   if (booking.status !== BookingStatus.PENDING_APPROVAL) {
     return {
-      formError: 'Only pending approval bookings can be marked as needing more information.',
+      formError:
+        'Only pending approval bookings can be marked as needing more information.',
     };
   }
 
@@ -762,7 +596,8 @@ export async function markBookingNeedsMoreInfo(
 
   if (result.count !== 1) {
     return {
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 
@@ -771,8 +606,157 @@ export async function markBookingNeedsMoreInfo(
 }
 
 /**
+ * Cancels a booking request without deleting any related booking, customer,
+ * diver, or deposit records.
+ *
+ * Pending Approval and Needs More Info bookings are removed from the review
+ * workflow with a status update. Scheduled bookings are unpublished from the
+ * internal schedule in the same transaction as the status change, so a booking
+ * cannot remain scheduled after its ScheduleItem is removed.
+ *
+ * @param _previousState - Previous form action state supplied by React.
+ * @param formData - Form payload containing the `bookingId` to cancel.
+ * @returns Field or form errors when validation, permission, status, or stale
+ * update checks fail. On success, revalidates booking and schedule paths and
+ * redirects to the booking detail page.
+ */
+export async function cancelBooking(
+  _previousState: BookingWorkflowActionState,
+  formData: FormData,
+): Promise<BookingWorkflowActionState> {
+  const validation = cancelBookingSchema.safeParse({
+    bookingId: formData.get('bookingId'),
+    adminNotes: formData.get('adminNotes'),
+  });
+
+  if (!validation.success) {
+    return getValidationErrors(validation.error);
+  }
+
+  const currentUser = await requireCurrentUser();
+
+  if (!canReviewBookingRequest(currentUser)) {
+    return {
+      formError: 'You do not have permission to cancel this booking.',
+    };
+  }
+
+  const booking = await db.bookingRequest.findUnique({
+    where: { id: validation.data.bookingId },
+    select: {
+      id: true,
+      status: true,
+      adminNotes: true,
+      scheduleItem: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) {
+    return { formError: 'Booking request not found.' };
+  }
+
+  if (
+    booking.status !== BookingStatus.PENDING_APPROVAL &&
+    booking.status !== BookingStatus.NEEDS_MORE_INFO &&
+    booking.status !== BookingStatus.SCHEDULED
+  ) {
+    return {
+      formError:
+        'Only pending approval, needs more info, or scheduled bookings can be cancelled.',
+    };
+  }
+
+  if (
+    !canPerformBookingStatusTransition(
+      currentUser,
+      booking.status,
+      BookingStatus.CANCELLED,
+    )
+  ) {
+    return {
+      formError: 'You do not have permission to cancel this booking.',
+    };
+  }
+
+  assertCanTransitionBookingStatus(booking.status, BookingStatus.CANCELLED);
+
+  const adminNotes = validation.data.adminNotes;
+  const updateData = {
+    status: BookingStatus.CANCELLED,
+    ...(adminNotes !== null ? { adminNotes } : {}),
+  };
+
+  if (booking.status === BookingStatus.SCHEDULED) {
+    const transactionError = await db.$transaction(async (transaction) => {
+      const result = await transaction.bookingRequest.updateMany({
+        where: {
+          id: booking.id,
+          status: BookingStatus.SCHEDULED,
+        },
+        data: updateData,
+      });
+
+      if (result.count !== 1) {
+        return {
+          formError:
+            'This booking was updated by another user. Refresh and try again.',
+        };
+      }
+
+      await transaction.scheduleItem.deleteMany({
+        where: {
+          bookingRequestId: booking.id,
+        },
+      });
+
+      return null;
+    });
+
+    if (transactionError) {
+      return transactionError;
+    }
+
+    revalidateBookingWorkflowPaths(booking.id);
+    revalidateSchedulePath();
+    redirect(`/bookings/${booking.id}`);
+  }
+
+  const result = await db.bookingRequest.updateMany({
+    where: {
+      id: booking.id,
+      status: booking.status,
+    },
+    data: updateData,
+  });
+
+  if (result.count !== 1) {
+    return {
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  revalidateSchedulePath();
+  redirect(`/bookings/${booking.id}`);
+}
+
+/**
  * Returns a booking to the pending approval queue after the requested details
  * have been addressed. The existing reason remains available for context.
+ *
+ * This standalone resubmit action validates the persisted booking data before
+ * changing status, so incomplete records cannot re-enter review.
+ *
+ * @param _previousState - Previous form action state supplied by React.
+ * @param formData - Form payload containing the `bookingId` to resubmit.
+ * @returns Field or form errors when validation, permission, status, stored
+ * booking completeness, or stale-update checks fail. On success, revalidates
+ * booking workflow paths and redirects to the booking detail page.
  */
 export async function resubmitBookingForApproval(
   _previousState: BookingWorkflowActionState,
@@ -829,7 +813,9 @@ export async function resubmitBookingForApproval(
     ) ||
     !canResubmitBookingForApproval(currentUser, booking.createdById)
   ) {
-    return { formError: 'You do not have permission to resubmit this booking.' };
+    return {
+      formError: 'You do not have permission to resubmit this booking.',
+    };
   }
 
   assertCanTransitionBookingStatus(
@@ -857,7 +843,8 @@ export async function resubmitBookingForApproval(
 
   if (result.count !== 1) {
     return {
-      formError: 'This booking was updated by another user. Refresh and try again.',
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
     };
   }
 

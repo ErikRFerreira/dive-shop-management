@@ -13,10 +13,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { getMissingBookingReviewInformation } from '@/features/bookings/review-requirements';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
-import { ActivityType, BookingStatus } from '@/generated/prisma/enums';
+import { ActivityType } from '@/generated/prisma/enums';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
+  canApprove: boolean;
 };
 
 type ReviewActivity = Pick<
@@ -39,13 +40,12 @@ function getReviewActivities(booking: BookingDetailsItem): ReviewActivity[] {
       ];
 }
 
-export function BookingReview({ booking }: BookingReviewProps) {
+export function BookingReview({ booking, canApprove }: BookingReviewProps) {
   const activities = getReviewActivities(booking);
   const includesFunDive = activities.some(
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
   );
   const missingInformation = getMissingBookingReviewInformation(booking);
-  const isReviewable = booking.status === BookingStatus.PENDING_APPROVAL;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6">
@@ -93,9 +93,11 @@ export function BookingReview({ booking }: BookingReviewProps) {
         />
         <BookingReviewSidebar
           bookingId={booking.id}
+          canApprove={canApprove}
+          adminNotes={booking.adminNotes}
           rawBookingText={booking.notes}
           missingInformation={missingInformation}
-          isReviewable={isReviewable}
+          status={booking.status}
         />
       </div>
     </div>

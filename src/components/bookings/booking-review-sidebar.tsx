@@ -1,6 +1,9 @@
 import { EMPTY_VALUE } from '@/components/bookings/booking-review-display';
-import { MarkNeedsMoreInfoForm } from '@/components/bookings/booking-workflow-forms';
-import { Button } from '@/components/ui/button';
+import {
+  ApproveBookingForm,
+  CancelBookingForm,
+  MarkNeedsMoreInfoForm,
+} from '@/components/bookings/booking-workflow-forms';
 import {
   Card,
   CardContent,
@@ -8,21 +11,35 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { BookingStatus } from '@/generated/prisma/enums';
 
 type BookingReviewSidebarProps = {
   bookingId: string;
+  canApprove: boolean;
+  adminNotes: string | null;
   rawBookingText: string | null;
   missingInformation: string[];
-  isReviewable: boolean;
+  status: BookingStatus;
 };
 
 export function BookingReviewSidebar({
   bookingId,
+  canApprove,
+  adminNotes,
   rawBookingText,
   missingInformation,
-  isReviewable,
+  status,
 }: BookingReviewSidebarProps) {
+  const canApprovePendingBooking =
+    canApprove && status === BookingStatus.PENDING_APPROVAL;
+  const canRequestMoreInfo = status === BookingStatus.PENDING_APPROVAL;
+  const canCancel =
+    status === BookingStatus.PENDING_APPROVAL ||
+    status === BookingStatus.NEEDS_MORE_INFO ||
+    status === BookingStatus.SCHEDULED;
+  const hasDecisionActions =
+    canApprovePendingBooking || canRequestMoreInfo || canCancel;
+
   return (
     <aside className="space-y-6">
       <Card>
@@ -57,13 +74,23 @@ export function BookingReviewSidebar({
       <Card>
         <CardHeader>
           <CardTitle>Admin notes</CardTitle>
-          <CardDescription>
-            Saving admin notes will be enabled with the decision workflow in a
-            later issue.
-          </CardDescription>
+          {canApprovePendingBooking ? (
+            <CardDescription>
+              These notes are saved when the booking is approved.
+            </CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent>
-          <Textarea disabled placeholder="Admin notes are not saved yet." />
+          {canApprovePendingBooking ? (
+            <ApproveBookingForm
+              bookingId={bookingId}
+              defaultAdminNotes={adminNotes}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm">
+              {adminNotes || EMPTY_VALUE}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -71,20 +98,23 @@ export function BookingReviewSidebar({
         <CardHeader>
           <CardTitle>Admin decision</CardTitle>
           <CardDescription>
-            {isReviewable
-              ? 'Decision actions will be enabled in a later issue.'
+            {hasDecisionActions
+              ? 'Review the booking and choose the appropriate workflow action.'
               : 'This booking is not currently pending admin review.'}
           </CardDescription>
         </CardHeader>
-        {isReviewable ? (
+        {hasDecisionActions ? (
           <CardContent className="grid gap-2">
-            <Button disabled type="button">
-              Approve
-            </Button>
-            <MarkNeedsMoreInfoForm bookingId={bookingId} />
-            <Button disabled type="button" variant="destructive">
-              Cancel / Reject
-            </Button>
+            {canRequestMoreInfo ? (
+              <MarkNeedsMoreInfoForm bookingId={bookingId} />
+            ) : null}
+            {canCancel ? (
+              <CancelBookingForm
+                bookingId={bookingId}
+                defaultAdminNotes={adminNotes}
+                status={status}
+              />
+            ) : null}
           </CardContent>
         ) : null}
       </Card>

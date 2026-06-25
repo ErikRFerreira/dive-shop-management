@@ -94,7 +94,13 @@ export function resolveDisplayCustomer<TCustomer>(
   );
 }
 
-/** Returns a compact, human-readable summary for a booking's activities. */
+/**
+ * Summarizes the activity types in a booking for display in list-style interfaces.
+ *
+ * @param activities - The booking activities to summarize.
+ * @param fallbackActivityType - An optional fallback activity type to use when no activities are present.
+ * @returns A string summarizing the activity types, or a fallback string when no activities are present.
+ */
 export function summarizeBookingActivities(
   activities: Array<{ activityType: string | null }>,
   fallbackActivityType?: string | null,
@@ -119,6 +125,12 @@ export function summarizeBookingActivities(
   return `${labels[0]} + ${labels.length - 1} more`;
 }
 
+/**
+ * Formats an activity type string for display by converting it to title case and replacing underscores with spaces.
+ *
+ * @param value - The activity type string to format, or null if no activity type is provided.
+ * @returns A formatted activity type string in title case, or null if the input is null or empty.
+ */
 function formatActivityType(value: string | null) {
   if (!value) {
     return null;

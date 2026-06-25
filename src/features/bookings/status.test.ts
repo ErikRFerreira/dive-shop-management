@@ -16,6 +16,7 @@ const validTransitions = [
   [BookingStatus.PENDING_APPROVAL, BookingStatus.SCHEDULED],
   [BookingStatus.NEEDS_MORE_INFO, BookingStatus.PENDING_APPROVAL],
   [BookingStatus.NEEDS_MORE_INFO, BookingStatus.CANCELLED],
+  [BookingStatus.SCHEDULED, BookingStatus.CANCELLED],
 ] as const;
 
 /** Verifies every transition defined for the Sprint 2 booking workflow. */
@@ -31,9 +32,11 @@ test.each(validTransitions)(
 
 /** Verifies unsupported, reversed, and terminal booking transitions are denied. */
 test.each([
+  [BookingStatus.DRAFT, BookingStatus.SCHEDULED],
   [BookingStatus.PENDING_APPROVAL, BookingStatus.DRAFT],
   [BookingStatus.NEEDS_MORE_INFO, BookingStatus.SCHEDULED],
-  [BookingStatus.SCHEDULED, BookingStatus.CANCELLED],
+  [BookingStatus.CANCELLED, BookingStatus.SCHEDULED],
+  [BookingStatus.SCHEDULED, BookingStatus.SCHEDULED],
   [BookingStatus.CANCELLED, BookingStatus.PENDING_APPROVAL],
   [BookingStatus.APPROVED, BookingStatus.SCHEDULED],
 ])('denies %s -> %s', (currentStatus, nextStatus) => {

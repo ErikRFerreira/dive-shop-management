@@ -350,6 +350,7 @@ function BookingDetails({ booking, canEdit, canReview, canResubmit }: Props) {
 
       <Section title="Internal notes">
         <Field label="Internal notes" value={booking.internalNotes} />
+        <Field label="Admin notes" value={booking.adminNotes} />
       </Section>
     </div>
   );
