@@ -220,12 +220,17 @@ test('requires a specialty course for each Specialty Course activity', () => {
   });
 });
 
-test.each([DepositStatus.PAID, DepositStatus.PARTIALLY_PAID])(
-  '%s deposits require amount, currency, and paid to',
-  (depositStatus) => {
+test.each([
+  ['draft', DepositStatus.PAID],
+  ['draft', DepositStatus.PARTIALLY_PAID],
+  ['submit', DepositStatus.PAID],
+  ['submit', DepositStatus.PARTIALLY_PAID],
+] as const)(
+  '%s %s deposits require amount, currency, and paid to',
+  (intent, depositStatus) => {
     const result = validateBookingIntake(
       validSubmitValues({ depositStatus }),
-      'submit',
+      intent,
     );
 
     expect(result).toMatchObject({

@@ -1,8 +1,9 @@
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { BookingStatus } from '@/generated/prisma/enums';
 
-type SubmitIntent = 'draft' | 'submit';
+type SubmitIntent = 'draft' | 'submit' | 'edit' | 'resubmit';
 
 type SharedBookingFormActionsProps = {
   errorMessages: string[];
@@ -19,7 +20,11 @@ type CreateBookingFormActionsProps = SharedBookingFormActionsProps & {
 
 type EditBookingFormActionsProps = SharedBookingFormActionsProps & {
   mode: 'edit';
+  initialStatus: BookingStatus;
+  submitIntent: SubmitIntent;
   onSaveChanges: () => void;
+  onSubmitForApproval: () => void;
+  onResubmitForApproval: () => void;
   cancelHref: string;
 };
 
@@ -58,9 +63,39 @@ export function BookingFormActions({
           </Link>
         </Button>
         {props.mode === 'edit' ? (
-          <Button disabled={isSubmitting} onClick={props.onSaveChanges} type="submit">
-            {isSubmitting ? 'Saving…' : 'Save changes'}
-          </Button>
+          <>
+            <Button
+              disabled={isSubmitting}
+              onClick={props.onSaveChanges}
+              type="button"
+            >
+              {isSubmitting && props.submitIntent === 'edit'
+                ? 'Saving…'
+                : 'Save Changes'}
+            </Button>
+            {props.initialStatus === BookingStatus.DRAFT ? (
+              <Button
+                disabled={isSubmitting}
+                onClick={props.onSubmitForApproval}
+                type="button"
+              >
+                {isSubmitting && props.submitIntent === 'submit'
+                  ? 'Submitting…'
+                  : 'Submit for Approval'}
+              </Button>
+            ) : null}
+            {props.initialStatus === BookingStatus.NEEDS_MORE_INFO ? (
+              <Button
+                disabled={isSubmitting}
+                onClick={props.onResubmitForApproval}
+                type="button"
+              >
+                {isSubmitting && props.submitIntent === 'resubmit'
+                  ? 'Resubmitting…'
+                  : 'Resubmit for Approval'}
+              </Button>
+            ) : null}
+          </>
         ) : (
           <>
             <Button

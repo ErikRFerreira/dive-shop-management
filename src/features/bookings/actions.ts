@@ -8,7 +8,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { BookingStatus } from '@/generated/prisma/enums';
+import { BookingStatus, Currency, DepositStatus } from '@/generated/prisma/enums';
 import {
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
@@ -24,7 +24,7 @@ import {
   canReviewBookingRequest,
 } from './permissions';
 import { assertCanTransitionBookingStatus } from './status';
-import type { BookingFormValues } from './types';
+import type { BookingFormValues, NormalizedBookingFormValues } from './types';
 import {
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
@@ -87,6 +87,297 @@ function revalidateBookingWorkflowPaths(bookingId: string) {
   revalidatePath(`/bookings/${bookingId}`);
   revalidatePath(`/bookings/${bookingId}/review`);
   revalidatePath(`/bookings/${bookingId}/edit`);
+}
+
+async function loadEditableBooking(bookingId: string) {
+  return db.bookingRequest.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      status: true,
+      createdById: true,
+      customers: {
+        select: {
+          customerId: true,
+        },
+      },
+      deposits: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+}
+
+type EditableBooking = NonNullable<Awaited<ReturnType<typeof loadEditableBooking>>>;
+
+function getEditSaveValidationIntent(status: BookingStatus) {
+  return status === BookingStatus.PENDING_APPROVAL ? 'submit' : 'draft';
+}
+
+type UpdateEditableBookingOptions = {
+  expectedStatus?: BookingStatus;
+  nextStatus?: BookingStatus;
+  validationIntent?: 'draft' | 'submit';
+  invalidStatusError?: string;
+  permissionError?: string;
+  requireResubmitPermission?: boolean;
+};
+
+function validateSubmittedCustomerIds(
+  booking: EditableBooking,
+  bookingValues: ReturnType<typeof normalizeBookingFormValues>,
+): UpdateBookingActionResult | null {
+  const linkedCustomerIds = new Set(
+    booking.customers.map((customer) => customer.customerId),
+  );
+  const submittedCustomerIds = bookingValues.customers.flatMap((customer) =>
+    customer.customerId ? [customer.customerId] : [],
+  );
+  const hasInvalidCustomerId = submittedCustomerIds.some(
+    (customerId) => !linkedCustomerIds.has(customerId),
+  );
+  const hasDuplicateCustomerId =
+    new Set(submittedCustomerIds).size !== submittedCustomerIds.length;
+
+  if (!hasInvalidCustomerId && !hasDuplicateCustomerId) {
+    return null;
+  }
+
+  return {
+    success: false,
+    fieldErrors: {},
+    formError: 'Customer details changed unexpectedly. Refresh and try again.',
+  };
+}
+
+async function updateEditableBooking(
+  bookingId: string,
+  values: BookingFormValues,
+  options: UpdateEditableBookingOptions = {},
+): Promise<UpdateBookingActionResult> {
+  const bookingIdValidation = updateBookingSchema.safeParse({ bookingId });
+
+  if (!bookingIdValidation.success) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: bookingIdValidation.error.flatten().formErrors[0],
+    };
+  }
+
+  const currentUser = await requireCurrentUser();
+  const booking = await loadEditableBooking(bookingIdValidation.data.bookingId);
+
+  if (!booking) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'Booking request not found.',
+    };
+  }
+
+  if (options.expectedStatus && booking.status !== options.expectedStatus) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError:
+        options.invalidStatusError ??
+        'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  const canEdit = canEditBooking(
+    currentUser,
+    booking.createdById,
+    booking.status,
+  );
+  const canTransition =
+    !options.nextStatus ||
+    (canPerformBookingStatusTransition(
+      currentUser,
+      booking.status,
+      options.nextStatus,
+    ) ||
+      (booking.status === BookingStatus.DRAFT && canEdit));
+  const canResubmit =
+    !options.requireResubmitPermission ||
+    canResubmitBookingForApproval(currentUser, booking.createdById);
+
+  if (!canEdit || !canTransition || !canResubmit) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError:
+        options.permissionError ??
+        'You do not have permission to edit this booking.',
+    };
+  }
+
+  if (options.nextStatus) {
+    assertCanTransitionBookingStatus(booking.status, options.nextStatus);
+  }
+
+  const bookingValues = normalizeBookingFormValues(values);
+  const validation = validateBookingIntake(
+    bookingValues,
+    options.validationIntent ?? getEditSaveValidationIntent(booking.status),
+  );
+
+  if (!validation.success) {
+    return {
+      success: false,
+      fieldErrors: validation.fieldErrors,
+      formError: validation.formErrors[0],
+    };
+  }
+
+  const customerIdError = validateSubmittedCustomerIds(booking, bookingValues);
+  if (customerIdError) {
+    return customerIdError;
+  }
+
+  const didUpdate = await db.$transaction(async (transaction) => {
+    const firstActivity = bookingValues.activities[0];
+    const updateResult = await transaction.bookingRequest.updateMany({
+      where: {
+        id: booking.id,
+        status: booking.status,
+      },
+      data: {
+        status: options.nextStatus,
+        activityType: firstActivity?.activityType ?? null,
+        specialtyCourse: firstActivity?.specialtyCourse ?? null,
+        source: bookingValues.source,
+        requestedDate: firstActivity?.requestedDate ?? null,
+        requestedTime: firstActivity?.requestedTime ?? null,
+        numberOfPeople: bookingValues.numberOfPeople,
+        referrerName: bookingValues.referrerName,
+        notes: bookingValues.rawBookingText,
+        internalNotes: bookingValues.internalNotes,
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      return false;
+    }
+
+    await transaction.bookingActivity.deleteMany({
+      where: { bookingRequestId: booking.id },
+    });
+
+    if (bookingValues.activities.length > 0) {
+      await transaction.bookingActivity.createMany({
+        data: bookingValues.activities.map((activity, sortOrder) => ({
+          bookingRequestId: booking.id,
+          activityType: activity.activityType,
+          specialtyCourse: activity.specialtyCourse,
+          requestedDate: activity.requestedDate,
+          requestedTime: activity.requestedTime,
+          notes: activity.notes,
+          sortOrder,
+        })),
+      });
+    }
+
+    const customerIds = await Promise.all(
+      bookingValues.customers.map(async (bookingCustomer) => {
+        const customerData = {
+          fullName: bookingCustomer.customerName,
+          chineseName: bookingCustomer.chineseName,
+          weChatId: bookingCustomer.weChatId,
+          whatsAppNumber: bookingCustomer.whatsAppNumber,
+          email: bookingCustomer.email,
+          phone: bookingCustomer.phone,
+          preferredLanguage: bookingCustomer.preferredLanguage,
+        };
+
+        if (bookingCustomer.customerId) {
+          await transaction.customer.update({
+            where: { id: bookingCustomer.customerId },
+            data: customerData,
+          });
+          return bookingCustomer.customerId;
+        }
+
+        const customer = await transaction.customer.create({
+          data: customerData,
+        });
+        return customer.id;
+      }),
+    );
+
+    await transaction.bookingCustomer.deleteMany({
+      where: { bookingRequestId: booking.id },
+    });
+
+    if (bookingValues.customers.length > 0) {
+      await transaction.bookingCustomer.createMany({
+        data: bookingValues.customers.map((bookingCustomer, index) => ({
+          bookingRequestId: booking.id,
+          customerId: customerIds[index],
+          role: bookingCustomer.role,
+          hotelAtBooking: bookingCustomer.hotelAtBooking,
+          equipmentNeeded: bookingCustomer.equipmentNeeded,
+          notes: bookingCustomer.customerNotes,
+          certificationAgency: bookingCustomer.certificationAgency,
+          certificationLevel: bookingCustomer.certificationLevel,
+          lastDiveAt: bookingCustomer.lastDiveDate,
+          heightCm: bookingCustomer.heightCm,
+          weightKg: bookingCustomer.weightKg,
+          shoeSize: bookingCustomer.shoeSize,
+          divesLogged: bookingCustomer.divesLogged,
+        })),
+      });
+    }
+
+    const newestDeposit = booking.deposits[0];
+    if (hasMeaningfulDeposit(bookingValues)) {
+      const depositData = {
+        amount: bookingValues.amount,
+        status: bookingValues.depositStatus,
+        currency: bookingValues.currency,
+        paidTo: bookingValues.paidTo,
+        paymentMethod: bookingValues.paymentMethod,
+        notes: bookingValues.paymentNotes,
+      };
+
+      if (newestDeposit) {
+        await transaction.deposit.update({
+          where: { id: newestDeposit.id },
+          data: depositData,
+        });
+      } else {
+        await transaction.deposit.create({
+          data: {
+            bookingRequestId: booking.id,
+            ...depositData,
+          },
+        });
+      }
+    } else if (newestDeposit) {
+      await transaction.deposit.delete({
+        where: { id: newestDeposit.id },
+      });
+    }
+
+    return true;
+  });
+
+  if (!didUpdate) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: 'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  revalidateBookingWorkflowPaths(booking.id);
+  return { success: true, redirectTo: `/bookings/${booking.id}` };
 }
 
 /**
@@ -242,225 +533,158 @@ export async function updateBooking(
   bookingId: string,
   values: BookingFormValues,
 ): Promise<UpdateBookingActionResult> {
-  const bookingIdValidation = updateBookingSchema.safeParse({ bookingId });
+  return updateEditableBooking(bookingId, values);
+}
 
-  if (!bookingIdValidation.success) {
-    return {
-      success: false,
-      fieldErrors: {},
-      formError: bookingIdValidation.error.flatten().formErrors[0],
-    };
-  }
-
-  const currentUser = await requireCurrentUser();
-  const booking = await db.bookingRequest.findUnique({
-    where: { id: bookingIdValidation.data.bookingId },
-    select: {
-      id: true,
-      status: true,
-      createdById: true,
-      customers: {
-        select: {
-          customerId: true,
-        },
-      },
-      deposits: {
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          id: true,
-        },
-      },
-    },
+/** Saves a draft edit and atomically submits it for administrative review. */
+export async function submitEditedBookingForApproval(
+  bookingId: string,
+  values: BookingFormValues,
+): Promise<UpdateBookingActionResult> {
+  return updateEditableBooking(bookingId, values, {
+    expectedStatus: BookingStatus.DRAFT,
+    nextStatus: BookingStatus.PENDING_APPROVAL,
+    validationIntent: 'submit',
+    invalidStatusError: 'Only draft bookings can be submitted for approval.',
+    permissionError: 'You do not have permission to submit this booking.',
   });
+}
 
-  if (!booking) {
-    return {
-      success: false,
-      fieldErrors: {},
-      formError: 'Booking request not found.',
+/** Saves a Needs More Info edit and atomically returns it for review. */
+export async function resubmitEditedBookingForApproval(
+  bookingId: string,
+  values: BookingFormValues,
+): Promise<UpdateBookingActionResult> {
+  return updateEditableBooking(bookingId, values, {
+    expectedStatus: BookingStatus.NEEDS_MORE_INFO,
+    nextStatus: BookingStatus.PENDING_APPROVAL,
+    validationIntent: 'submit',
+    invalidStatusError: 'Only bookings needing more information can be resubmitted.',
+    permissionError: 'You do not have permission to resubmit this booking.',
+    requireResubmitPermission: true,
+  });
+}
+
+function currencyOrNull(value: string | null): Currency | null {
+  return value !== null && Object.values(Currency).includes(value as Currency)
+    ? (value as Currency)
+    : null;
+}
+
+function decimalToNumber(value: { toString: () => string } | number | null) {
+  if (value === null) return null;
+
+  const number = Number(value.toString());
+  return Number.isFinite(number) ? number : null;
+}
+
+function validateStoredBookingForSubmission(booking: {
+  activityType: NormalizedBookingFormValues['activities'][number]['activityType'];
+  specialtyCourse: string | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  numberOfPeople: number | null;
+  source: NormalizedBookingFormValues['source'];
+  referrerName: string | null;
+  notes: string | null;
+  internalNotes: string | null;
+  activities: Array<{
+    activityType: NormalizedBookingFormValues['activities'][number]['activityType'];
+    specialtyCourse: string | null;
+    requestedDate: Date | null;
+    requestedTime: string | null;
+    notes: string | null;
+  }>;
+  customers: Array<{
+    customerId: string;
+    role: NormalizedBookingFormValues['customers'][number]['role'];
+    hotelAtBooking: string | null;
+    equipmentNeeded: string | null;
+    notes: string | null;
+    certificationAgency: string | null;
+    certificationLevel: string | null;
+    lastDiveAt: Date | null;
+    heightCm: number | null;
+    weightKg: { toString: () => string } | number | null;
+    shoeSize: { toString: () => string } | number | null;
+    divesLogged: number | null;
+    customer: {
+      fullName: string | null;
+      chineseName: string | null;
+      weChatId: string | null;
+      whatsAppNumber: string | null;
+      email: string | null;
+      phone: string | null;
+      preferredLanguage: NormalizedBookingFormValues['customers'][number]['preferredLanguage'];
     };
-  }
-
-  if (!canEditBooking(currentUser, booking.createdById, booking.status)) {
-    return {
-      success: false,
-      fieldErrors: {},
-      formError: 'You do not have permission to edit this booking.',
-    };
-  }
-
-  const bookingValues = normalizeBookingFormValues(values);
-  const validation = validateBookingIntake(
-    bookingValues,
-    booking.status === BookingStatus.DRAFT ? 'draft' : 'submit',
-  );
-
-  if (!validation.success) {
-    return {
-      success: false,
-      fieldErrors: validation.fieldErrors,
-      formError: validation.formErrors[0],
-    };
-  }
-
-  const linkedCustomerIds = new Set(
-    booking.customers.map((customer) => customer.customerId),
-  );
-  const submittedCustomerIds = bookingValues.customers.flatMap((customer) =>
-    customer.customerId ? [customer.customerId] : [],
-  );
-  const hasInvalidCustomerId = submittedCustomerIds.some(
-    (customerId) => !linkedCustomerIds.has(customerId),
-  );
-  const hasDuplicateCustomerId =
-    new Set(submittedCustomerIds).size !== submittedCustomerIds.length;
-
-  if (hasInvalidCustomerId || hasDuplicateCustomerId) {
-    return {
-      success: false,
-      fieldErrors: {},
-      formError: 'Customer details changed unexpectedly. Refresh and try again.',
-    };
-  }
-
-  const didUpdate = await db.$transaction(async (transaction) => {
-    const firstActivity = bookingValues.activities[0];
-    const updateResult = await transaction.bookingRequest.updateMany({
-      where: {
-        id: booking.id,
-        status: booking.status,
-      },
-      data: {
-        activityType: firstActivity?.activityType ?? null,
-        specialtyCourse: firstActivity?.specialtyCourse ?? null,
-        source: bookingValues.source,
-        requestedDate: firstActivity?.requestedDate ?? null,
-        requestedTime: firstActivity?.requestedTime ?? null,
-        numberOfPeople: bookingValues.numberOfPeople,
-        referrerName: bookingValues.referrerName,
-        notes: bookingValues.rawBookingText,
-        internalNotes: bookingValues.internalNotes,
-      },
-    });
-
-    if (updateResult.count !== 1) {
-      return false;
-    }
-
-    await transaction.bookingActivity.deleteMany({
-      where: { bookingRequestId: booking.id },
-    });
-
-    if (bookingValues.activities.length > 0) {
-      await transaction.bookingActivity.createMany({
-        data: bookingValues.activities.map((activity, sortOrder) => ({
-          bookingRequestId: booking.id,
-          activityType: activity.activityType,
-          specialtyCourse: activity.specialtyCourse,
-          requestedDate: activity.requestedDate,
-          requestedTime: activity.requestedTime,
-          notes: activity.notes,
-          sortOrder,
-        })),
-      });
-    }
-
-    const customerIds = await Promise.all(
-      bookingValues.customers.map(async (bookingCustomer) => {
-        const customerData = {
-          fullName: bookingCustomer.customerName,
-          chineseName: bookingCustomer.chineseName,
-          weChatId: bookingCustomer.weChatId,
-          whatsAppNumber: bookingCustomer.whatsAppNumber,
-          email: bookingCustomer.email,
-          phone: bookingCustomer.phone,
-          preferredLanguage: bookingCustomer.preferredLanguage,
-        };
-
-        if (bookingCustomer.customerId) {
-          await transaction.customer.update({
-            where: { id: bookingCustomer.customerId },
-            data: customerData,
-          });
-          return bookingCustomer.customerId;
-        }
-
-        const customer = await transaction.customer.create({
-          data: customerData,
-        });
-        return customer.id;
-      }),
-    );
-
-    await transaction.bookingCustomer.deleteMany({
-      where: { bookingRequestId: booking.id },
-    });
-
-    if (bookingValues.customers.length > 0) {
-      await transaction.bookingCustomer.createMany({
-        data: bookingValues.customers.map((bookingCustomer, index) => ({
-          bookingRequestId: booking.id,
-          customerId: customerIds[index],
-          role: bookingCustomer.role,
-          hotelAtBooking: bookingCustomer.hotelAtBooking,
-          equipmentNeeded: bookingCustomer.equipmentNeeded,
-          notes: bookingCustomer.customerNotes,
-          certificationAgency: bookingCustomer.certificationAgency,
-          certificationLevel: bookingCustomer.certificationLevel,
-          lastDiveAt: bookingCustomer.lastDiveDate,
-          heightCm: bookingCustomer.heightCm,
-          weightKg: bookingCustomer.weightKg,
-          shoeSize: bookingCustomer.shoeSize,
-          divesLogged: bookingCustomer.divesLogged,
-        })),
-      });
-    }
-
-    const newestDeposit = booking.deposits[0];
-    if (hasMeaningfulDeposit(bookingValues)) {
-      const depositData = {
-        amount: bookingValues.amount,
-        status: bookingValues.depositStatus,
-        currency: bookingValues.currency,
-        paidTo: bookingValues.paidTo,
-        paymentMethod: bookingValues.paymentMethod,
-        notes: bookingValues.paymentNotes,
-      };
-
-      if (newestDeposit) {
-        await transaction.deposit.update({
-          where: { id: newestDeposit.id },
-          data: depositData,
-        });
-      } else {
-        await transaction.deposit.create({
-          data: {
-            bookingRequestId: booking.id,
-            ...depositData,
+  }>;
+  deposits: Array<{
+    amount: { toString: () => string } | number | null;
+    status: DepositStatus;
+    currency: string | null;
+    paidTo: string | null;
+    paymentMethod: string | null;
+    notes: string | null;
+  }>;
+}) {
+  const activities =
+    booking.activities.length > 0
+      ? booking.activities
+      : [
+          {
+            activityType: booking.activityType,
+            specialtyCourse: booking.specialtyCourse,
+            requestedDate: booking.requestedDate,
+            requestedTime: booking.requestedTime,
+            notes: null,
           },
-        });
-      }
-    } else if (newestDeposit) {
-      await transaction.deposit.delete({
-        where: { id: newestDeposit.id },
-      });
-    }
+        ];
+  const deposit = booking.deposits[0];
 
-    return true;
-  });
-
-  if (!didUpdate) {
-    return {
-      success: false,
-      fieldErrors: {},
-      formError: 'This booking was updated by another user. Refresh and try again.',
-    };
-  }
-
-  revalidateBookingWorkflowPaths(booking.id);
-  return { success: true, redirectTo: `/bookings/${booking.id}` };
+  return validateBookingIntake(
+    {
+      rawBookingText: booking.notes,
+      activities: activities.map((activity) => ({
+        activityType: activity.activityType,
+        specialtyCourse: activity.specialtyCourse,
+        requestedDate: activity.requestedDate,
+        requestedTime: activity.requestedTime,
+        notes: activity.notes,
+      })),
+      numberOfPeople: booking.numberOfPeople,
+      source: booking.source,
+      referrerName: booking.referrerName,
+      internalNotes: booking.internalNotes,
+      customers: booking.customers.map((bookingCustomer) => ({
+        customerId: bookingCustomer.customerId,
+        role: bookingCustomer.role,
+        customerName: bookingCustomer.customer.fullName,
+        chineseName: bookingCustomer.customer.chineseName,
+        weChatId: bookingCustomer.customer.weChatId,
+        whatsAppNumber: bookingCustomer.customer.whatsAppNumber,
+        email: bookingCustomer.customer.email,
+        phone: bookingCustomer.customer.phone,
+        hotelAtBooking: bookingCustomer.hotelAtBooking,
+        equipmentNeeded: bookingCustomer.equipmentNeeded,
+        customerNotes: bookingCustomer.notes,
+        preferredLanguage: bookingCustomer.customer.preferredLanguage,
+        heightCm: bookingCustomer.heightCm,
+        weightKg: decimalToNumber(bookingCustomer.weightKg),
+        shoeSize: decimalToNumber(bookingCustomer.shoeSize),
+        certificationLevel: bookingCustomer.certificationLevel,
+        certificationAgency: bookingCustomer.certificationAgency,
+        lastDiveDate: bookingCustomer.lastDiveAt,
+        divesLogged: bookingCustomer.divesLogged,
+      })),
+      depositStatus: deposit?.status ?? DepositStatus.UNKNOWN,
+      amount: decimalToNumber(deposit?.amount ?? null),
+      currency: currencyOrNull(deposit?.currency ?? null),
+      paidTo: deposit?.paidTo ?? null,
+      paymentMethod: deposit?.paymentMethod ?? null,
+      paymentNotes: deposit?.notes ?? null,
+    },
+    'submit',
+  );
 }
 
 /**
@@ -565,10 +789,25 @@ export async function resubmitBookingForApproval(
   const currentUser = await requireCurrentUser();
   const booking = await db.bookingRequest.findUnique({
     where: { id: validation.data.bookingId },
-    select: {
-      id: true,
-      status: true,
-      createdById: true,
+    include: {
+      activities: {
+        orderBy: {
+          sortOrder: 'asc',
+        },
+      },
+      customers: {
+        include: {
+          customer: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      },
+      deposits: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
     },
   });
 
@@ -597,6 +836,14 @@ export async function resubmitBookingForApproval(
     booking.status,
     BookingStatus.PENDING_APPROVAL,
   );
+
+  const bookingValidation = validateStoredBookingForSubmission(booking);
+  if (!bookingValidation.success) {
+    return {
+      fieldErrors: bookingValidation.fieldErrors,
+      formError: 'Booking is missing required information before resubmission.',
+    };
+  }
 
   const result = await db.bookingRequest.updateMany({
     where: {

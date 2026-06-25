@@ -5,6 +5,7 @@ import {
   BookingCustomerRole,
   BookingSource,
   BookingStatus,
+  DepositStatus,
   UserRole,
 } from '@/generated/prisma/enums';
 import { bookingFormDefaultValues } from './form-values';
@@ -45,7 +46,9 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 import {
   markBookingNeedsMoreInfo,
+  resubmitEditedBookingForApproval,
   resubmitBookingForApproval,
+  submitEditedBookingForApproval,
   updateBooking,
 } from './actions';
 
@@ -57,6 +60,85 @@ function formData(values: Record<string, string>) {
   Object.entries(values).forEach(([key, value]) => data.set(key, value));
 
   return data;
+}
+
+function validSubmitValues(overrides = {}) {
+  return {
+    ...bookingFormDefaultValues,
+    rawBookingText: 'Customer wants to book a course.',
+    activities: [
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        requestedDate: '2026-07-14',
+      },
+    ],
+    numberOfPeople: '1',
+    source: BookingSource.EMAIL,
+    customers: [
+      {
+        ...bookingFormDefaultValues.customers[0],
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        customerName: 'Maria Santos',
+        email: 'maria@example.com',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function persistedSubmittableBooking(overrides = {}) {
+  return {
+    id: 'booking-1',
+    status: BookingStatus.NEEDS_MORE_INFO,
+    createdById: 'customer-service-1',
+    activityType: null,
+    specialtyCourse: null,
+    requestedDate: null,
+    requestedTime: null,
+    numberOfPeople: 1,
+    source: BookingSource.EMAIL,
+    referrerName: null,
+    notes: 'Stored customer request',
+    internalNotes: null,
+    needsMoreInfoReason: 'Confirm the diver certification.',
+    activities: [
+      {
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        specialtyCourse: null,
+        requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+        requestedTime: null,
+        notes: null,
+      },
+    ],
+    customers: [
+      {
+        customerId: 'customer-1',
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        hotelAtBooking: null,
+        equipmentNeeded: null,
+        notes: null,
+        certificationAgency: null,
+        certificationLevel: null,
+        lastDiveAt: null,
+        heightCm: null,
+        weightKg: null,
+        shoeSize: null,
+        divesLogged: null,
+        customer: {
+          fullName: 'Maria Santos',
+          chineseName: null,
+          weChatId: null,
+          whatsAppNumber: null,
+          email: 'maria@example.com',
+          phone: null,
+          preferredLanguage: null,
+        },
+      },
+    ],
+    deposits: [],
+    ...overrides,
+  };
 }
 
 beforeEach(() => {
@@ -148,12 +230,7 @@ test('allows the owner to resubmit while preserving the stored reason', async ()
     id: 'customer-service-1',
     role: UserRole.CUSTOMER_SERVICE,
   });
-  mocks.findUnique.mockResolvedValue({
-    id: 'booking-1',
-    status: BookingStatus.NEEDS_MORE_INFO,
-    createdById: 'customer-service-1',
-    needsMoreInfoReason: 'Confirm the diver certification.',
-  });
+  mocks.findUnique.mockResolvedValue(persistedSubmittableBooking());
 
   await expect(
     resubmitBookingForApproval(
@@ -171,6 +248,34 @@ test('allows the owner to resubmit while preserving the stored reason', async ()
       status: BookingStatus.PENDING_APPROVAL,
     },
   });
+});
+
+test('blocks standalone resubmit when the stored booking is missing submit details', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue(
+    persistedSubmittableBooking({
+      activities: [],
+      numberOfPeople: null,
+      source: null,
+      customers: [],
+    }),
+  );
+
+  const result = await resubmitBookingForApproval(
+    initialBookingWorkflowActionState,
+    formData({ bookingId: 'booking-1' }),
+  );
+
+  expect(result.formError).toBe(
+    'Booking is missing required information before resubmission.',
+  );
+  expect(result.fieldErrors?.customers).toContain(
+    'Add at least one customer or diver before submitting.',
+  );
+  expect(mocks.updateMany).not.toHaveBeenCalled();
 });
 
 test('does not allow a non-owner Customer Service user to resubmit', async () => {
@@ -258,6 +363,150 @@ test('validates draft edits on the server before opening a transaction', async (
     formError:
       'Enter at least one booking, activity, or customer detail before saving a draft.',
   });
+});
+
+test('rejects paid deposits without an amount when saving draft edits', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', {
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer said the deposit is paid.',
+      depositStatus: DepositStatus.PAID,
+    }),
+  ).resolves.toMatchObject({
+    success: false,
+    fieldErrors: {
+      amount: ['Deposit amount is required when a deposit is paid.'],
+      currency: ['Deposit currency is required when a deposit is paid.'],
+      paidTo: ['Paid to is required when a deposit is paid.'],
+    },
+  });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('submits a draft edit with full submit validation in the same transaction', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    submitEditedBookingForApproval('booking-1', validSubmitValues()),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        id: 'booking-1',
+        status: BookingStatus.DRAFT,
+      },
+      data: expect.objectContaining({
+        status: BookingStatus.PENDING_APPROVAL,
+      }),
+    }),
+  );
+});
+
+test('validates pending approval saves with submit rules', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', bookingFormDefaultValues),
+  ).resolves.toMatchObject({
+    success: false,
+    fieldErrors: {
+      'activities.0.activityType': [
+        'Activity type is required before submitting for approval.',
+      ],
+    },
+  });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('saves Needs More Info edits without clearing the stored reason', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.NEEDS_MORE_INFO,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', {
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Updated missing detail.',
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  const updateData =
+    mocks.transaction.bookingRequest.updateMany.mock.calls[0][0].data;
+  expect(updateData.status).toBeUndefined();
+  expect(updateData).not.toHaveProperty('needsMoreInfoReason');
+});
+
+test('resubmits Needs More Info edits with full submit validation', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.NEEDS_MORE_INFO,
+    createdById: 'customer-service-1',
+    customers: [],
+    deposits: [],
+  });
+
+  await expect(
+    resubmitEditedBookingForApproval('booking-1', validSubmitValues()),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  const updateData =
+    mocks.transaction.bookingRequest.updateMany.mock.calls[0][0].data;
+  expect(updateData.status).toBe(BookingStatus.PENDING_APPROVAL);
+  expect(updateData).not.toHaveProperty('needsMoreInfoReason');
 });
 
 test('updates related booking records in one transaction without changing status', async () => {

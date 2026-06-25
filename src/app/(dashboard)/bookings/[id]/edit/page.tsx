@@ -30,7 +30,7 @@ async function EditBookingPage({ params }: Props) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Edit booking</h1>
         <p className="text-sm text-muted-foreground">
-          Update the booking details without changing its workflow status.
+          Update the booking details or return it for approval when it is ready.
         </p>
       </div>
       <BookingForm

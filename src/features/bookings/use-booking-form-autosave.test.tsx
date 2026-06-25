@@ -1,4 +1,11 @@
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -24,11 +31,14 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/features/bookings/actions', () => ({
   createBookingDraft: vi.fn(),
+  resubmitEditedBookingForApproval: vi.fn(),
+  submitEditedBookingForApproval: vi.fn(),
   submitBookingForApproval: vi.fn(),
   updateBooking: vi.fn(),
 }));
 
 afterEach(() => {
+  cleanup();
   window.localStorage.clear();
 });
 
@@ -144,11 +154,51 @@ test('uses supplied values in edit mode without restoring new-booking autosave',
     />,
   );
 
-  expect(screen.getByRole('button', { name: 'Save changes' })).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
   const editForm = screen
-    .getByRole('button', { name: 'Save changes' })
+    .getByRole('button', { name: 'Save Changes' })
     .closest('form');
 
   expect(editForm?.textContent).not.toContain('Save Draft');
-  expect(editForm?.textContent).not.toContain('Submit for Approval');
+  expect(editForm?.textContent).toContain('Submit for Approval');
+});
+
+test('shows resubmit action only for editable Needs More Info bookings', () => {
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.NEEDS_MORE_INFO}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        rawBookingText: 'Saved booking',
+      }}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Resubmit for Approval' }),
+  ).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Submit for Approval' })).toBeNull();
+});
+
+test('shows only save changes for pending approval edit mode', () => {
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.PENDING_APPROVAL}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        rawBookingText: 'Saved booking',
+      }}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Submit for Approval' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Resubmit for Approval' }),
+  ).toBeNull();
 });

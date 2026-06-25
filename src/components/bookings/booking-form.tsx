@@ -12,6 +12,8 @@ import { DepositPaymentSection } from '@/components/bookings/deposit-payment-sec
 import { RawBookingSection } from '@/components/bookings/raw-booking-section';
 import {
   createBookingDraft,
+  resubmitEditedBookingForApproval,
+  submitEditedBookingForApproval,
   submitBookingForApproval,
   updateBooking,
 } from '@/features/bookings/actions';
@@ -25,7 +27,7 @@ import {
 } from '@/features/bookings/validation';
 import { ActivityType, BookingStatus, DepositStatus } from '@/generated/prisma/enums';
 
-type SubmitIntent = 'draft' | 'submit' | 'edit';
+type SubmitIntent = 'draft' | 'submit' | 'edit' | 'resubmit';
 
 type CreateBookingFormProps = {
   mode?: 'create';
@@ -93,7 +95,8 @@ export function BookingForm(props: BookingFormProps) {
 
     const validationIntent =
       intent === 'draft' ||
-      (editProps?.initialStatus === BookingStatus.DRAFT)
+      (intent === 'edit' &&
+        editProps?.initialStatus !== BookingStatus.PENDING_APPROVAL)
         ? 'draft'
         : 'submit';
     const validation = validateBookingIntake(
@@ -106,7 +109,11 @@ export function BookingForm(props: BookingFormProps) {
     }
 
     const result = isEdit
-      ? await updateBooking(editProps!.bookingId, values)
+      ? intent === 'submit'
+        ? await submitEditedBookingForApproval(editProps!.bookingId, values)
+        : intent === 'resubmit'
+          ? await resubmitEditedBookingForApproval(editProps!.bookingId, values)
+          : await updateBooking(editProps!.bookingId, values)
       : intent === 'draft'
         ? await createBookingDraft(values)
         : await submitBookingForApproval(values);
@@ -164,8 +171,20 @@ export function BookingForm(props: BookingFormProps) {
           mode="edit"
           errorMessages={errorMessages}
           isSubmitting={isSubmitting}
+          initialStatus={editProps!.initialStatus}
+          submitIntent={submitIntent}
           cancelHref={`/bookings/${editProps!.bookingId}`}
-          onSaveChanges={() => setSubmitIntent('edit')}
+          onSaveChanges={() =>
+            void form.handleSubmit((values) => submitBooking(values, 'edit'))()
+          }
+          onSubmitForApproval={() =>
+            void form.handleSubmit((values) => submitBooking(values, 'submit'))()
+          }
+          onResubmitForApproval={() =>
+            void form.handleSubmit((values) =>
+              submitBooking(values, 'resubmit'),
+            )()
+          }
         />
       ) : (
         <BookingFormActions
