@@ -82,6 +82,7 @@ export function CustomerSummaryCard({ customer }: CustomerSummaryCardProps) {
           <Field label="WhatsApp number" value={customer.whatsAppNumber} />
           <Field label="Email" value={customer.email} />
           <Field label="Phone" value={customer.phone} />
+          <Field label="Hotel" value={customer.hotel} />
           <Field
             label="Preferred language"
             value={formatEnum(customer.preferredLanguage)}

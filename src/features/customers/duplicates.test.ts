@@ -27,6 +27,7 @@ function customerRecord(overrides = {}) {
     whatsAppNumber: null,
     email: 'ada@example.test',
     phone: '+639171234567',
+    hotel: null,
     preferredLanguage: null,
     bookings: [],
     ...overrides,

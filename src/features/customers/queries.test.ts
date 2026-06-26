@@ -66,6 +66,7 @@ test('maps customer search results with latest booking details', async () => {
       whatsAppNumber: '+639171234567',
       email: 'anchie@example.test',
       phone: null,
+      hotel: 'Ocean View',
       preferredLanguage: PreferredLanguage.CHINESE,
       bookings: [
         {
@@ -95,6 +96,7 @@ test('maps customer search results with latest booking details', async () => {
       whatsAppNumber: '+639171234567',
       email: 'anchie@example.test',
       phone: null,
+      hotel: 'Ocean View',
       preferredLanguage: PreferredLanguage.CHINESE,
       certificationLevel: 'Advanced Open Water',
       certificationAgency: 'PADI',
