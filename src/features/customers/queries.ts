@@ -22,6 +22,7 @@ export const customerSearchArgs = {
     whatsAppNumber: true,
     email: true,
     phone: true,
+    hotel: true,
     preferredLanguage: true,
     bookings: {
       orderBy: {
@@ -91,6 +92,7 @@ export function mapCustomerSearchResult(
     whatsAppNumber: customer.whatsAppNumber,
     email: customer.email,
     phone: customer.phone,
+    hotel: customer.hotel,
     preferredLanguage: customer.preferredLanguage,
     certificationLevel: latestBooking?.certificationLevel ?? null,
     certificationAgency: latestBooking?.certificationAgency ?? null,
