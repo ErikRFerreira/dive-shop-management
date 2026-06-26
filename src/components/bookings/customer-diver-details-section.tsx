@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Controller,
   useFieldArray,
@@ -14,9 +15,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { preferredLanguageOptions } from '@/features/bookings/form-options';
+import {
+  formatEnumLabel,
+  preferredLanguageOptions,
+} from '@/features/bookings/form-options';
+import { mapSelectedCustomerToBookingCustomerValues } from '@/features/bookings/customer-picker';
 import { bookingCustomerDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
+import {
+  findBookingCustomerDuplicates,
+  searchBookingCustomers,
+} from '@/features/customers/booking-actions';
+import type {
+  BookingCustomerPickerResult,
+  PotentialDuplicateBookingCustomer,
+} from '@/features/customers/types';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
 
 const primaryContactMethodError =
@@ -31,15 +44,405 @@ type CustomerDiverDetailsSectionProps = {
 type CustomerFieldsProps = CustomerDiverDetailsSectionProps & {
   index: number;
   contactInputProps: { 'aria-invalid'?: boolean; className?: string };
+  isExistingCustomer: boolean;
 };
 
+/**
+ * Formats a nullable field for compact customer picker display.
+ *
+ * @param value - Optional value from a customer search result.
+ * @returns Display text for the picker summary.
+ */
+function pickerValue(value: string | number | null | undefined) {
+  return value === null || value === undefined || value === '' ? '-' : value;
+}
+
+/**
+ * Formats duplicate match field identifiers for staff-facing warning text.
+ *
+ * @param fields - Strong duplicate fields returned by duplicate detection.
+ * @returns Human-readable labels for matched fields.
+ */
+function formatMatchedFields(
+  fields: PotentialDuplicateBookingCustomer['matchedFields'],
+) {
+  const labels: Record<
+    PotentialDuplicateBookingCustomer['matchedFields'][number],
+    string
+  > = {
+    weChatId: 'WeChat ID',
+    whatsAppNumber: 'WhatsApp number',
+    email: 'email',
+    phone: 'phone',
+    nameAndChineseName: 'name and Chinese name',
+  };
+
+  return fields.map((field) => labels[field]).join(', ');
+}
+
+/**
+ * Applies a selected existing customer to one booking customer row.
+ *
+ * @param form - Booking form instance that owns the customer array.
+ * @param index - Customer row index to update.
+ * @param customer - Existing customer selected from search or duplicate warning.
+ */
+function applyExistingCustomer(
+  form: UseFormReturn<BookingFormValues>,
+  index: number,
+  customer: BookingCustomerPickerResult,
+) {
+  const currentValues = form.getValues(`customers.${index}`);
+
+  form.setValue(
+    `customers.${index}`,
+    mapSelectedCustomerToBookingCustomerValues(currentValues, customer),
+    { shouldDirty: true, shouldValidate: true },
+  );
+}
+
+/**
+ * Clears the existing-customer link for one customer row.
+ *
+ * @param form - Booking form instance that owns the customer array.
+ * @param index - Customer row index to update.
+ */
+function createNewCustomerInstead(
+  form: UseFormReturn<BookingFormValues>,
+  index: number,
+) {
+  const currentValues = form.getValues(`customers.${index}`);
+
+  form.setValue(
+    `customers.${index}`,
+    {
+      ...currentValues,
+      customerId: undefined,
+    },
+    { shouldDirty: true, shouldValidate: true },
+  );
+}
+
+/**
+ * Renders one customer search result with an action to link it to the form.
+ *
+ * @param props - Customer result and selection callback.
+ * @returns A compact selectable customer summary.
+ */
+function CustomerPickerResult({
+  customer,
+  onUseCustomer,
+}: {
+  customer: BookingCustomerPickerResult;
+  onUseCustomer: (customer: BookingCustomerPickerResult) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3">
+      <div>
+        <p className="font-medium">{customer.name}</p>
+        <p className="text-sm text-muted-foreground">
+          WeChat: {pickerValue(customer.weChatId)} - WhatsApp:{' '}
+          {pickerValue(customer.whatsAppNumber)} - Email:{' '}
+          {pickerValue(customer.email)}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Cert: {pickerValue(customer.certificationLevel)} - Last dive:{' '}
+          {pickerValue(customer.lastDiveDate)} - Logged dives:{' '}
+          {pickerValue(customer.divesLogged)}
+        </p>
+      </div>
+      <Button type="button" size="sm" onClick={() => onUseCustomer(customer)}>
+        Use this customer
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Renders the search control used to attach an existing customer to a row.
+ *
+ * @param props - Booking form, row index, and selected IDs in other rows.
+ * @returns Existing-customer picker UI for one booking customer row.
+ */
+function CustomerPicker({
+  form,
+  index,
+  selectedCustomerIds,
+}: {
+  form: UseFormReturn<BookingFormValues>;
+  index: number;
+  selectedCustomerIds: string[];
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<BookingCustomerPickerResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  /**
+   * Searches customers and stores selectable results for this row.
+   */
+  async function searchExistingCustomers() {
+    const normalizedQuery = query.trim();
+
+    if (!normalizedQuery) {
+      setResults([]);
+      setSearchError(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const customers = await searchBookingCustomers(normalizedQuery);
+      const selectedCustomerIdSet = new Set(selectedCustomerIds);
+      setResults(
+        customers.filter((customer) => !selectedCustomerIdSet.has(customer.id)),
+      );
+    } catch {
+      setSearchError('Customer search failed. Try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border bg-muted/20 p-3 md:col-span-2">
+      <div className="flex flex-wrap gap-2">
+        <div className="min-w-64 flex-1">
+          <label className="sr-only" htmlFor={`customer-picker-${index}`}>
+            Search existing customers
+          </label>
+          <Input
+            id={`customer-picker-${index}`}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void searchExistingCustomers();
+              }
+            }}
+            placeholder="Search existing customers"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void searchExistingCustomers()}
+          disabled={isSearching}
+        >
+          {isSearching ? 'Searching...' : 'Search'}
+        </Button>
+      </div>
+      {searchError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {searchError}
+        </p>
+      ) : null}
+      {results.length > 0 ? (
+        <div className="space-y-2">
+          {results.map((customer) => (
+            <CustomerPickerResult
+              customer={customer}
+              key={customer.id}
+              onUseCustomer={(selectedCustomer) =>
+                applyExistingCustomer(form, index, selectedCustomer)
+              }
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Warns staff when manual customer details strongly match an existing customer.
+ *
+ * @param props - Booking form, row index, and selected IDs in other rows.
+ * @returns Duplicate warning UI for manually entered customer rows.
+ */
+function PotentialDuplicateCustomerWarning({
+  form,
+  index,
+  selectedCustomerIds,
+}: {
+  form: UseFormReturn<BookingFormValues>;
+  index: number;
+  selectedCustomerIds: string[];
+}) {
+  const customer = useWatch({
+    control: form.control,
+    name: `customers.${index}`,
+  });
+  const [duplicates, setDuplicates] = useState<
+    PotentialDuplicateBookingCustomer[]
+  >([]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    const hasDuplicateInput = customer
+      ? [
+          customer.customerName,
+          customer.chineseName,
+          customer.weChatId,
+          customer.whatsAppNumber,
+          customer.email,
+          customer.phone,
+        ].some((value) => value.trim())
+      : false;
+    const shouldSearchForDuplicates =
+      Boolean(customer) && !customer?.customerId && hasDuplicateInput;
+
+    if (!shouldSearchForDuplicates) {
+      const clearTimeoutId = window.setTimeout(() => {
+        if (isCurrent) {
+          setDuplicates([]);
+        }
+      }, 0);
+
+      return () => {
+        isCurrent = false;
+        window.clearTimeout(clearTimeoutId);
+      };
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void findBookingCustomerDuplicates({
+        name: customer?.customerName,
+        chineseName: customer?.chineseName,
+        weChatId: customer?.weChatId,
+        whatsAppNumber: customer?.whatsAppNumber,
+        email: customer?.email,
+        phone: customer?.phone,
+      })
+        .then((matches) => {
+          if (!isCurrent) return;
+
+          const selectedCustomerIdSet = new Set(selectedCustomerIds);
+          setDuplicates(
+            matches.filter(
+              (match) => !selectedCustomerIdSet.has(match.id),
+            ),
+          );
+        })
+        .catch(() => {
+          if (isCurrent) {
+            setDuplicates([]);
+          }
+        });
+    }, 500);
+
+    return () => {
+      isCurrent = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    customer,
+    customer?.chineseName,
+    customer?.customerId,
+    customer?.customerName,
+    customer?.email,
+    customer?.phone,
+    customer?.weChatId,
+    customer?.whatsAppNumber,
+    selectedCustomerIds,
+  ]);
+
+  if (duplicates.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 md:col-span-2">
+      <p className="font-medium">Possible existing customer</p>
+      {duplicates.map((duplicate) => (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3"
+          key={duplicate.id}
+        >
+          <p>
+            {duplicate.name} matches by{' '}
+            {formatMatchedFields(duplicate.matchedFields)}.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => applyExistingCustomer(form, index, duplicate)}
+          >
+            Use this customer
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Shows the selected existing customer link for one booking row.
+ *
+ * @param props - Booking form and row index to summarize.
+ * @returns A compact linked-customer summary with an unlink action.
+ */
+function SelectedBookingCustomer({
+  form,
+  index,
+}: {
+  form: UseFormReturn<BookingFormValues>;
+  index: number;
+}) {
+  const customer = useWatch({
+    control: form.control,
+    name: `customers.${index}`,
+  });
+
+  if (!customer?.customerId) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/20 p-3 md:col-span-2">
+      <div>
+        <p className="font-medium">Linked existing customer</p>
+        <p className="text-sm text-muted-foreground">
+          {customer.customerName || customer.customerId}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => createNewCustomerInstead(form, index)}
+      >
+        Create new instead
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Renders the customer identity and contact fields for one booking row.
+ *
+ * @param props - Booking form context and row configuration.
+ * @returns Customer identity/contact inputs or read-only selected-customer data.
+ */
 function CustomerFields({
   form,
   index,
   getFieldError,
   contactInputProps,
+  isExistingCustomer,
 }: CustomerFieldsProps) {
   const prefix = `customers.${index}` as const;
+  const readOnlyProps = isExistingCustomer
+    ? {
+        readOnly: true,
+        'aria-readonly': true,
+      }
+    : {};
 
   return (
     <>
@@ -51,18 +454,21 @@ function CustomerFields({
       >
         <Input
           id={`${prefix}.customerName`}
+          {...readOnlyProps}
           {...form.register(`${prefix}.customerName`)}
         />
       </BookingFormField>
       <BookingFormField id={`${prefix}.chineseName`} label="Chinese name">
         <Input
           id={`${prefix}.chineseName`}
+          {...readOnlyProps}
           {...form.register(`${prefix}.chineseName`)}
         />
       </BookingFormField>
       <BookingFormField id={`${prefix}.weChatId`} label="WeChat ID">
         <Input
           id={`${prefix}.weChatId`}
+          {...readOnlyProps}
           {...contactInputProps}
           {...form.register(`${prefix}.weChatId`)}
         />
@@ -70,6 +476,7 @@ function CustomerFields({
       <BookingFormField id={`${prefix}.whatsAppNumber`} label="WhatsApp number">
         <Input
           id={`${prefix}.whatsAppNumber`}
+          {...readOnlyProps}
           {...contactInputProps}
           {...form.register(`${prefix}.whatsAppNumber`)}
         />
@@ -78,6 +485,7 @@ function CustomerFields({
         <Input
           id={`${prefix}.email`}
           type="email"
+          {...readOnlyProps}
           {...contactInputProps}
           {...form.register(`${prefix}.email`)}
         />
@@ -86,6 +494,7 @@ function CustomerFields({
         <Input
           id={`${prefix}.phone`}
           type="tel"
+          {...readOnlyProps}
           {...contactInputProps}
           {...form.register(`${prefix}.phone`)}
         />
@@ -103,24 +512,41 @@ function CustomerFields({
         id={`${prefix}.preferredLanguage`}
         label="Preferred language"
       >
-        <Controller
-          control={form.control}
-          name={`${prefix}.preferredLanguage`}
-          render={({ field }) => (
-            <EnumSelect
-              id={field.name}
-              value={field.value}
-              onValueChange={field.onChange}
-              values={preferredLanguageOptions}
-              placeholder="Select language"
-            />
-          )}
-        />
+        {isExistingCustomer ? (
+          <div
+            className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm"
+            id={`${prefix}.preferredLanguage`}
+          >
+            {form.getValues(`${prefix}.preferredLanguage`)
+              ? formatEnumLabel(form.getValues(`${prefix}.preferredLanguage`))
+              : '-'}
+          </div>
+        ) : (
+          <Controller
+            control={form.control}
+            name={`${prefix}.preferredLanguage`}
+            render={({ field }) => (
+              <EnumSelect
+                id={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                values={preferredLanguageOptions}
+                placeholder="Select language"
+              />
+            )}
+          />
+        )}
       </BookingFormField>
     </>
   );
 }
 
+/**
+ * Renders equipment request fields for one booking customer.
+ *
+ * @param props - Booking form and customer row index.
+ * @returns Equipment request field.
+ */
 function EquipmentFields({
   form,
   index,
@@ -143,6 +569,12 @@ function EquipmentFields({
   );
 }
 
+/**
+ * Renders booking-specific notes for one customer or diver.
+ *
+ * @param props - Booking form and customer row index.
+ * @returns Customer notes field.
+ */
 function CustomerNotesField({
   form,
   index,
@@ -163,6 +595,12 @@ function CustomerNotesField({
   );
 }
 
+/**
+ * Renders booking-specific equipment sizing fields for one customer or diver.
+ *
+ * @param props - Booking form and customer row index.
+ * @returns Equipment sizing fields.
+ */
 function EquipmentSizingFields({
   form,
   index,
@@ -201,6 +639,12 @@ function EquipmentSizingFields({
   );
 }
 
+/**
+ * Renders Fun Dive requirements for one customer or diver.
+ *
+ * @param props - Booking form context and row index.
+ * @returns Fun diver fields when the booking includes a Fun Dive.
+ */
 function FunDiverFields({
   form,
   index,
@@ -259,6 +703,12 @@ function FunDiverFields({
   );
 }
 
+/**
+ * Renders the full customer/diver section for the booking intake form.
+ *
+ * @param props - Booking form context and validation helpers.
+ * @returns Customer/diver rows with existing-customer selection support.
+ */
 export function CustomerDiverDetailsSection({
   form,
   includesFunDive,
@@ -270,6 +720,9 @@ export function CustomerDiverDetailsSection({
   });
   const customers =
     useWatch({ control: form.control, name: 'customers' }) ?? [];
+  const selectedCustomerIds = customers.flatMap((customer) =>
+    customer.customerId ? [customer.customerId] : [],
+  );
   const customerError = getFieldError('customers');
   const hasPrimaryContactMethodError =
     customerError === primaryContactMethodError;
@@ -308,6 +761,10 @@ export function CustomerDiverDetailsSection({
           const prefix = `customers.${index}` as const;
           const isPrimaryContact =
             customers[index]?.role === BookingCustomerRole.PRIMARY_CONTACT;
+          const isExistingCustomer = Boolean(customers[index]?.customerId);
+          const otherSelectedCustomerIds = selectedCustomerIds.filter(
+            (customerId) => customerId !== customers[index]?.customerId,
+          );
           const contactInputProps =
             isPrimaryContact && hasPrimaryContactMethodError
               ? {
@@ -352,12 +809,27 @@ export function CustomerDiverDetailsSection({
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
+                {isExistingCustomer ? (
+                  <SelectedBookingCustomer form={form} index={index} />
+                ) : (
+                  <CustomerPicker
+                    form={form}
+                    index={index}
+                    selectedCustomerIds={otherSelectedCustomerIds}
+                  />
+                )}
                 <CustomerFields
                   form={form}
                   index={index}
                   includesFunDive={includesFunDive}
                   getFieldError={getFieldError}
                   contactInputProps={contactInputProps}
+                  isExistingCustomer={isExistingCustomer}
+                />
+                <PotentialDuplicateCustomerWarning
+                  form={form}
+                  index={index}
+                  selectedCustomerIds={otherSelectedCustomerIds}
                 />
                 <EquipmentFields form={form} index={index} />
                 <CustomerNotesField form={form} index={index} />

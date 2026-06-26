@@ -17,13 +17,14 @@ const mocks = vi.hoisted(() => ({
   requireCurrentUser: vi.fn(),
   transactionRunner: vi.fn(),
   transaction: {
-    bookingRequest: { updateMany: vi.fn() },
+    bookingRequest: { create: vi.fn(), updateMany: vi.fn() },
     scheduleItem: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
     bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
     customer: { update: vi.fn(), create: vi.fn() },
     bookingCustomer: { deleteMany: vi.fn(), createMany: vi.fn() },
     deposit: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
   },
+  findManyCustomers: vi.fn(),
   updateMany: vi.fn(),
 }));
 
@@ -33,6 +34,9 @@ vi.mock('@/lib/db', () => ({
     bookingRequest: {
       findUnique: mocks.findUnique,
       updateMany: mocks.updateMany,
+    },
+    customer: {
+      findMany: mocks.findManyCustomers,
     },
   },
 }));
@@ -48,9 +52,11 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 import {
   cancelBooking,
   approveBooking,
+  createBookingDraft,
   markBookingNeedsMoreInfo,
   resubmitEditedBookingForApproval,
   resubmitBookingForApproval,
+  submitBookingForApproval,
   submitEditedBookingForApproval,
   updateBooking,
 } from './actions';
@@ -173,10 +179,15 @@ beforeEach(() => {
     throw new Error(`redirect:${url}`);
   });
   mocks.updateMany.mockResolvedValue({ count: 1 });
+  mocks.findManyCustomers.mockImplementation(
+    async ({ where }: { where?: { id?: { in?: string[] } } }) =>
+      (where?.id?.in ?? []).map((id) => ({ id })),
+  );
   mocks.transactionRunner.mockImplementation(
     async (callback: (transaction: typeof mocks.transaction) => unknown) =>
       callback(mocks.transaction),
   );
+  mocks.transaction.bookingRequest.create.mockResolvedValue({ id: 'booking-1' });
   mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 1 });
   mocks.transaction.scheduleItem.findUnique.mockResolvedValue(null);
   mocks.transaction.scheduleItem.create.mockResolvedValue({ id: 'schedule-1' });
@@ -1006,9 +1017,12 @@ test('updates related booking records in one transaction without changing status
   expect(mocks.transaction.bookingActivity.deleteMany).toHaveBeenCalledWith({
     where: { bookingRequestId: 'booking-1' },
   });
-  expect(mocks.transaction.customer.update).toHaveBeenCalledWith(
-    expect.objectContaining({ where: { id: 'customer-1' } }),
-  );
+  expect(mocks.findManyCustomers).toHaveBeenCalledWith({
+    where: { id: { in: ['customer-1'] } },
+    select: { id: true },
+  });
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith(
     expect.objectContaining({
       data: [expect.objectContaining({ customerId: 'customer-1' })],
@@ -1018,4 +1032,141 @@ test('updates related booking records in one transaction without changing status
     where: { id: 'deposit-1' },
   });
   expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1/edit');
+});
+
+test('creates a draft with a selected existing customer without duplicating the customer', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    createBookingDraft({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Existing customer asked about course dates.',
+      customers: [
+        {
+          ...bookingFormDefaultValues.customers[0],
+          customerId: 'customer-1',
+          customerName: 'Maria Santos',
+          email: 'maria@example.com',
+        },
+      ],
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings',
+  });
+
+  expect(mocks.findManyCustomers).toHaveBeenCalledWith({
+    where: { id: { in: ['customer-1'] } },
+    select: { id: true },
+  });
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
+    data: [expect.objectContaining({ customerId: 'customer-1' })],
+  });
+});
+
+test('creates mixed existing and new booking customers in one transaction', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    submitBookingForApproval(
+      validSubmitValues({
+        customers: [
+          {
+            ...bookingFormDefaultValues.customers[0],
+            customerId: 'customer-1',
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            customerName: 'Maria Santos',
+            email: 'maria@example.com',
+          },
+          {
+            ...bookingFormDefaultValues.customers[0],
+            role: BookingCustomerRole.PARTICIPANT,
+            customerName: 'Kai Chen',
+          },
+        ],
+      }),
+    ),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings',
+  });
+
+  expect(mocks.transaction.customer.create).toHaveBeenCalledTimes(1);
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
+    data: [
+      expect.objectContaining({ customerId: 'customer-1' }),
+      expect.objectContaining({ customerId: 'customer-new' }),
+    ],
+  });
+});
+
+test('rejects duplicate selected customer IDs before opening a transaction', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    createBookingDraft({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Two rows selected the same existing customer.',
+      customers: [
+        {
+          ...bookingFormDefaultValues.customers[0],
+          customerId: 'customer-1',
+          customerName: 'Maria Santos',
+        },
+        {
+          ...bookingFormDefaultValues.customers[0],
+          customerId: 'customer-1',
+          customerName: 'Maria Santos',
+        },
+      ],
+    }),
+  ).resolves.toEqual({
+    success: false,
+    fieldErrors: {},
+    formError: 'Select each existing customer only once.',
+  });
+
+  expect(mocks.findManyCustomers).not.toHaveBeenCalled();
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
+
+test('rejects selected customer IDs that no longer exist', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findManyCustomers.mockResolvedValue([]);
+
+  await expect(
+    createBookingDraft({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Selected a stale customer.',
+      customers: [
+        {
+          ...bookingFormDefaultValues.customers[0],
+          customerId: 'missing-customer',
+          customerName: 'Missing Customer',
+        },
+      ],
+    }),
+  ).resolves.toEqual({
+    success: false,
+    fieldErrors: {},
+    formError:
+      'One or more selected customers no longer exist. Refresh and try again.',
+  });
+
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
 });

@@ -66,32 +66,31 @@ export type EditableBooking = NonNullable<
 >;
 
 /**
- * Creates customers for a booking request.
+ * Resolves the Customer IDs that should be linked to the booking.
  *
  * @param transaction - The database transaction object.
- * @param bookingRequestId - The ID of the booking request.
  * @param bookingValues - The normalized booking form values.
+ * @returns Customer IDs in the same order as the submitted booking customers.
  */
-async function createCustomersForBooking(
+async function resolveBookingCustomerIds(
   transaction: BookingMutationTransaction,
-  bookingRequestId: string,
   bookingValues: NormalizedBookingFormValues,
 ) {
-  await Promise.all(
-    bookingValues.customers.map(async (bookingCustomer) => {
-      const customer = await transaction.customer.create({
-        data: mapCustomerData(bookingCustomer),
-      });
+  const customerIds: string[] = [];
 
-      await transaction.bookingCustomer.create({
-        data: mapBookingCustomerCreateManyData(
-          bookingRequestId,
-          [bookingCustomer],
-          [customer.id],
-        )[0],
-      });
-    }),
-  );
+  for (const bookingCustomer of bookingValues.customers) {
+    if (bookingCustomer.customerId) {
+      customerIds.push(bookingCustomer.customerId);
+      continue;
+    }
+
+    const customer = await transaction.customer.create({
+      data: mapCustomerData(bookingCustomer),
+    });
+    customerIds.push(customer.id);
+  }
+
+  return customerIds;
 }
 
 /**
@@ -121,34 +120,20 @@ async function replaceActivities(
 }
 
 /**
- * Replaces the customers for a booking request.
+ * Replaces the booking customer links for a booking request.
  *
  * @param transaction - The database transaction object.
  * @param bookingRequestId - The ID of the booking request.
  * @param bookingValues - The normalized booking form values.
  */
-async function replaceCustomers(
+async function replaceBookingCustomers(
   transaction: BookingMutationTransaction,
   bookingRequestId: string,
   bookingValues: NormalizedBookingFormValues,
 ) {
-  const customerIds = await Promise.all(
-    bookingValues.customers.map(async (bookingCustomer) => {
-      const customerData = mapCustomerData(bookingCustomer);
-
-      if (bookingCustomer.customerId) {
-        await transaction.customer.update({
-          where: { id: bookingCustomer.customerId },
-          data: customerData,
-        });
-        return bookingCustomer.customerId;
-      }
-
-      const customer = await transaction.customer.create({
-        data: customerData,
-      });
-      return customer.id;
-    }),
+  const customerIds = await resolveBookingCustomerIds(
+    transaction,
+    bookingValues,
   );
 
   await transaction.bookingCustomer.deleteMany({
@@ -227,11 +212,7 @@ export async function createBookingRequestWithIntake(
       },
     });
 
-    await createCustomersForBooking(
-      transaction,
-      bookingRequest.id,
-      bookingValues,
-    );
+    await replaceBookingCustomers(transaction, bookingRequest.id, bookingValues);
 
     if (hasMeaningfulDeposit(bookingValues)) {
       await transaction.deposit.create({
@@ -274,7 +255,7 @@ export async function updateBookingRequestWithIntake(
     }
 
     await replaceActivities(transaction, booking.id, bookingValues);
-    await replaceCustomers(transaction, booking.id, bookingValues);
+    await replaceBookingCustomers(transaction, booking.id, bookingValues);
     await syncNewestDeposit(
       transaction,
       booking.id,

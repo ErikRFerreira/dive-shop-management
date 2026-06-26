@@ -26,7 +26,6 @@ import {
 } from './cache';
 import {
   createBookingRequestWithIntake,
-  type EditableBooking,
   loadEditableBooking,
   updateBookingRequestWithIntake,
 } from './mutations';
@@ -76,37 +75,57 @@ type UpdateEditableBookingOptions = {
 };
 
 /**
- * Validates that the submitted customer IDs match the linked customer IDs for the booking.
+ * Returns existing Customer IDs selected in the submitted booking form.
  *
- * @param booking - The editable booking object containing the linked customer IDs.
- * @param bookingValues - The normalized booking form values containing the submitted customer IDs.
- * @returns An UpdateBookingActionResult indicating success or failure, or null if validation passes.
+ * @param bookingValues - Normalized booking form values from the client.
+ * @returns Submitted customer IDs, preserving row order and duplicates.
  */
-function validateSubmittedCustomerIds(
-  booking: EditableBooking,
+function getSubmittedExistingCustomerIds(
   bookingValues: ReturnType<typeof normalizeBookingFormValues>,
-): UpdateBookingActionResult | null {
-  const linkedCustomerIds = new Set(
-    booking.customers.map((customer) => customer.customerId),
-  );
-  const submittedCustomerIds = bookingValues.customers.flatMap((customer) =>
+) {
+  return bookingValues.customers.flatMap((customer) =>
     customer.customerId ? [customer.customerId] : [],
   );
-  const hasInvalidCustomerId = submittedCustomerIds.some(
-    (customerId) => !linkedCustomerIds.has(customerId),
-  );
+}
+
+/**
+ * Validates that selected existing customers are unique and still exist.
+ *
+ * @param bookingValues - Normalized booking form values from the client.
+ * @returns A form-level error message, or `null` when selected IDs are valid.
+ */
+async function getSubmittedExistingCustomerIdError(
+  bookingValues: ReturnType<typeof normalizeBookingFormValues>,
+) {
+  const submittedCustomerIds = getSubmittedExistingCustomerIds(bookingValues);
   const hasDuplicateCustomerId =
     new Set(submittedCustomerIds).size !== submittedCustomerIds.length;
 
-  if (!hasInvalidCustomerId && !hasDuplicateCustomerId) {
+  if (hasDuplicateCustomerId) {
+    return 'Select each existing customer only once.';
+  }
+
+  if (submittedCustomerIds.length === 0) {
     return null;
   }
 
-  return {
-    success: false,
-    fieldErrors: {},
-    formError: 'Customer details changed unexpectedly. Refresh and try again.',
-  };
+  const customers = await db.customer.findMany({
+    where: {
+      id: {
+        in: submittedCustomerIds,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+  const foundCustomerIds = new Set(customers.map((customer) => customer.id));
+
+  return submittedCustomerIds.every((customerId) =>
+    foundCustomerIds.has(customerId),
+  )
+    ? null
+    : 'One or more selected customers no longer exist. Refresh and try again.';
 }
 
 /**
@@ -199,9 +218,14 @@ async function updateEditableBooking(
     };
   }
 
-  const customerIdError = validateSubmittedCustomerIds(booking, bookingValues);
+  const customerIdError =
+    await getSubmittedExistingCustomerIdError(bookingValues);
   if (customerIdError) {
-    return customerIdError;
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: customerIdError,
+    };
   }
 
   const didUpdate = await updateBookingRequestWithIntake(
@@ -257,6 +281,16 @@ async function createBooking(
       success: false,
       fieldErrors: validation.fieldErrors,
       formError: validation.formErrors[0],
+    };
+  }
+
+  const customerIdError =
+    await getSubmittedExistingCustomerIdError(bookingValues);
+  if (customerIdError) {
+    return {
+      success: false,
+      fieldErrors: {},
+      formError: customerIdError,
     };
   }
 

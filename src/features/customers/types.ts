@@ -7,6 +7,7 @@ export type CustomerSearchResult = {
   firstName: string | null;
   lastName: string | null;
   chineseName: string | null;
+  hotel: string | null;
   preferredLanguage: PreferredLanguage | null;
   certificationLevel: string | null;
   certificationAgency: string | null;
@@ -37,5 +38,17 @@ export type PotentialDuplicateCustomerInput = {
 };
 
 export type PotentialDuplicateCustomer = CustomerSearchResult & {
+  matchedFields: DuplicateCustomerMatchField[];
+};
+
+export type BookingCustomerPickerResult = Omit<
+  CustomerSearchResult,
+  'lastDiveDate' | 'lastBookingDate'
+> & {
+  lastDiveDate: string | null;
+  lastBookingDate: string | null;
+};
+
+export type PotentialDuplicateBookingCustomer = BookingCustomerPickerResult & {
   matchedFields: DuplicateCustomerMatchField[];
 };

@@ -123,6 +123,27 @@ test('blocks a completely empty draft', () => {
   });
 });
 
+test('allows a draft when an existing customer is selected', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues({
+      ...bookingFormDefaultValues,
+      customers: [
+        {
+          ...bookingCustomerDefaultValues,
+          customerId: 'customer-1',
+        },
+      ],
+    }),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
+});
+
 test('requires an activity and its requested date for submission', () => {
   const result = validateBookingIntake(
     validSubmitValues({ activities: [] }),

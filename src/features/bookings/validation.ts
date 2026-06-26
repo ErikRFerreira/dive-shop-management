@@ -87,6 +87,7 @@ const activitySchema = z.object({
 });
 
 const customerSchema = z.object({
+  customerId: z.string().trim().min(1).optional(),
   role: z.enum(BookingCustomerRole),
   customerName: z.string().nullable(),
   chineseName: z.string().nullable(),
@@ -136,7 +137,8 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
 }
 
 /**
- * Checks if the booking intake form has at least one meaningful customer with non-null values for fields other than 'role' and 'customerId'.
+ * Checks if the booking intake form has at least one meaningful customer with
+ * non-null values for fields other than `role`.
  *
  * @param values - The normalized booking form values to check for meaningful customer data.
  * @returns - True if there is at least one meaningful customer; otherwise, false.
@@ -145,7 +147,7 @@ function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   return values.customers.some((customer) =>
     Object.entries(customer).some(
       ([field, value]) =>
-        field !== 'role' && field !== 'customerId' && value !== null,
+        field !== 'role' && value !== null && value !== undefined,
     ),
   );
 }
