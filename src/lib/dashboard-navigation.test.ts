@@ -9,7 +9,7 @@ import { UserRole } from '@/generated/prisma/enums';
 test.each([
   [UserRole.ADMIN, ['dashboard', 'bookings', 'schedule', 'customers', 'settings']],
   [UserRole.MANAGER, ['dashboard', 'bookings', 'schedule', 'customers']],
-  [UserRole.CUSTOMER_SERVICE, ['dashboard', 'bookings', 'schedule']],
+  [UserRole.CUSTOMER_SERVICE, ['dashboard', 'bookings', 'schedule', 'customers']],
   [UserRole.INSTRUCTOR, ['dashboard']],
 ] as const)('returns the correct navigation for %s', (role, routeKeys) => {
   expect(getDashboardNavigation({ role }).map((route) => route.key)).toEqual(
@@ -17,10 +17,16 @@ test.each([
   );
 });
 
-test('does not authorize customer service to view customers', () => {
+test('authorizes customer service to view customers', () => {
   expect(
     canAccessDashboardRoute({ role: UserRole.CUSTOMER_SERVICE }, 'customers'),
-  ).toBe(false);
+  ).toBe(true);
+});
+
+test('does not authorize instructors to view customers', () => {
+  expect(canAccessDashboardRoute({ role: UserRole.INSTRUCTOR }, 'customers')).toBe(
+    false,
+  );
 });
 
 test('authorizes customer service but not instructors to view the schedule', () => {

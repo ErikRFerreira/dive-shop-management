@@ -43,7 +43,7 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'customers',
     href: '/customers',
     label: 'Customers',
-    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER],
+    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
   },
   {
     key: 'settings',
