@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import {
   Controller,
   useFieldArray,
@@ -6,6 +6,8 @@ import {
   type FieldPath,
   type UseFormReturn,
 } from 'react-hook-form';
+import { XIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { BookingFormSection } from '@/components/bookings/booking-form-section';
 import {
@@ -26,9 +28,16 @@ import {
   findBookingCustomerDuplicates,
   searchBookingCustomers,
 } from '@/features/customers/booking-actions';
+import {
+  areDuplicateCustomerIdentitySnapshotsEqual,
+  getDuplicateCustomerIdentitySnapshot,
+  getEligibleDuplicateCustomerLookupInput,
+  type DuplicateCustomerIdentitySnapshot,
+} from '@/features/customers/duplicate-lookup-rules';
 import type {
   BookingCustomerPickerResult,
   PotentialDuplicateBookingCustomer,
+  PotentialDuplicateCustomerInput,
 } from '@/features/customers/types';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
 
@@ -46,6 +55,11 @@ type CustomerFieldsProps = CustomerDiverDetailsSectionProps & {
   contactInputProps: { 'aria-invalid'?: boolean; className?: string };
   isExistingCustomer: boolean;
 };
+
+type SuppressedDuplicateSnapshots = Record<
+  string,
+  DuplicateCustomerIdentitySnapshot
+>;
 
 /**
  * Formats a nullable field for compact customer picker display.
@@ -259,6 +273,81 @@ function CustomerPicker({
 }
 
 /**
+ * Renders duplicate customer actions inside a Sonner toast.
+ *
+ * @param props - Duplicate matches and selection/dismiss callbacks.
+ * @returns Toast content for possible existing customer matches.
+ */
+function DuplicateCustomerToastContent({
+  duplicates,
+  onDismiss,
+  onUseCustomer,
+}: {
+  duplicates: PotentialDuplicateBookingCustomer[];
+  onDismiss: () => void;
+  onUseCustomer: (customer: PotentialDuplicateBookingCustomer) => void;
+}) {
+  return (
+    <div className="grid w-full gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-medium">Possible existing customer</p>
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          className="text-amber-950 hover:bg-amber-100"
+          aria-label="Dismiss possible existing customer notice"
+          onClick={onDismiss}
+        >
+          <XIcon />
+        </Button>
+      </div>
+      <div className="grid gap-2">
+        {duplicates.map((duplicate) => (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3"
+            key={duplicate.id}
+          >
+            <p>
+              {duplicate.name} matches by{' '}
+              {formatMatchedFields(duplicate.matchedFields)}.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="bg-background"
+              onClick={() => onUseCustomer(duplicate)}
+            >
+              Use this customer
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Builds duplicate lookup input from a booking customer row.
+ *
+ * @param customer - Current customer row values.
+ * @returns Duplicate lookup identity input.
+ */
+function duplicateInputFromBookingCustomer(
+  customer: BookingFormValues['customers'][number] | undefined,
+): PotentialDuplicateCustomerInput {
+  return {
+    name: customer?.customerName,
+    chineseName: customer?.chineseName,
+    weChatId: customer?.weChatId,
+    whatsAppNumber: customer?.whatsAppNumber,
+    email: customer?.email,
+    phone: customer?.phone,
+  };
+}
+
+/**
  * Warns staff when manual customer details strongly match an existing customer.
  *
  * @param props - Booking form, row index, and selected IDs in other rows.
@@ -267,11 +356,17 @@ function CustomerPicker({
 function PotentialDuplicateCustomerWarning({
   form,
   index,
+  rowId,
   selectedCustomerIds,
+  suppressedDuplicateSnapshot,
+  onDuplicateIdentityEdited,
 }: {
   form: UseFormReturn<BookingFormValues>;
   index: number;
+  rowId: string;
   selectedCustomerIds: string[];
+  suppressedDuplicateSnapshot?: DuplicateCustomerIdentitySnapshot;
+  onDuplicateIdentityEdited: (rowId: string) => void;
 }) {
   const customer = useWatch({
     control: form.control,
@@ -280,23 +375,31 @@ function PotentialDuplicateCustomerWarning({
   const [duplicates, setDuplicates] = useState<
     PotentialDuplicateBookingCustomer[]
   >([]);
+  const duplicateToastId = useId();
 
   useEffect(() => {
     let isCurrent = true;
-    const hasDuplicateInput = customer
-      ? [
-          customer.customerName,
-          customer.chineseName,
-          customer.weChatId,
-          customer.whatsAppNumber,
-          customer.email,
-          customer.phone,
-        ].some((value) => value.trim())
-      : false;
+    const duplicateInput = duplicateInputFromBookingCustomer(customer);
+    const duplicateIdentitySnapshot =
+      getDuplicateCustomerIdentitySnapshot(duplicateInput);
+    const isSuppressedDuplicateSnapshot =
+      suppressedDuplicateSnapshot &&
+      areDuplicateCustomerIdentitySnapshotsEqual(
+        duplicateIdentitySnapshot,
+        suppressedDuplicateSnapshot,
+      );
+    const eligibleDuplicateInput =
+      getEligibleDuplicateCustomerLookupInput(duplicateInput);
     const shouldSearchForDuplicates =
-      Boolean(customer) && !customer?.customerId && hasDuplicateInput;
+      Boolean(customer) &&
+      !customer?.customerId &&
+      !isSuppressedDuplicateSnapshot;
 
-    if (!shouldSearchForDuplicates) {
+    if (suppressedDuplicateSnapshot && !isSuppressedDuplicateSnapshot) {
+      onDuplicateIdentityEdited(rowId);
+    }
+
+    if (!shouldSearchForDuplicates || !eligibleDuplicateInput) {
       const clearTimeoutId = window.setTimeout(() => {
         if (isCurrent) {
           setDuplicates([]);
@@ -310,14 +413,7 @@ function PotentialDuplicateCustomerWarning({
     }
 
     const timeoutId = window.setTimeout(() => {
-      void findBookingCustomerDuplicates({
-        name: customer?.customerName,
-        chineseName: customer?.chineseName,
-        weChatId: customer?.weChatId,
-        whatsAppNumber: customer?.whatsAppNumber,
-        email: customer?.email,
-        phone: customer?.phone,
-      })
+      void findBookingCustomerDuplicates(eligibleDuplicateInput)
         .then((matches) => {
           if (!isCurrent) return;
 
@@ -348,37 +444,44 @@ function PotentialDuplicateCustomerWarning({
     customer?.phone,
     customer?.weChatId,
     customer?.whatsAppNumber,
+    onDuplicateIdentityEdited,
+    rowId,
     selectedCustomerIds,
+    suppressedDuplicateSnapshot,
   ]);
 
-  if (duplicates.length === 0) {
-    return null;
-  }
+  useEffect(() => {
+    const toastId = `possible-existing-customer-${duplicateToastId}`;
 
-  return (
-    <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 md:col-span-2">
-      <p className="font-medium">Possible existing customer</p>
-      {duplicates.map((duplicate) => (
-        <div
-          className="flex flex-wrap items-center justify-between gap-3"
-          key={duplicate.id}
-        >
-          <p>
-            {duplicate.name} matches by{' '}
-            {formatMatchedFields(duplicate.matchedFields)}.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => applyExistingCustomer(form, index, duplicate)}
-          >
-            Use this customer
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
+    if (duplicates.length === 0) {
+      toast.dismiss(toastId);
+      return;
+    }
+
+    toast.custom(
+      () => (
+        <DuplicateCustomerToastContent
+          duplicates={duplicates}
+          onDismiss={() => toast.dismiss(toastId)}
+          onUseCustomer={(duplicate) => {
+            applyExistingCustomer(form, index, duplicate);
+            toast.dismiss(toastId);
+          }}
+        />
+      ),
+      {
+        id: toastId,
+        duration: Infinity,
+        position: 'top-right',
+      },
+    );
+
+    return () => {
+      toast.dismiss(toastId);
+    };
+  }, [duplicateToastId, duplicates, form, index]);
+
+  return null;
 }
 
 /**
@@ -390,9 +493,11 @@ function PotentialDuplicateCustomerWarning({
 function SelectedBookingCustomer({
   form,
   index,
+  onCreateNewInstead,
 }: {
   form: UseFormReturn<BookingFormValues>;
   index: number;
+  onCreateNewInstead: () => void;
 }) {
   const customer = useWatch({
     control: form.control,
@@ -415,7 +520,7 @@ function SelectedBookingCustomer({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => createNewCustomerInstead(form, index)}
+        onClick={onCreateNewInstead}
       >
         Create new instead
       </Button>
@@ -726,6 +831,33 @@ export function CustomerDiverDetailsSection({
   const customerError = getFieldError('customers');
   const hasPrimaryContactMethodError =
     customerError === primaryContactMethodError;
+  const [suppressedDuplicateSnapshots, setSuppressedDuplicateSnapshots] =
+    useState<SuppressedDuplicateSnapshots>({});
+
+  const clearSuppressedDuplicateSnapshot = useCallback((rowId: string) => {
+    setSuppressedDuplicateSnapshots((currentSnapshots) => {
+      if (!currentSnapshots[rowId]) {
+        return currentSnapshots;
+      }
+
+      const nextSnapshots = { ...currentSnapshots };
+      delete nextSnapshots[rowId];
+      return nextSnapshots;
+    });
+  }, []);
+
+  const suppressCurrentDuplicateSnapshot = useCallback(
+    (rowId: string, index: number) => {
+      const currentCustomer = form.getValues(`customers.${index}`);
+      setSuppressedDuplicateSnapshots((currentSnapshots) => ({
+        ...currentSnapshots,
+        [rowId]: getDuplicateCustomerIdentitySnapshot(
+          duplicateInputFromBookingCustomer(currentCustomer),
+        ),
+      }));
+    },
+    [form],
+  );
 
   function setPrimaryCustomer(index: number) {
     fields.forEach((_, customerIndex) => {
@@ -740,6 +872,11 @@ export function CustomerDiverDetailsSection({
   }
 
   function removeCustomerAndKeepPrimary(index: number) {
+    const removedRowId = fields[index]?.id;
+    if (removedRowId) {
+      clearSuppressedDuplicateSnapshot(removedRowId);
+    }
+
     remove(index);
     const remainingCustomers = form.getValues('customers');
     if (
@@ -810,7 +947,14 @@ export function CustomerDiverDetailsSection({
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {isExistingCustomer ? (
-                  <SelectedBookingCustomer form={form} index={index} />
+                  <SelectedBookingCustomer
+                    form={form}
+                    index={index}
+                    onCreateNewInstead={() => {
+                      suppressCurrentDuplicateSnapshot(customer.id, index);
+                      createNewCustomerInstead(form, index);
+                    }}
+                  />
                 ) : (
                   <CustomerPicker
                     form={form}
@@ -829,7 +973,12 @@ export function CustomerDiverDetailsSection({
                 <PotentialDuplicateCustomerWarning
                   form={form}
                   index={index}
+                  rowId={customer.id}
                   selectedCustomerIds={otherSelectedCustomerIds}
+                  suppressedDuplicateSnapshot={
+                    suppressedDuplicateSnapshots[customer.id]
+                  }
+                  onDuplicateIdentityEdited={clearSuppressedDuplicateSnapshot}
                 />
                 <EquipmentFields form={form} index={index} />
                 <CustomerNotesField form={form} index={index} />

@@ -1,6 +1,7 @@
 'use server';
 
 import { findPotentialDuplicateCustomers } from '@/features/customers/duplicates';
+import { getEligibleDuplicateCustomerLookupInput } from '@/features/customers/duplicate-lookup-rules';
 import { searchCustomers } from '@/features/customers/queries';
 import type {
   BookingCustomerPickerResult,
@@ -73,7 +74,12 @@ export async function findBookingCustomerDuplicates(
 ): Promise<PotentialDuplicateBookingCustomer[]> {
   await requireBookingCustomerLookupAccess();
 
-  const customers = await findPotentialDuplicateCustomers(input);
+  const eligibleInput = getEligibleDuplicateCustomerLookupInput(input);
+  if (!eligibleInput) {
+    return [];
+  }
+
+  const customers = await findPotentialDuplicateCustomers(eligibleInput);
   return customers.map((customer) => ({
     ...mapBookingCustomerPickerResult(customer),
     matchedFields: customer.matchedFields,
