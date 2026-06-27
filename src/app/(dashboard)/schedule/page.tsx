@@ -1,4 +1,10 @@
 import { ScheduleCalendar } from '@/components/schedule/schedule-calendar';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { getScheduleItemsForCalendar } from '@/features/schedule/queries';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
@@ -25,7 +31,26 @@ async function SchedulePage() {
       </div>
 
       <ScheduleCalendar events={scheduleEvents} />
+      {scheduleEvents.length === 0 ? <ScheduleEmptyState /> : null}
     </div>
+  );
+}
+
+/**
+ * Renders a clear empty state when there are no official scheduled bookings.
+ *
+ * @returns Staff-facing empty state content for the schedule page.
+ */
+function ScheduleEmptyState() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>No scheduled bookings yet</CardTitle>
+        <CardDescription>
+          Approved bookings will appear here after admin schedules them.
+        </CardDescription>
+      </CardHeader>
+    </Card>
   );
 }
 
