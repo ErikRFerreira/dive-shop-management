@@ -1,6 +1,7 @@
 'use server';
 
 import { findPotentialDuplicateCustomers } from '@/features/customers/duplicates';
+import { getEligibleDuplicateCustomerLookupInput } from '@/features/customers/duplicate-lookup-rules';
 import { searchCustomers } from '@/features/customers/queries';
 import type {
   BookingCustomerPickerResult,
@@ -9,6 +10,7 @@ import type {
   PotentialDuplicateCustomerInput,
 } from '@/features/customers/types';
 import { requireCurrentUser } from '@/lib/current-user';
+import { formatDateInputValue } from '@/lib/format';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
 /**
@@ -18,7 +20,7 @@ import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-acces
  * @returns `YYYY-MM-DD` text for form defaults, or `null` when no date exists.
  */
 function formDate(value: Date | null) {
-  return value ? value.toISOString().slice(0, 10) : null;
+  return formatDateInputValue(value);
 }
 
 /**
@@ -73,7 +75,12 @@ export async function findBookingCustomerDuplicates(
 ): Promise<PotentialDuplicateBookingCustomer[]> {
   await requireBookingCustomerLookupAccess();
 
-  const customers = await findPotentialDuplicateCustomers(input);
+  const eligibleInput = getEligibleDuplicateCustomerLookupInput(input);
+  if (!eligibleInput) {
+    return [];
+  }
+
+  const customers = await findPotentialDuplicateCustomers(eligibleInput);
   return customers.map((customer) => ({
     ...mapBookingCustomerPickerResult(customer),
     matchedFields: customer.matchedFields,

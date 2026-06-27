@@ -87,7 +87,7 @@ test('forwards duplicate input and serializes duplicate match dates', async () =
   await expect(
     findBookingCustomerDuplicates({
       excludeCustomerId: 'customer-1',
-      email: 'maria@example.test',
+      email: ' maria@example.test ',
     }),
   ).resolves.toEqual([
     {
@@ -101,5 +101,40 @@ test('forwards duplicate input and serializes duplicate match dates', async () =
   expect(mocks.findPotentialDuplicateCustomers).toHaveBeenCalledWith({
     excludeCustomerId: 'customer-1',
     email: 'maria@example.test',
+  });
+});
+
+test('returns no duplicate matches for under-threshold input without querying duplicates', async () => {
+  await expect(
+    findBookingCustomerDuplicates({
+      excludeCustomerId: 'customer-1',
+      name: 'M',
+      chineseName: 'L',
+      weChatId: 'wx',
+      whatsAppNumber: '12345',
+      email: 'a@b',
+      phone: '12345',
+    }),
+  ).resolves.toEqual([]);
+
+  expect(mocks.findPotentialDuplicateCustomers).not.toHaveBeenCalled();
+});
+
+test('forwards only eligible duplicate fields', async () => {
+  mocks.findPotentialDuplicateCustomers.mockResolvedValue([]);
+
+  await expect(
+    findBookingCustomerDuplicates({
+      excludeCustomerId: 'customer-1',
+      name: 'M',
+      chineseName: 'L',
+      weChatId: ' wx-123 ',
+      phone: '12345',
+    }),
+  ).resolves.toEqual([]);
+
+  expect(mocks.findPotentialDuplicateCustomers).toHaveBeenCalledWith({
+    excludeCustomerId: 'customer-1',
+    weChatId: 'wx-123',
   });
 });

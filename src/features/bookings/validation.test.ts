@@ -18,6 +18,7 @@ import {
   markBookingNeedsMoreInfoSchema,
   validateBookingIntake,
 } from './validation';
+import { primaryContactMethodError } from './validation-messages';
 
 function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
   return normalizeBookingFormValues({
@@ -197,9 +198,7 @@ test('requires a primary contact method', () => {
   expect(result).toMatchObject({
     success: false,
     fieldErrors: {
-      customers: [
-        'Provide at least one contact method for the primary contact: WeChat ID, WhatsApp number, email, or phone.',
-      ],
+      customers: [primaryContactMethodError],
     },
   });
 });
