@@ -1,24 +1,56 @@
-import { ScheduleList } from '@/components/schedule/schedule-list';
-import { getScheduledBookingsForSchedulePage } from '@/features/schedule/queries';
+import { ScheduleCalendar } from '@/components/schedule/schedule-calendar';
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { getScheduleItemsForCalendar } from '@/features/schedule/queries';
+import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
+/**
+ * Renders the internal schedule calendar for official scheduled bookings.
+ *
+ * @returns The schedule page with server-fetched events passed to the client calendar.
+ */
 async function SchedulePage() {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'schedule');
-  const scheduleItems = await getScheduledBookingsForSchedulePage(currentUser);
+  const scheduleItems = await getScheduleItemsForCalendar(currentUser);
+  const scheduleEvents = serializeScheduleCalendarEvents(scheduleItems);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Schedule</h1>
         <p className="text-sm text-muted-foreground">
-          Official scheduled bookings grouped by date.
+          Official scheduled bookings shown by month, week, day, and list.
         </p>
       </div>
 
-      <ScheduleList items={scheduleItems} />
+      <ScheduleCalendar events={scheduleEvents} />
+      {scheduleEvents.length === 0 ? <ScheduleEmptyState /> : null}
     </div>
+  );
+}
+
+/**
+ * Renders a clear empty state when there are no official scheduled bookings.
+ *
+ * @returns Staff-facing empty state content for the schedule page.
+ */
+function ScheduleEmptyState() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>No scheduled bookings yet</CardTitle>
+        <CardDescription>
+          Approved bookings will appear here after admin schedules them.
+        </CardDescription>
+      </CardHeader>
+    </Card>
   );
 }
 

@@ -1,8 +1,14 @@
 import { expect, test } from 'vitest';
 
-import type { SchedulePageItem } from '@/features/schedule/types';
-import { groupScheduleItemsByDate } from '@/features/schedule/utils';
-import { ActivityType } from '@/generated/prisma/enums';
+import type {
+  ScheduleCalendarEvent,
+  SchedulePageItem,
+} from '@/features/schedule/types';
+import {
+  groupScheduleItemsByDate,
+  serializeScheduleCalendarEvents,
+} from '@/features/schedule/utils';
+import { ActivityType, BookingSource } from '@/generated/prisma/enums';
 
 function scheduleItem(
   overrides: Partial<SchedulePageItem>,
@@ -59,4 +65,52 @@ test('preserves schedule item order inside each date group', () => {
 
 test('returns no date groups for an empty schedule', () => {
   expect(groupScheduleItemsByDate([])).toEqual([]);
+});
+
+test('serializes calendar event date fields for client props', () => {
+  const event: ScheduleCalendarEvent = {
+    id: 'schedule-1',
+    title: 'Fun Dive - Maria Santos - 2 pax',
+    start: '2026-07-14T08:00:00',
+    end: '2026-07-14T12:00:00',
+    allDay: false,
+    bookingId: 'booking-1',
+    bookingReference: 'BOOK-1',
+    scheduleItemId: 'schedule-1',
+    date: new Date('2026-07-14T00:00:00.000Z'),
+    startTime: '08:00',
+    endTime: '12:00',
+    activityType: ActivityType.FUN_DIVE,
+    activityLabel: 'Fun Dive',
+    activitySummary: 'Fun Dive',
+    activities: [
+      {
+        id: 'activity-1',
+        activityType: ActivityType.FUN_DIVE,
+        activityLabel: 'Fun Dive',
+        specialtyCourse: null,
+        requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+        requestedTime: '08:00',
+        notes: 'Two tanks.',
+      },
+    ],
+    primaryCustomerName: 'Maria Santos',
+    numberOfPeople: 2,
+    hotel: 'Ocean View',
+    source: BookingSource.WECHAT,
+    referrerName: 'Lina',
+    notes: 'Bring cash.',
+    isTimeTbd: false,
+  };
+
+  expect(serializeScheduleCalendarEvents([event])).toEqual([
+    expect.objectContaining({
+      date: '2026-07-14T00:00:00.000Z',
+      activities: [
+        expect.objectContaining({
+          requestedDate: '2026-07-14T00:00:00.000Z',
+        }),
+      ],
+    }),
+  ]);
 });
