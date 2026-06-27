@@ -1,6 +1,8 @@
 import type {
   ScheduleDateGroup,
+  ScheduleCalendarEvent,
   SchedulePageItem,
+  SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
 import { formatDateInputValue } from '@/lib/format';
 
@@ -45,4 +47,23 @@ export function groupScheduleItemsByDate(
  */
 export function getScheduleDateKey(date: Date) {
   return formatDateInputValue(date) ?? '';
+}
+
+/**
+ * Serializes schedule calendar events before passing them to Client Components.
+ *
+ * @param events - Calendar events prepared by the schedule query layer.
+ * @returns Calendar events with all Date fields converted to ISO strings.
+ */
+export function serializeScheduleCalendarEvents(
+  events: ScheduleCalendarEvent[],
+): SerializedScheduleCalendarEvent[] {
+  return events.map((event) => ({
+    ...event,
+    date: event.date.toISOString(),
+    activities: event.activities.map((activity) => ({
+      ...activity,
+      requestedDate: activity.requestedDate?.toISOString() ?? null,
+    })),
+  }));
 }
