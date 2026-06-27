@@ -111,6 +111,7 @@ function scheduleEvent(
     source: BookingSource.WECHAT,
     referrerName: 'Lina',
     notes: 'Bring cash for marine park fees.',
+    assignments: [],
     isTimeTbd: false,
     ...overrides,
   };

@@ -1,4 +1,26 @@
-import type { ActivityType, BookingSource } from '@/generated/prisma/enums';
+import type {
+  ActivityType,
+  BookingSource,
+  ScheduleAssignmentRole,
+  UserRole,
+} from '@/generated/prisma/enums';
+
+/** Staff user data safe to show in schedule assignment controls. */
+export type AssignableStaff = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+};
+
+/** Staff assignment attached to a scheduled activity. */
+export type ScheduleAssignmentDetail = {
+  id: string;
+  userId: string;
+  role: ScheduleAssignmentRole;
+  notes: string | null;
+  user: AssignableStaff;
+};
 
 /** UI-friendly row for the simple internal schedule page. */
 export type SchedulePageItem = {
@@ -13,6 +35,7 @@ export type SchedulePageItem = {
   source: BookingSource | null;
   referrerName: string | null;
   notes: string | null;
+  assignments: ScheduleAssignmentDetail[];
 };
 
 /** A date bucket rendered by the grouped schedule list. */
@@ -64,6 +87,7 @@ export type ScheduleCalendarEvent = {
   source: BookingSource | null;
   referrerName: string | null;
   notes: string | null;
+  assignments: ScheduleAssignmentDetail[];
   isTimeTbd: boolean;
 };
 
