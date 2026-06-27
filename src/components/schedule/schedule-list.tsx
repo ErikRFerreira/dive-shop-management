@@ -9,16 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatEnumLabel } from '@/features/bookings/form-options';
 import type { SchedulePageItem } from '@/features/schedule/types';
 import { groupScheduleItemsByDate } from '@/features/schedule/utils';
-
-const dateFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Singapore',
-});
+import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 function formatSourceReferrer(item: SchedulePageItem) {
   const source = item.source ? formatEnumLabel(item.source) : null;
@@ -53,7 +46,7 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
       {groups.map((group) => (
         <Card key={group.dateKey}>
           <CardHeader>
-            <CardTitle>{dateFormatter.format(group.date)}</CardTitle>
+            <CardTitle>{formatDisplayDate(group.date)}</CardTitle>
             <CardDescription>
               {group.items.length === 1
                 ? '1 scheduled booking'

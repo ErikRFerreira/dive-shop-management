@@ -24,47 +24,46 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { BookingListItem } from '@/features/bookings/queries';
+import type { CustomerBookingHistoryItem } from '@/features/customers/types';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
-/**
- * Formats the customer label shown for a booking list row.
- *
- * @param booking - Booking list item with its resolved display customer.
- * @returns Customer display name, multiple-customer summary, or the empty placeholder.
- */
-function formatCustomerName(booking: BookingListItem) {
-  const customer = booking.displayCustomer;
-  const fullName = customer?.fullName?.trim();
-  const name = [customer?.firstName, customer?.lastName]
-    .filter((part): part is string => Boolean(part))
-    .join(' ');
-  const displayName = fullName || name;
+type CustomerBookingHistoryProps = {
+  bookings: CustomerBookingHistoryItem[];
+};
 
-  if (!displayName) {
-    return booking.customers.length > 1 ? 'Multiple customers' : '\u2014';
+/**
+ * Formats source and referrer data for a booking history row.
+ *
+ * @param booking - Booking history item being displayed.
+ * @returns Combined source/referrer text with a placeholder for missing values.
+ */
+function formatSourceReferrer(booking: CustomerBookingHistoryItem) {
+  const source = formatEnumLabel(booking.source, { emptyValue: null });
+
+  if (source && booking.referrerName) {
+    return `${source} / ${booking.referrerName}`;
   }
 
-  return booking.customers.length > 1
-    ? `${displayName} + ${booking.customers.length - 1} more`
-    : displayName;
+  return source ?? booking.referrerName ?? '\u2014';
 }
 
 /**
- * Renders booking requests in the staff-facing list table.
+ * Renders the customer's booking-specific history.
  *
- * @param props - Booking rows visible to the current user.
- * @returns Booking list table or an empty-state card.
+ * @param props - Newest-first booking history rows.
+ * @returns Booking history table or an empty-state card.
  */
-export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
+export function CustomerBookingHistory({
+  bookings,
+}: CustomerBookingHistoryProps) {
   if (bookings.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No bookings found</CardTitle>
+          <CardTitle>Booking history</CardTitle>
           <CardDescription>
-            There are no booking requests matching this view.
+            This customer does not have any linked bookings yet.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -73,47 +72,57 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>Booking history</CardTitle>
+        <CardDescription>
+          Booking-specific details are shown as they were recorded on each
+          booking.
+        </CardDescription>
+      </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Status</TableHead>
-              <TableHead>Customer name</TableHead>
+              <TableHead>Booking</TableHead>
+              <TableHead>Date</TableHead>
               <TableHead>Activities</TableHead>
-              <TableHead>Requested date</TableHead>
-              <TableHead>Number of people</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Primary contact</TableHead>
+              <TableHead>People</TableHead>
               <TableHead>Source/referrer</TableHead>
-              <TableHead>Customer service owner</TableHead>
-              <TableHead>Created date</TableHead>
-              <TableHead>Updated date</TableHead>
+              <TableHead>Hotel at booking</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {bookings.map((booking) => (
-              <TableRow key={booking.id}>
+              <TableRow key={booking.bookingId}>
                 <TableCell>
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
-                <TableCell>{formatCustomerName(booking)}</TableCell>
+                <TableCell>{booking.bookingId}</TableCell>
+                <TableCell>{formatDisplayDate(booking.date)}</TableCell>
                 <TableCell>
                   {summarizeBookingActivities(
                     booking.activities,
                     booking.activityType,
                   )}
                 </TableCell>
-                <TableCell>{formatDisplayDate(booking.requestedDate)}</TableCell>
+                <TableCell>{formatEnumLabel(booking.role)}</TableCell>
+                <TableCell>{booking.isPrimaryContact ? 'Yes' : 'No'}</TableCell>
                 <TableCell>{booking.numberOfPeople ?? '\u2014'}</TableCell>
-                <TableCell>{formatEnumLabel(booking.source)}</TableCell>
-                <TableCell>{booking.createdBy.name}</TableCell>
-                <TableCell>{formatDisplayDate(booking.createdAt)}</TableCell>
-                <TableCell>{formatDisplayDate(booking.updatedAt)}</TableCell>
+                <TableCell>{formatSourceReferrer(booking)}</TableCell>
+                <TableCell>{booking.hotelAtBooking ?? '\u2014'}</TableCell>
                 <TableCell className="text-right">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button asChild size="icon" variant="outline">
-                          <Link href={`/bookings/${booking.id}`} aria-label="View booking">
+                          <Link
+                            aria-label="View booking"
+                            href={`/bookings/${booking.bookingId}`}
+                          >
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -132,3 +141,4 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
     </Card>
   );
 }
+

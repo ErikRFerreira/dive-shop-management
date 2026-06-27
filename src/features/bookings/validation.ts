@@ -16,6 +16,7 @@ import {
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
+import { primaryContactMethodError } from './validation-messages';
 import type { NormalizedBookingFormValues } from './types';
 
 export type BookingIntakeIntent = 'draft' | 'submit';
@@ -339,8 +340,7 @@ export const submitBookingIntakeSchema =
         context.addIssue({
           code: 'custom',
           path: ['customers'],
-          message:
-            'Provide at least one contact method for the primary contact: WeChat ID, WhatsApp number, email, or phone.',
+          message: primaryContactMethodError,
         });
       }
     }

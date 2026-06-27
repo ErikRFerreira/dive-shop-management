@@ -6,6 +6,7 @@
  */
 
 import { BookingCustomerRole, UserRole } from '@/generated/prisma/enums';
+import { formatEnumLabel } from '@/lib/format';
 import {
   bookingStatusFilters,
   type BookingRequestFilter,
@@ -132,13 +133,5 @@ export function summarizeBookingActivities(
  * @returns A formatted activity type string in title case, or null if the input is null or empty.
  */
 function formatActivityType(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return formatEnumLabel(value, { emptyValue: null });
 }

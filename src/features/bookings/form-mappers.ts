@@ -13,6 +13,7 @@ import {
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
+import { formatDateInputValue } from '@/lib/format';
 import type { BookingFormValues, NormalizedBookingFormValues } from './types';
 import type { BookingDetailsItem } from './queries';
 
@@ -86,7 +87,7 @@ function enumValue<T extends Record<string, string>>(
  * @returns The formatted date string or an empty string if the value is null.
  */
 function formDate(value: Date | null) {
-  return value ? value.toISOString().slice(0, 10) : '';
+  return formatDateInputValue(value) ?? '';
 }
 
 /**

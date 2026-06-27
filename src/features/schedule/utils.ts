@@ -2,6 +2,7 @@ import type {
   ScheduleDateGroup,
   SchedulePageItem,
 } from '@/features/schedule/types';
+import { formatDateInputValue } from '@/lib/format';
 
 /**
  * Groups already-sorted schedule rows by calendar date for the simple schedule page.
@@ -43,5 +44,5 @@ export function groupScheduleItemsByDate(
  * @returns A stable ISO calendar date key.
  */
 export function getScheduleDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return formatDateInputValue(date) ?? '';
 }
