@@ -1,4 +1,10 @@
-import { PreferredLanguage } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingCustomerRole,
+  BookingSource,
+  BookingStatus,
+  PreferredLanguage,
+} from '@/generated/prisma/enums';
 
 export type CustomerSearchResult = {
   id: string;
@@ -51,4 +57,50 @@ export type BookingCustomerPickerResult = Omit<
 
 export type PotentialDuplicateBookingCustomer = BookingCustomerPickerResult & {
   matchedFields: DuplicateCustomerMatchField[];
+};
+
+export type CustomerDiveInfo = {
+  certificationLevel: string | null;
+  certificationAgency: string | null;
+  lastDiveDate: Date | null;
+  divesLogged: number | null;
+  heightCm: number | null;
+  weightKg: string | null;
+  shoeSize: string | null;
+  equipmentNotes: string | null;
+};
+
+export type CustomerBookingHistoryItem = {
+  bookingId: string;
+  status: BookingStatus;
+  date: Date | null;
+  activityType: ActivityType | null;
+  activities: Array<{ activityType: ActivityType | null }>;
+  role: BookingCustomerRole;
+  isPrimaryContact: boolean;
+  numberOfPeople: number | null;
+  source: BookingSource | null;
+  referrerName: string | null;
+  hotelAtBooking: string | null;
+  createdAt: Date;
+};
+
+export type CustomerDetail = {
+  id: string;
+  name: string;
+  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  chineseName: string | null;
+  weChatId: string | null;
+  whatsAppNumber: string | null;
+  email: string | null;
+  phone: string | null;
+  hotel: string | null;
+  preferredLanguage: PreferredLanguage | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  diveInfo: CustomerDiveInfo;
+  bookingHistory: CustomerBookingHistoryItem[];
 };

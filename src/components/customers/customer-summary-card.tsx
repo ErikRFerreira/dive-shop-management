@@ -1,9 +1,19 @@
+import Link from 'next/link';
+import { Eye } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { CustomerSearchResult } from '@/features/customers/types';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
@@ -40,8 +50,25 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export function CustomerSummaryCard({ customer }: CustomerSummaryCardProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
         <CardTitle>{customer.name}</CardTitle>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild size="icon" variant="outline">
+                <Link
+                  aria-label="View customer"
+                  href={`/customers/${customer.id}`}
+                >
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View customer</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
