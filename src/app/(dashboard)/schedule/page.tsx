@@ -5,7 +5,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getScheduleItemsForCalendar } from '@/features/schedule/queries';
+import { canManageScheduleAssignments } from '@/features/schedule/permissions';
+import {
+  getAssignableStaff,
+  getScheduleItemsForCalendar,
+} from '@/features/schedule/queries';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
@@ -18,8 +22,10 @@ import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-acces
 async function SchedulePage() {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'schedule');
+  const canManageAssignments = canManageScheduleAssignments(currentUser);
   const scheduleItems = await getScheduleItemsForCalendar(currentUser);
   const scheduleEvents = serializeScheduleCalendarEvents(scheduleItems);
+  const assignableStaff = canManageAssignments ? await getAssignableStaff() : [];
 
   return (
     <div className="space-y-6">
@@ -30,7 +36,11 @@ async function SchedulePage() {
         </p>
       </div>
 
-      <ScheduleCalendar events={scheduleEvents} />
+      <ScheduleCalendar
+        assignableStaff={assignableStaff}
+        canManageAssignments={canManageAssignments}
+        events={scheduleEvents}
+      />
       {scheduleEvents.length === 0 ? <ScheduleEmptyState /> : null}
     </div>
   );
