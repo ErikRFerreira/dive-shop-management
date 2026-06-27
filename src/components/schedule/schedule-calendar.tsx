@@ -9,6 +9,7 @@ import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 
+import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,10 +19,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { SerializedScheduleCalendarEvent } from '@/features/schedule/types';
+import type {
+  AssignableStaff,
+  SerializedScheduleCalendarEvent,
+} from '@/features/schedule/types';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 type ScheduleCalendarProps = {
+  assignableStaff: AssignableStaff[];
+  canManageAssignments: boolean;
   events: SerializedScheduleCalendarEvent[];
 };
 
@@ -31,12 +37,19 @@ type ScheduleCalendarProps = {
  * @param props - Serialized schedule events prepared by the server route.
  * @returns A calendar UI that opens a booking summary dialog on event click.
  */
-export function ScheduleCalendar({ events }: ScheduleCalendarProps) {
-  const [selectedEvent, setSelectedEvent] =
-    useState<SerializedScheduleCalendarEvent | null>(null);
+export function ScheduleCalendar({
+  assignableStaff,
+  canManageAssignments,
+  events,
+}: ScheduleCalendarProps) {
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const calendarEvents = useMemo(
     () => mapScheduleEventsToFullCalendarEvents(events),
     [events],
+  );
+  const selectedEvent = useMemo(
+    () => events.find((event) => event.id === selectedEventId) ?? null,
+    [events, selectedEventId],
   );
 
   /**
@@ -48,7 +61,7 @@ export function ScheduleCalendar({ events }: ScheduleCalendarProps) {
     const scheduleEvent = getClickedScheduleEvent(clickInfo);
 
     if (scheduleEvent) {
-      setSelectedEvent(scheduleEvent);
+      setSelectedEventId(scheduleEvent.id);
     }
   }
 
@@ -59,7 +72,7 @@ export function ScheduleCalendar({ events }: ScheduleCalendarProps) {
    */
   function handleDialogOpenChange(open: boolean) {
     if (!open) {
-      setSelectedEvent(null);
+      setSelectedEventId(null);
     }
   }
 
@@ -96,7 +109,11 @@ export function ScheduleCalendar({ events }: ScheduleCalendarProps) {
       >
         <DialogContent className="sm:max-w-lg">
           {selectedEvent ? (
-            <ScheduleEventDialogContent event={selectedEvent} />
+            <ScheduleEventDialogContent
+              assignableStaff={assignableStaff}
+              canManageAssignments={canManageAssignments}
+              event={selectedEvent}
+            />
           ) : null}
         </DialogContent>
       </Dialog>
@@ -111,8 +128,12 @@ export function ScheduleCalendar({ events }: ScheduleCalendarProps) {
  * @returns Staff-facing booking summary content and a booking detail link.
  */
 function ScheduleEventDialogContent({
+  assignableStaff,
+  canManageAssignments,
   event,
 }: {
+  assignableStaff: AssignableStaff[];
+  canManageAssignments: boolean;
   event: SerializedScheduleCalendarEvent;
 }) {
   const sourceReferrer = formatSourceReferrer(event);
@@ -165,6 +186,13 @@ function ScheduleEventDialogContent({
             </p>
           )}
         </section>
+
+        <ScheduleAssignmentsList
+          assignableStaff={assignableStaff}
+          assignments={event.assignments}
+          canManageAssignments={canManageAssignments}
+          scheduleItemId={event.scheduleItemId}
+        />
 
         {event.notes ? (
           <section className="space-y-2">

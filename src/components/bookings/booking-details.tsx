@@ -5,9 +5,11 @@ import {
 } from '@/components/bookings/booking-workflow-forms';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { MissingInfoPanel } from '@/components/bookings/missing-info-panel';
+import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import { Button } from '@/components/ui/button';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
+import type { AssignableStaff } from '@/features/schedule/types';
 import {
   formatDisplayDate,
   formatDisplayDateTime,
@@ -20,8 +22,10 @@ import {
 } from '@/generated/prisma/enums';
 
 type Props = {
+  assignableStaff: AssignableStaff[];
   booking: BookingDetailsItem;
   canEdit: boolean;
+  canManageAssignments: boolean;
   canReview: boolean;
   canResubmit: boolean;
 };
@@ -58,6 +62,22 @@ function formatEnum(value: string | null | undefined) {
   return formatEnumLabel(value);
 }
 
+/**
+ * Formats the stored schedule start time for booking detail display.
+ *
+ * @param value - Schedule item start time.
+ * @returns The stored time or the explicit TBD label.
+ */
+function formatScheduleTime(value: string | null | undefined) {
+  return value?.trim() || 'TBD';
+}
+
+/**
+ * Formats the preferred customer name for booking detail display.
+ *
+ * @param customer - Customer selected for display.
+ * @returns A full name, first/last fallback, or the empty-value placeholder.
+ */
 function formatCustomerName(customer: BookingDetailsItem['displayCustomer']) {
   const fullName = customer?.fullName?.trim();
   if (fullName) return fullName;
@@ -69,6 +89,12 @@ function formatCustomerName(customer: BookingDetailsItem['displayCustomer']) {
   );
 }
 
+/**
+ * Renders a label/value pair in the booking detail view.
+ *
+ * @param props - Field label and rendered value.
+ * @returns A compact booking detail field.
+ */
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   const displayValue =
     value === null || value === undefined || value === '' ? EMPTY_VALUE : value;
@@ -81,6 +107,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/**
+ * Renders a titled booking detail section with a two-column content grid.
+ *
+ * @param props - Section title and child content.
+ * @returns A bordered detail section.
+ */
 function Section({
   title,
   children,
@@ -96,7 +128,20 @@ function Section({
   );
 }
 
-function BookingDetails({ booking, canEdit, canReview, canResubmit }: Props) {
+/**
+ * Renders the internal booking detail page content.
+ *
+ * @param props - Booking detail data plus workflow and assignment permissions.
+ * @returns The booking detail UI with optional schedule assignment controls.
+ */
+function BookingDetails({
+  assignableStaff,
+  booking,
+  canEdit,
+  canManageAssignments,
+  canReview,
+  canResubmit,
+}: Props) {
   const bookingCustomer =
     booking.customers.find(
       (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
@@ -184,6 +229,35 @@ function BookingDetails({ booking, canEdit, canReview, canResubmit }: Props) {
         <Field label="Created date" value={formatDateTime(booking.createdAt)} />
         <Field label="Updated date" value={formatDateTime(booking.updatedAt)} />
       </Section>
+
+      {booking.scheduleItem ? (
+        <Section title="Schedule">
+          <Field
+            label="Scheduled date"
+            value={formatDate(booking.scheduleItem.date)}
+          />
+          <Field
+            label="Scheduled time"
+            value={formatScheduleTime(booking.scheduleItem.startTime)}
+          />
+          {booking.scheduleItem.scheduleNotes ? (
+            <div className="sm:col-span-2">
+              <Field
+                label="Schedule notes"
+                value={booking.scheduleItem.scheduleNotes}
+              />
+            </div>
+          ) : null}
+          <div className="sm:col-span-2">
+            <ScheduleAssignmentsList
+              assignableStaff={assignableStaff}
+              assignments={booking.scheduleItem.assignments}
+              canManageAssignments={canManageAssignments}
+              scheduleItemId={booking.scheduleItem.id}
+            />
+          </div>
+        </Section>
+      ) : null}
 
       <Section title="Activities">
         {activities.map((activity, index) => (

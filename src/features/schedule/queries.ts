@@ -16,7 +16,12 @@ import {
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
-import type { ScheduleCalendarEvent, SchedulePageItem } from './types';
+import type {
+  AssignableStaff,
+  ScheduleAssignmentDetail,
+  ScheduleCalendarEvent,
+  SchedulePageItem,
+} from './types';
 
 const schedulePageItemArgs = {
   select: {
@@ -27,6 +32,25 @@ const schedulePageItemArgs = {
     activityType: true,
     scheduleNotes: true,
     createdAt: true,
+    assignments: {
+      select: {
+        id: true,
+        userId: true,
+        role: true,
+        notes: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    },
     bookingRequest: {
       select: {
         id: true,
@@ -77,6 +101,29 @@ const schedulePageItemArgs = {
 type ScheduleItemForSchedulePage = Prisma.ScheduleItemGetPayload<
   typeof schedulePageItemArgs
 >;
+
+/**
+ * Returns active staff users who can be assigned to scheduled activities.
+ *
+ * @returns Active instructor and divemaster users sorted for picker display.
+ */
+export async function getAssignableStaff(): Promise<AssignableStaff[]> {
+  return db.user.findMany({
+    where: {
+      isActive: true,
+      role: {
+        in: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+    orderBy: [{ name: 'asc' }, { email: 'asc' }],
+  });
+}
 
 /**
  * Builds the schedule-page visibility filter for the current user.
@@ -189,6 +236,7 @@ export function mapScheduleItemForSchedulePage(
     source: booking.source,
     referrerName: booking.referrerName,
     notes: scheduleItem.scheduleNotes ?? booking.internalNotes,
+    assignments: mapScheduleAssignments(scheduleItem.assignments),
   };
 }
 
@@ -275,8 +323,32 @@ function mapScheduleItemToCalendarEvent(
     source: booking.source,
     referrerName: booking.referrerName,
     notes: scheduleItem.scheduleNotes ?? booking.internalNotes,
+    assignments: mapScheduleAssignments(scheduleItem.assignments),
     isTimeTbd,
   };
+}
+
+/**
+ * Maps selected assignment rows into the shared schedule assignment type.
+ *
+ * @param assignments - Assignment rows selected with each schedule item.
+ * @returns Staff assignment details safe for schedule views and future controls.
+ */
+function mapScheduleAssignments(
+  assignments: ScheduleItemForSchedulePage['assignments'],
+): ScheduleAssignmentDetail[] {
+  return assignments.map((assignment) => ({
+    id: assignment.id,
+    userId: assignment.userId,
+    role: assignment.role,
+    notes: assignment.notes,
+    user: {
+      id: assignment.user.id,
+      name: assignment.user.name,
+      email: assignment.user.email,
+      role: assignment.user.role,
+    },
+  }));
 }
 
 /**

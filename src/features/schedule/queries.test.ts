@@ -5,11 +5,13 @@ import {
   BookingCustomerRole,
   BookingSource,
   BookingStatus,
+  ScheduleAssignmentRole,
   UserRole,
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  findManyUsers: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -19,11 +21,15 @@ vi.mock('@/lib/db', () => ({
     scheduleItem: {
       findMany: mocks.findMany,
     },
+    user: {
+      findMany: mocks.findManyUsers,
+    },
   },
 }));
 
 import {
   buildSchedulePageWhere,
+  getAssignableStaff,
   getScheduleItemsForCalendar,
   getScheduledBookingsForSchedulePage,
   mapScheduleItemsToCalendarEvents,
@@ -44,6 +50,7 @@ const customerServiceUser = {
 
 beforeEach(() => {
   mocks.findMany.mockReset();
+  mocks.findManyUsers.mockReset();
 });
 
 test('queries only official scheduled bookings in sorted order', async () => {
@@ -78,6 +85,28 @@ test('queries calendar items with the official scheduled booking filter', async 
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     }),
   );
+});
+
+test('queries active instructors and divemasters as assignable staff', async () => {
+  mocks.findManyUsers.mockResolvedValue([]);
+
+  await getAssignableStaff();
+
+  expect(mocks.findManyUsers).toHaveBeenCalledWith({
+    where: {
+      isActive: true,
+      role: {
+        in: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+    orderBy: [{ name: 'asc' }, { email: 'asc' }],
+  });
 });
 
 test('scopes customer service schedule rows to their own bookings', () => {
@@ -127,6 +156,20 @@ test('maps schedule rows into schedule page items', async () => {
       activityType: ActivityType.FUN_DIVE,
       scheduleNotes: 'Bring cash for marine park fees.',
       createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      assignments: [
+        {
+          id: 'assignment-1',
+          userId: 'instructor-1',
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          notes: null,
+          user: {
+            id: 'instructor-1',
+            name: 'Inez Instructor',
+            email: 'inez@example.test',
+            role: UserRole.INSTRUCTOR,
+          },
+        },
+      ],
       bookingRequest: {
         id: 'booking-1',
         status: BookingStatus.SCHEDULED,
@@ -176,6 +219,20 @@ test('maps schedule rows into schedule page items', async () => {
       source: BookingSource.WECHAT,
       referrerName: 'Lina',
       notes: 'Bring cash for marine park fees.',
+      assignments: [
+        {
+          id: 'assignment-1',
+          userId: 'instructor-1',
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          notes: null,
+          user: {
+            id: 'instructor-1',
+            name: 'Inez Instructor',
+            email: 'inez@example.test',
+            role: UserRole.INSTRUCTOR,
+          },
+        },
+      ],
     },
   ]);
 });
@@ -192,6 +249,7 @@ test('falls back to booking internal notes and customer hotel', async () => {
       activityType: ActivityType.OPEN_WATER_COURSE,
       scheduleNotes: null,
       createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      assignments: [],
       bookingRequest: {
         id: 'booking-2',
         status: BookingStatus.SCHEDULED,
@@ -240,6 +298,20 @@ test('maps timed schedule rows into calendar events', () => {
         activityType: ActivityType.FUN_DIVE,
         scheduleNotes: 'Bring cash for marine park fees.',
         createdAt: new Date('2026-06-25T00:00:00.000Z'),
+        assignments: [
+          {
+            id: 'assignment-1',
+            userId: 'divemaster-1',
+            role: ScheduleAssignmentRole.DIVEMASTER,
+            notes: 'Leads certified divers.',
+            user: {
+              id: 'divemaster-1',
+              name: 'Dina Divemaster',
+              email: 'dina@example.test',
+              role: UserRole.DIVEMASTER,
+            },
+          },
+        ],
         bookingRequest: {
           id: 'booking-1',
           status: BookingStatus.SCHEDULED,
@@ -309,6 +381,20 @@ test('maps timed schedule rows into calendar events', () => {
       source: BookingSource.WECHAT,
       referrerName: 'Lina',
       notes: 'Bring cash for marine park fees.',
+      assignments: [
+        {
+          id: 'assignment-1',
+          userId: 'divemaster-1',
+          role: ScheduleAssignmentRole.DIVEMASTER,
+          notes: 'Leads certified divers.',
+          user: {
+            id: 'divemaster-1',
+            name: 'Dina Divemaster',
+            email: 'dina@example.test',
+            role: UserRole.DIVEMASTER,
+          },
+        },
+      ],
       isTimeTbd: false,
     },
   ]);
@@ -327,6 +413,7 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
         activityType: ActivityType.OPEN_WATER_COURSE,
         scheduleNotes: null,
         createdAt: new Date('2026-06-25T00:00:00.000Z'),
+        assignments: [],
         bookingRequest: {
           id: 'booking-2',
           status: BookingStatus.SCHEDULED,

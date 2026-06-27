@@ -12,6 +12,7 @@ enum UserRole {
   ADMIN
   MANAGER
   INSTRUCTOR
+  DIVEMASTER
 }
 
 enum BookingStatus {
@@ -75,44 +76,53 @@ enum Currency {
   OTHER
 }
 
+enum ScheduleAssignmentRole {
+  LEAD_INSTRUCTOR
+  ASSISTANT_INSTRUCTOR
+  DIVEMASTER
+  GUIDE
+  STAFF
+}
+
 model User {
-  id              String           @id @default(cuid())
-  name            String
-  email           String           @unique
-  role            UserRole
-  isActive        Boolean          @default(true)
-  createdBookings BookingRequest[] @relation("BookingCreatedBy")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  role                UserRole
+  isActive            Boolean              @default(true)
+  createdBookings     BookingRequest[]     @relation("BookingCreatedBy")
+  scheduleAssignments ScheduleAssignment[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([role])
   @@index([isActive])
 }
 
 model BookingRequest {
-  id              String            @id @default(cuid())
-  status          BookingStatus     @default(DRAFT)
-  activityType    ActivityType?
-  specialtyCourse String?
-  source          BookingSource?
-  requestedDate   DateTime?         @db.Date
-  requestedTime   String?
-  numberOfPeople  Int?
-  referrerName    String?
-  startAt         DateTime?
-  endAt           DateTime?
-  notes           String?           @db.Text
-  internalNotes   String?           @db.Text
-  adminNotes      String?           @db.Text
-  needsMoreInfoReason String?       @db.Text
-  createdById     String
-  createdBy       User              @relation("BookingCreatedBy", fields: [createdById], references: [id])
-  activities      BookingActivity[]
-  customers       BookingCustomer[]
-  deposits        Deposit[]
-  scheduleItem    ScheduleItem?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                  String            @id @default(cuid())
+  status              BookingStatus     @default(DRAFT)
+  activityType        ActivityType?
+  specialtyCourse     String?
+  source              BookingSource?
+  requestedDate       DateTime?         @db.Date
+  requestedTime       String?
+  numberOfPeople      Int?
+  referrerName        String?
+  startAt             DateTime?
+  endAt               DateTime?
+  notes               String?           @db.Text
+  internalNotes       String?           @db.Text
+  adminNotes          String?           @db.Text
+  needsMoreInfoReason String?           @db.Text
+  createdById         String
+  createdBy           User              @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  activities          BookingActivity[]
+  customers           BookingCustomer[]
+  deposits            Deposit[]
+  scheduleItem        ScheduleItem?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@index([status])
   @@index([createdById])
@@ -200,16 +210,33 @@ model Deposit {
 }
 
 model ScheduleItem {
-  id               String         @id @default(cuid())
-  bookingRequestId String         @unique
-  bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
-  date             DateTime       @db.Date
+  id               String               @id @default(cuid())
+  bookingRequestId String               @unique
+  bookingRequest   BookingRequest       @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  date             DateTime             @db.Date
   startTime        String?
   activityType     ActivityType
-  scheduleNotes    String?        @db.Text
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  scheduleNotes    String?              @db.Text
+  assignments      ScheduleAssignment[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@index([date])
   @@index([activityType])
+}
+
+model ScheduleAssignment {
+  id             String                 @id @default(cuid())
+  scheduleItemId String
+  userId         String
+  role           ScheduleAssignmentRole
+  notes          String?                @db.Text
+  scheduleItem   ScheduleItem           @relation(fields: [scheduleItemId], references: [id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id])
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([scheduleItemId, userId])
+  @@index([userId])
+  @@index([role])
 }

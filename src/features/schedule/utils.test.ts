@@ -25,6 +25,7 @@ function scheduleItem(
     source: null,
     referrerName: null,
     notes: null,
+    assignments: [],
     ...overrides,
   };
 }
@@ -100,6 +101,7 @@ test('serializes calendar event date fields for client props', () => {
     source: BookingSource.WECHAT,
     referrerName: 'Lina',
     notes: 'Bring cash.',
+    assignments: [],
     isTimeTbd: false,
   };
 
