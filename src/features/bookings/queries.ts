@@ -64,8 +64,49 @@ const bookingRequestListArgs = {
   },
 } satisfies Prisma.BookingRequestDefaultArgs;
 
+/**
+ * Relations fetched for a single internal booking detail view.
+ *
+ * @internal
+ */
+const bookingRequestDetailArgs = {
+  include: {
+    ...bookingRequestListArgs.include,
+    scheduleItem: {
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        scheduleNotes: true,
+        assignments: {
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            notes: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.BookingRequestDefaultArgs;
+
 type BookingRequestWithRelations = Prisma.BookingRequestGetPayload<
   typeof bookingRequestListArgs
+>;
+type BookingRequestDetailWithRelations = Prisma.BookingRequestGetPayload<
+  typeof bookingRequestDetailArgs
 >;
 
 /**
@@ -81,7 +122,11 @@ export type BookingListItem = BookingRequestWithRelations & {
 };
 
 /** A visible booking request with all relations required by the detail view. */
-export type BookingDetailsItem = BookingListItem;
+export type BookingDetailsItem = BookingRequestDetailWithRelations & {
+  displayCustomer:
+    | BookingRequestDetailWithRelations['customers'][number]['customer']
+    | null;
+};
 
 /**
  * Returns the visible bookings for the current user, newest first.
@@ -124,7 +169,7 @@ export async function getBookingRequestById(
   id: string,
 ): Promise<BookingDetailsItem | null> {
   const bookingRequest = await db.bookingRequest.findFirst({
-    ...bookingRequestListArgs,
+    ...bookingRequestDetailArgs,
     where: {
       AND: [{ id }, buildBookingRequestWhere(currentUser)],
     },

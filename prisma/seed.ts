@@ -1,5 +1,5 @@
-import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { config } from 'dotenv';
 
 import { PrismaClient } from '../src/generated/prisma/client';
 import { UserRole } from '../src/generated/prisma/enums';
@@ -33,12 +33,35 @@ const users = [
     role: UserRole.MANAGER,
   },
   {
-    name: 'Mark User',
+    name: 'Mark Instructor',
     email: 'mark@diveshop.local',
     role: UserRole.INSTRUCTOR,
   },
+  {
+    name: 'Erik Instructor',
+    email: 'erik@diveshop.local',
+    role: UserRole.INSTRUCTOR,
+  },
+  {
+    name: 'Tomas Instructor',
+    email: 'tomas@diveshop.local',
+    role: UserRole.INSTRUCTOR,
+  },
+  {
+    name: 'Rigie Divemaster',
+    email: 'rigie@diveshop.local',
+    role: UserRole.DIVEMASTER,
+  },
+  {
+    name: 'Junior Divemaster',
+    email: 'junior@diveshop.local',
+    role: UserRole.DIVEMASTER,
+  },
 ] as const;
 
+/**
+ * Seeds the development database with idempotent internal users for local work.
+ */
 async function main() {
   await Promise.all(
     users.map((user) =>
