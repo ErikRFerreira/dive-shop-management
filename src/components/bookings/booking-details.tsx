@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/button';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import {
+  formatDisplayDate,
+  formatDisplayDateTime,
+  formatEnumLabel,
+} from '@/lib/format';
+import {
   ActivityType,
   BookingCustomerRole,
   BookingStatus,
@@ -23,38 +28,34 @@ type Props = {
 
 const EMPTY_VALUE = '—';
 
-const dateFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Singapore',
-});
-
-const dateTimeFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Asia/Singapore',
-});
-
+/**
+ * Formats a nullable date for booking detail display.
+ *
+ * @param value - Date value from the booking detail payload.
+ * @returns Staff-facing date text, or the empty-value placeholder.
+ */
 function formatDate(value: Date | null | undefined) {
-  return value ? dateFormatter.format(value) : EMPTY_VALUE;
+  return formatDisplayDate(value);
 }
 
+/**
+ * Formats a date-time for booking detail display.
+ *
+ * @param value - Date-time value from the booking detail payload.
+ * @returns Staff-facing date-time text, or the empty-value placeholder.
+ */
 function formatDateTime(value: Date) {
-  return dateTimeFormatter.format(value);
+  return formatDisplayDateTime(value);
 }
 
+/**
+ * Formats enum-like values for booking detail display.
+ *
+ * @param value - Raw enum text from the booking detail payload.
+ * @returns Staff-facing label text, or the empty-value placeholder.
+ */
 function formatEnum(value: string | null | undefined) {
-  return value
-    ? value
-        .toLowerCase()
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    : EMPTY_VALUE;
+  return formatEnumLabel(value);
 }
 
 function formatCustomerName(customer: BookingDetailsItem['displayCustomer']) {

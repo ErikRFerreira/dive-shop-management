@@ -26,28 +26,14 @@ import {
 } from '@/components/ui/tooltip';
 import type { BookingListItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
+import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
-const dateFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Singapore',
-});
-
-function formatDate(value: Date | null) {
-  return value ? dateFormatter.format(value) : '—';
-}
-
-function formatEnum(value: string | null) {
-  return value
-    ? value
-        .toLowerCase()
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    : '—';
-}
-
+/**
+ * Formats the customer label shown for a booking list row.
+ *
+ * @param booking - Booking list item with its resolved display customer.
+ * @returns Customer display name, multiple-customer summary, or the empty placeholder.
+ */
 function formatCustomerName(booking: BookingListItem) {
   const customer = booking.displayCustomer;
   const fullName = customer?.fullName?.trim();
@@ -57,7 +43,7 @@ function formatCustomerName(booking: BookingListItem) {
   const displayName = fullName || name;
 
   if (!displayName) {
-    return booking.customers.length > 1 ? 'Multiple customers' : '—';
+    return booking.customers.length > 1 ? 'Multiple customers' : '\u2014';
   }
 
   return booking.customers.length > 1
@@ -65,6 +51,12 @@ function formatCustomerName(booking: BookingListItem) {
     : displayName;
 }
 
+/**
+ * Renders booking requests in the staff-facing list table.
+ *
+ * @param props - Booking rows visible to the current user.
+ * @returns Booking list table or an empty-state card.
+ */
 export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
   if (bookings.length === 0) {
     return (
@@ -110,12 +102,12 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                     booking.activityType,
                   )}
                 </TableCell>
-                <TableCell>{formatDate(booking.requestedDate)}</TableCell>
-                <TableCell>{booking.numberOfPeople ?? '—'}</TableCell>
-                <TableCell>{formatEnum(booking.source)}</TableCell>
+                <TableCell>{formatDisplayDate(booking.requestedDate)}</TableCell>
+                <TableCell>{booking.numberOfPeople ?? '\u2014'}</TableCell>
+                <TableCell>{formatEnumLabel(booking.source)}</TableCell>
                 <TableCell>{booking.createdBy.name}</TableCell>
-                <TableCell>{formatDate(booking.createdAt)}</TableCell>
-                <TableCell>{formatDate(booking.updatedAt)}</TableCell>
+                <TableCell>{formatDisplayDate(booking.createdAt)}</TableCell>
+                <TableCell>{formatDisplayDate(booking.updatedAt)}</TableCell>
                 <TableCell className="text-right">
                   <TooltipProvider>
                     <Tooltip>

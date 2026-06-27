@@ -5,30 +5,36 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 export const EMPTY_VALUE = '\u2014';
 
-const dateFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Singapore',
-});
-
+/**
+ * Formats a nullable date for booking review display.
+ *
+ * @param value - Date value from the booking detail payload.
+ * @returns Staff-facing date text, or the review empty-value placeholder.
+ */
 export function formatDate(value: Date | null | undefined) {
-  return value ? dateFormatter.format(value) : EMPTY_VALUE;
+  return formatDisplayDate(value);
 }
 
+/**
+ * Formats enum-like values for booking review display.
+ *
+ * @param value - Raw enum text from the booking detail payload.
+ * @returns Staff-facing label text, or the review empty-value placeholder.
+ */
 export function formatEnum(value: string | null | undefined) {
-  return value
-    ? value
-        .toLowerCase()
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    : EMPTY_VALUE;
+  return formatEnumLabel(value);
 }
 
+/**
+ * Formats the customer name shown in booking review sections.
+ *
+ * @param customer - Customer fields selected for the booking detail payload.
+ * @returns Full name, first/last name fallback, or the review empty-value placeholder.
+ */
 export function formatCustomerName(
   customer: BookingDetailsItem['displayCustomer'],
 ) {

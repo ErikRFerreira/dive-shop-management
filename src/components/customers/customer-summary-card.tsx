@@ -5,45 +5,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { CustomerSearchResult } from '@/features/customers/types';
+import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 type CustomerSummaryCardProps = {
   customer: CustomerSearchResult;
 };
 
 const EMPTY_VALUE = '-';
-
-const dateFormatter = new Intl.DateTimeFormat('en-SG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Singapore',
-});
-
-/**
- * Formats a date for customer search summary display.
- *
- * @param value - Date value from customer or booking data.
- * @returns Localized date text, or the empty-value placeholder.
- */
-function formatDate(value: Date | null) {
-  return value ? dateFormatter.format(value) : EMPTY_VALUE;
-}
-
-/**
- * Formats enum-like values for staff-facing summary text.
- *
- * @param value - Raw enum string such as `PREFERRED_LANGUAGE`.
- * @returns Title-cased text, or the empty-value placeholder.
- */
-function formatEnum(value: string | null) {
-  return value
-    ? value
-        .toLowerCase()
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-    : EMPTY_VALUE;
-}
 
 /**
  * Renders one labeled value in a customer summary card.
@@ -85,7 +53,9 @@ export function CustomerSummaryCard({ customer }: CustomerSummaryCardProps) {
           <Field label="Hotel" value={customer.hotel} />
           <Field
             label="Preferred language"
-            value={formatEnum(customer.preferredLanguage)}
+            value={formatEnumLabel(customer.preferredLanguage, {
+              emptyValue: EMPTY_VALUE,
+            })}
           />
           <Field
             label="Certification level"
@@ -95,11 +65,18 @@ export function CustomerSummaryCard({ customer }: CustomerSummaryCardProps) {
             label="Certification agency"
             value={customer.certificationAgency}
           />
-          <Field label="Last dive date" value={formatDate(customer.lastDiveDate)} />
+          <Field
+            label="Last dive date"
+            value={formatDisplayDate(customer.lastDiveDate, {
+              emptyValue: EMPTY_VALUE,
+            })}
+          />
           <Field label="Logged dives" value={customer.divesLogged} />
           <Field
             label="Last booking date"
-            value={formatDate(customer.lastBookingDate)}
+            value={formatDisplayDate(customer.lastBookingDate, {
+              emptyValue: EMPTY_VALUE,
+            })}
           />
         </div>
       </CardContent>

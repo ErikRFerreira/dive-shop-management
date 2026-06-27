@@ -10,6 +10,7 @@ import type {
   PotentialDuplicateCustomerInput,
 } from '@/features/customers/types';
 import { requireCurrentUser } from '@/lib/current-user';
+import { formatDateInputValue } from '@/lib/format';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
 /**
@@ -19,7 +20,7 @@ import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-acces
  * @returns `YYYY-MM-DD` text for form defaults, or `null` when no date exists.
  */
 function formDate(value: Date | null) {
-  return value ? value.toISOString().slice(0, 10) : null;
+  return formatDateInputValue(value);
 }
 
 /**
