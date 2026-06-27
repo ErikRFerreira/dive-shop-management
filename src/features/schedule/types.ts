@@ -21,3 +21,57 @@ export type ScheduleDateGroup = {
   date: Date;
   items: SchedulePageItem[];
 };
+
+/** Activity detail included with each schedule calendar event. */
+export type ScheduleCalendarActivity = {
+  id: string;
+  activityType: ActivityType | null;
+  activityLabel: string | null;
+  specialtyCourse: string | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  notes: string | null;
+};
+
+/** Serialized activity detail safe to pass into client schedule components. */
+export type SerializedScheduleCalendarActivity = Omit<
+  ScheduleCalendarActivity,
+  'requestedDate'
+> & {
+  requestedDate: string | null;
+};
+
+/** Feature-specific event data prepared for the schedule calendar UI. */
+export type ScheduleCalendarEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string | null;
+  allDay: boolean;
+  bookingId: string;
+  bookingReference: string;
+  scheduleItemId: string;
+  date: Date;
+  startTime: string | null;
+  endTime: string | null;
+  activityType: ActivityType;
+  activityLabel: string;
+  activitySummary: string;
+  activities: ScheduleCalendarActivity[];
+  primaryCustomerName: string | null;
+  numberOfPeople: number | null;
+  hotel: string | null;
+  source: BookingSource | null;
+  referrerName: string | null;
+  notes: string | null;
+  isTimeTbd: boolean;
+};
+
+/** Serialized schedule event safe to pass across the Server/Client boundary. */
+export type SerializedScheduleCalendarEvent = Omit<
+  ScheduleCalendarEvent,
+  'activities' | 'date'
+> & {
+  activities: SerializedScheduleCalendarActivity[];
+  date: string;
+};
