@@ -5,6 +5,8 @@ import {
   canReviewBookingRequest,
 } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
+import { canManageScheduleAssignments } from '@/features/schedule/permissions';
+import { getAssignableStaff } from '@/features/schedule/queries';
 import { BookingStatus } from '@/generated/prisma/enums';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
@@ -14,6 +16,12 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+/**
+ * Renders the booking detail page with workflow and schedule assignment context.
+ *
+ * @param props - Route params containing the booking request ID.
+ * @returns The booking detail view, or a not-found response when inaccessible.
+ */
 async function BookingDetailsPage({ params }: Props) {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'bookings');
@@ -24,9 +32,17 @@ async function BookingDetailsPage({ params }: Props) {
     return notFound();
   }
 
+  const canManageAssignments =
+    Boolean(booking.scheduleItem) &&
+    booking.status === BookingStatus.SCHEDULED &&
+    canManageScheduleAssignments(currentUser);
+  const assignableStaff = canManageAssignments ? await getAssignableStaff() : [];
+
   return (
     <BookingDetails
+      assignableStaff={assignableStaff}
       booking={booking}
+      canManageAssignments={canManageAssignments}
       canReview={canReviewBookingRequest(currentUser)}
       canEdit={canEditBooking(
         currentUser,
