@@ -41,6 +41,26 @@ export function ScheduleCalendar({
   canManageAssignments,
   events,
 }: ScheduleCalendarProps) {
+  const eventMembershipKey = useMemo(
+    () => events.map((event) => event.id).join('|'),
+    [events],
+  );
+
+  return (
+    <ScheduleCalendarView
+      assignableStaff={assignableStaff}
+      canManageAssignments={canManageAssignments}
+      events={events}
+      key={eventMembershipKey}
+    />
+  );
+}
+
+function ScheduleCalendarView({
+  assignableStaff,
+  canManageAssignments,
+  events,
+}: ScheduleCalendarProps) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const calendarEvents = useMemo(
     () => mapScheduleEventsToFullCalendarEvents(events),

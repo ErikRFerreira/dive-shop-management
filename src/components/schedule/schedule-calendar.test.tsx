@@ -369,6 +369,37 @@ test('opens an operational booking summary dialog from an event click', () => {
     .toBe('/bookings/booking-1');
 });
 
+test('does not reopen a stale dialog when a filtered event leaves and returns', async () => {
+  const event = scheduleEvent();
+  const { rerender } = renderScheduleCalendar({ events: [event] });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(screen.getByRole('dialog')).not.toBeNull();
+
+  rerender(
+    <ScheduleCalendar
+      assignableStaff={[]}
+      canManageAssignments={false}
+      events={[]}
+    />,
+  );
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  rerender(
+    <ScheduleCalendar
+      assignableStaff={[]}
+      canManageAssignments={false}
+      events={[event]}
+    />,
+  );
+
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
 test('renders notes above assigned staff in the event dialog', () => {
   renderScheduleCalendar();
 
