@@ -17,21 +17,10 @@ import {
 import type {
   AssignableStaff,
   ScheduleFilters as ScheduleFiltersValue,
-  ScheduleRangeFilter,
 } from '@/features/schedule/types';
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
-
-const scheduleRangeOptions: {
-  label: string;
-  range?: ScheduleRangeFilter;
-}[] = [
-  { label: 'All', range: 'all' },
-  { label: 'Today', range: 'today' },
-  { label: 'Tomorrow', range: 'tomorrow' },
-  { label: 'This week', range: 'this-week' },
-];
 
 const allStaffValue = 'all-staff';
 const allActivitiesValue = 'all-activities';
@@ -56,10 +45,10 @@ export function ScheduleFilters({
   const staffSelectId = useId();
   const activitySelectId = useId();
   const unassignedOnlyId = useId();
-  const selectedRange = filters.range ?? 'all';
+  const hasActiveFilters = hasActiveScheduleFilters(filters);
 
   /**
-   * Navigates to the schedule page with one filter updated.
+   * Navigates to the schedule page with one operational filter updated.
    *
    * @param updates - Filter values to set or clear.
    */
@@ -73,30 +62,6 @@ export function ScheduleFilters({
       className="rounded-lg border bg-card p-3 text-card-foreground"
     >
       <div className="flex flex-wrap items-end gap-3">
-        <nav aria-label="Filter schedule by date range" className="flex flex-wrap gap-2">
-          {scheduleRangeOptions.map((option) => {
-            const isActive = selectedRange === option.range;
-
-            return (
-              <Button
-                asChild
-                key={option.label}
-                size="sm"
-                variant={isActive ? 'default' : 'outline'}
-              >
-                <Link
-                  aria-current={isActive ? 'page' : undefined}
-                  href={buildScheduleFilterHref(filters, {
-                    range: option.range,
-                  })}
-                >
-                  {option.label}
-                </Link>
-              </Button>
-            );
-          })}
-        </nav>
-
         <div className="grid min-w-48 gap-1">
           <Label htmlFor={staffSelectId}>Staff</Label>
           <Select
@@ -163,9 +128,11 @@ export function ScheduleFilters({
           </Label>
         </div>
 
-        <Button asChild size="sm" variant="ghost">
-          <Link href="/schedule">Clear filters</Link>
-        </Button>
+        {hasActiveFilters ? (
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/schedule">Clear filters</Link>
+          </Button>
+        ) : null}
       </div>
     </section>
   );
@@ -207,6 +174,21 @@ export function buildScheduleFilterHref(
   const query = params.toString();
 
   return query ? `/schedule?${query}` : '/schedule';
+}
+
+/**
+ * Checks whether any schedule filter is currently active.
+ *
+ * @param filters - Current normalized schedule filters.
+ * @returns True when at least one filter should be clearable.
+ */
+function hasActiveScheduleFilters(filters: ScheduleFiltersValue) {
+  return Boolean(
+    (filters.range && filters.range !== 'all') ||
+    filters.staffId ||
+    filters.activityType ||
+    filters.unassignedOnly,
+  );
 }
 
 /**

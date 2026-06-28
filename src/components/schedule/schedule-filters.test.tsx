@@ -187,7 +187,7 @@ function renderScheduleFilters(
   );
 }
 
-test('renders active range buttons with hrefs that preserve other filters', () => {
+test('does not render date range shortcut filters', () => {
   renderScheduleFilters({
     filters: {
       activityType: ActivityType.FUN_DIVE,
@@ -197,15 +197,11 @@ test('renders active range buttons with hrefs that preserve other filters', () =
     },
   });
 
-  expect(screen.getByRole('link', { name: 'Today' }).getAttribute('aria-current'))
-    .toBe('page');
-  expect(screen.getByRole('link', { name: 'All' }).getAttribute('href')).toBe(
-    '/schedule?staffId=instructor-1&activityType=FUN_DIVE&unassignedOnly=true',
-  );
-  expect(screen.getByRole('link', { name: 'Tomorrow' }).getAttribute('href'))
-    .toBe(
-      '/schedule?range=tomorrow&staffId=instructor-1&activityType=FUN_DIVE&unassignedOnly=true',
-    );
+  expect(screen.getByRole('heading', { name: 'Filters' })).not.toBeNull();
+  expect(screen.queryByRole('link', { name: 'All' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Tomorrow' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'This week' })).toBeNull();
 });
 
 test('renders staff and activity filter dropdown options', () => {
@@ -269,6 +265,12 @@ test('renders clear filters link to the base schedule page', () => {
 
   expect(screen.getByRole('link', { name: 'Clear filters' }).getAttribute('href'))
     .toBe('/schedule');
+});
+
+test('hides clear filters when no filter is active', () => {
+  renderScheduleFilters();
+
+  expect(screen.queryByRole('link', { name: 'Clear filters' })).toBeNull();
 });
 
 test('builds schedule filter URLs with only active params', () => {
