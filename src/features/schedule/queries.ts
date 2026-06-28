@@ -16,10 +16,12 @@ import {
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { getScheduleDateRangeForFilter } from './date-ranges';
 import type {
   AssignableStaff,
   ScheduleAssignmentDetail,
   ScheduleCalendarEvent,
+  ScheduleFilters,
   SchedulePageItem,
 } from './types';
 
@@ -129,15 +131,18 @@ export async function getAssignableStaff(): Promise<AssignableStaff[]> {
  * Builds the schedule-page visibility filter for the current user.
  *
  * @param currentUser - The authenticated user whose role scopes visibility.
+ * @param filters - Optional schedule filters to apply after visibility rules.
  * @returns A ScheduleItem filter that always requires an official scheduled
  * booking and scopes Customer Service users to bookings they created.
  */
 export function buildSchedulePageWhere(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  filters: ScheduleFilters = {},
 ): Prisma.ScheduleItemWhereInput {
   const bookingRequest: Prisma.BookingRequestWhereInput = {
     status: BookingStatus.SCHEDULED,
   };
+  const where: Prisma.ScheduleItemWhereInput = { bookingRequest };
 
   if (currentUser.role === UserRole.CUSTOMER_SERVICE) {
     bookingRequest.createdById = currentUser.id;
@@ -145,13 +150,75 @@ export function buildSchedulePageWhere(
     currentUser.role !== UserRole.ADMIN &&
     currentUser.role !== UserRole.MANAGER
   ) {
-    return {
-      id: { in: [] },
-      bookingRequest,
+    where.id = { in: [] };
+  }
+
+  return applyScheduleFiltersToWhere(where, filters);
+}
+
+/**
+ * Adds schedule filter predicates to an existing visibility-safe where clause.
+ *
+ * @param where - Base ScheduleItem predicate containing role visibility rules.
+ * @param filters - Optional filters parsed from the schedule URL.
+ * @returns The same ScheduleItem predicate with filter conditions included.
+ */
+function applyScheduleFiltersToWhere(
+  where: Prisma.ScheduleItemWhereInput,
+  filters: ScheduleFilters,
+): Prisma.ScheduleItemWhereInput {
+  const dateRange = getScheduleDateRangeForFilter(filters.range);
+  const andFilters: Prisma.ScheduleItemWhereInput[] = [];
+
+  if (dateRange) {
+    where.date = {
+      gte: dateRange.start,
+      lt: dateRange.end,
     };
   }
 
-  return { bookingRequest };
+  if (filters.staffId) {
+    andFilters.push({
+      assignments: {
+        some: {
+          userId: filters.staffId,
+        },
+      },
+    });
+  }
+
+  if (filters.unassignedOnly) {
+    andFilters.push({
+      assignments: {
+        none: {},
+      },
+    });
+  }
+
+  if (filters.activityType) {
+    andFilters.push({
+      OR: [
+        {
+          activityType: filters.activityType,
+        },
+        {
+          bookingRequest: {
+            activities: {
+              some: {
+                activityType: filters.activityType,
+              },
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  if (andFilters.length > 0) {
+    where.AND = andFilters;
+  }
+
+  return where;
 }
 
 /**
@@ -187,14 +254,16 @@ export async function getScheduledBookingsForSchedulePage(
  * and cancelled bookings are excluded.
  *
  * @param currentUser - The authenticated user whose role scopes visibility.
+ * @param filters - Optional schedule filters parsed from URL search params.
  * @returns Schedule rows mapped into feature-specific calendar event objects.
  */
 export async function getScheduleItemsForCalendar(
   currentUser: CurrentUser,
+  filters: ScheduleFilters = {},
 ): Promise<ScheduleCalendarEvent[]> {
   const scheduleItems = await db.scheduleItem.findMany({
     ...schedulePageItemArgs,
-    where: buildSchedulePageWhere(currentUser),
+    where: buildSchedulePageWhere(currentUser, filters),
     orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
   });
 
