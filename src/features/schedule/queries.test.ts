@@ -30,6 +30,7 @@ vi.mock('@/lib/db', () => ({
 import {
   buildSchedulePageWhere,
   getAssignableStaff,
+  getMyScheduleAssignments,
   getScheduleItemsForCalendar,
   getScheduledBookingsForSchedulePage,
   mapScheduleItemsToCalendarEvents,
@@ -46,6 +47,12 @@ const customerServiceUser = {
   ...adminUser,
   id: 'customer-service-1',
   role: UserRole.CUSTOMER_SERVICE,
+};
+
+const instructorUser = {
+  ...adminUser,
+  id: 'instructor-1',
+  role: UserRole.INSTRUCTOR,
 };
 
 beforeEach(() => {
@@ -266,6 +273,164 @@ test('queries active instructors and divemasters as assignable staff', async () 
     },
     orderBy: [{ name: 'asc' }, { email: 'asc' }],
   });
+});
+
+test('queries my assignments with scheduled status and current user assignment filter', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getMyScheduleAssignments(instructorUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        assignments: {
+          some: {
+            userId: instructorUser.id,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    }),
+  );
+});
+
+test('does not query my assignments for unauthorized customer service users', async () => {
+  await expect(getMyScheduleAssignments(customerServiceUser)).resolves.toEqual([]);
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+});
+
+test('does not query my assignments for admin manager or divemaster users', async () => {
+  await expect(getMyScheduleAssignments(adminUser)).resolves.toEqual([]);
+  await expect(
+    getMyScheduleAssignments({ ...adminUser, role: UserRole.MANAGER }),
+  ).resolves.toEqual([]);
+  await expect(
+    getMyScheduleAssignments({ ...adminUser, role: UserRole.DIVEMASTER }),
+  ).resolves.toEqual([]);
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+});
+
+test('maps my assignments with the current user role from multiple assignments', async () => {
+  const scheduleDate = new Date('2026-07-14T00:00:00.000Z');
+
+  mocks.findMany.mockResolvedValue([
+    {
+      id: 'schedule-1',
+      bookingRequestId: 'booking-1',
+      date: scheduleDate,
+      startTime: '08:00',
+      activityType: ActivityType.FUN_DIVE,
+      scheduleNotes: 'Meet at the shop.',
+      createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      assignments: [
+        {
+          id: 'assignment-other',
+          userId: 'divemaster-1',
+          role: ScheduleAssignmentRole.DIVEMASTER,
+        },
+        {
+          id: 'assignment-current',
+          userId: instructorUser.id,
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+        },
+      ],
+      bookingRequest: {
+        id: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+        numberOfPeople: 3,
+        endAt: new Date('2026-07-14T12:30:00.000Z'),
+        activities: [
+          {
+            id: 'activity-1',
+            activityType: ActivityType.FUN_DIVE,
+            specialtyCourse: null,
+            requestedDate: scheduleDate,
+            requestedTime: '08:00',
+            notes: 'Two tanks.',
+            sortOrder: 0,
+          },
+          {
+            id: 'activity-2',
+            activityType: ActivityType.SNORKELING,
+            specialtyCourse: null,
+            requestedDate: scheduleDate,
+            requestedTime: '10:00',
+            notes: null,
+            sortOrder: 1,
+          },
+        ],
+        customers: [
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:00:00.000Z'),
+            customer: {
+              fullName: 'Participant Diver',
+              firstName: null,
+              lastName: null,
+              hotel: 'Participant Hotel',
+            },
+          },
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            hotelAtBooking: 'Primary Booking Hotel',
+            createdAt: new Date('2026-06-24T00:01:00.000Z'),
+            customer: {
+              fullName: 'Maria Santos',
+              firstName: null,
+              lastName: null,
+              hotel: 'Customer Hotel',
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  await expect(getMyScheduleAssignments(instructorUser)).resolves.toEqual([
+    {
+      scheduleItemId: 'schedule-1',
+      bookingId: 'booking-1',
+      date: scheduleDate,
+      startTime: '08:00',
+      endTime: '12:30',
+      isTimeTbd: false,
+      activityType: ActivityType.FUN_DIVE,
+      activityLabel: 'Fun Dive',
+      activitySummary: 'Fun Dive + Snorkeling',
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.FUN_DIVE,
+          activityLabel: 'Fun Dive',
+          specialtyCourse: null,
+          requestedDate: scheduleDate,
+          requestedTime: '08:00',
+          notes: 'Two tanks.',
+        },
+        {
+          id: 'activity-2',
+          activityType: ActivityType.SNORKELING,
+          activityLabel: 'Snorkeling',
+          specialtyCourse: null,
+          requestedDate: scheduleDate,
+          requestedTime: '10:00',
+          notes: null,
+        },
+      ],
+      primaryCustomerName: 'Maria Santos',
+      otherCustomerNames: ['Participant Diver'],
+      numberOfPeople: 3,
+      hotel: 'Primary Booking Hotel',
+      scheduleNotes: 'Meet at the shop.',
+      assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+    },
+  ]);
 });
 
 test('scopes customer service schedule rows to their own bookings', () => {

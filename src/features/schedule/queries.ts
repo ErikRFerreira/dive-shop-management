@@ -16,8 +16,10 @@ import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue } from '@/lib/format';
 import { getScheduleDateRangeForFilter } from './date-ranges';
+import { canViewMyScheduleAssignments } from './permissions';
 import type {
   AssignableStaff,
+  MyScheduleAssignment,
   ScheduleAssignmentDetail,
   ScheduleCalendarEvent,
   ScheduleFilters,
@@ -102,6 +104,72 @@ const schedulePageItemArgs = {
 
 type ScheduleItemForSchedulePage = Prisma.ScheduleItemGetPayload<
   typeof schedulePageItemArgs
+>;
+
+const myScheduleAssignmentArgs = {
+  select: {
+    id: true,
+    bookingRequestId: true,
+    date: true,
+    startTime: true,
+    activityType: true,
+    scheduleNotes: true,
+    createdAt: true,
+    assignments: {
+      select: {
+        id: true,
+        userId: true,
+        role: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    },
+    bookingRequest: {
+      select: {
+        id: true,
+        status: true,
+        numberOfPeople: true,
+        endAt: true,
+        activities: {
+          select: {
+            id: true,
+            activityType: true,
+            specialtyCourse: true,
+            requestedDate: true,
+            requestedTime: true,
+            notes: true,
+            sortOrder: true,
+          },
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+        customers: {
+          select: {
+            role: true,
+            hotelAtBooking: true,
+            createdAt: true,
+            customer: {
+              select: {
+                fullName: true,
+                firstName: true,
+                lastName: true,
+                hotel: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.ScheduleItemDefaultArgs;
+
+type ScheduleItemForMyAssignments = Prisma.ScheduleItemGetPayload<
+  typeof myScheduleAssignmentArgs
 >;
 
 /**
@@ -271,6 +339,34 @@ export async function getScheduleItemsForCalendar(
 }
 
 /**
+ * Returns official scheduled items assigned to the current staff user.
+ *
+ * The current user's id is always used as the assignment predicate, so callers
+ * cannot request another instructor or divemaster's personal assignment list.
+ * Only `SCHEDULED` booking requests are included.
+ *
+ * @param currentUser - The authenticated user whose assignments are requested.
+ * @returns Read-only assignment rows for the future My Assignments page.
+ */
+export async function getMyScheduleAssignments(
+  currentUser: CurrentUser,
+): Promise<MyScheduleAssignment[]> {
+  if (!canViewMyScheduleAssignments(currentUser)) {
+    return [];
+  }
+
+  const scheduleItems = await db.scheduleItem.findMany({
+    ...myScheduleAssignmentArgs,
+    where: buildMyScheduleAssignmentsWhere(currentUser),
+    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  return scheduleItems.map((scheduleItem) =>
+    mapScheduleItemToMyScheduleAssignment(scheduleItem, currentUser.id),
+  );
+}
+
+/**
  * Maps a ScheduleItem with booking/customer relations into the UI shape.
  *
  * @param scheduleItem - The schedule item and selected booking relations.
@@ -398,6 +494,97 @@ function mapScheduleItemToCalendarEvent(
 }
 
 /**
+ * Builds the visibility-safe predicate for the current user's assignments.
+ *
+ * @param currentUser - The authenticated user whose assignment rows are requested.
+ * @returns A ScheduleItem filter requiring scheduled bookings and current-user assignment.
+ */
+function buildMyScheduleAssignmentsWhere(
+  currentUser: Pick<CurrentUser, 'id'>,
+): Prisma.ScheduleItemWhereInput {
+  return {
+    bookingRequest: {
+      status: BookingStatus.SCHEDULED,
+    },
+    assignments: {
+      some: {
+        userId: currentUser.id,
+      },
+    },
+  };
+}
+
+/**
+ * Maps one assigned schedule item into the My Assignments read model.
+ *
+ * @param scheduleItem - The selected schedule row and booking relations.
+ * @param currentUserId - The authenticated user id used to find assignment role.
+ * @returns Display-ready personal assignment details without booking internal notes.
+ */
+function mapScheduleItemToMyScheduleAssignment(
+  scheduleItem: ScheduleItemForMyAssignments,
+  currentUserId: string,
+): MyScheduleAssignment {
+  const booking = scheduleItem.bookingRequest;
+  const displayBookingCustomer =
+    booking.customers.find(
+      (bookingCustomer) =>
+        bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
+    ) ??
+    booking.customers[0] ??
+    null;
+  const primaryCustomerName = formatCustomerName(
+    displayBookingCustomer?.customer ?? null,
+  );
+  const startTime = normalizeTimeValue(scheduleItem.startTime);
+  const currentUserAssignment = scheduleItem.assignments.find(
+    (assignment) => assignment.userId === currentUserId,
+  );
+
+  if (!currentUserAssignment) {
+    throw new Error('Assigned schedule item is missing current user assignment.');
+  }
+
+  return {
+    scheduleItemId: scheduleItem.id,
+    bookingId: booking.id,
+    date: scheduleItem.date,
+    startTime,
+    endTime: getCalendarEndTime(booking.endAt),
+    isTimeTbd: startTime === null,
+    activityType: scheduleItem.activityType,
+    activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
+    activitySummary: summarizeScheduleActivities(
+      booking.activities,
+      scheduleItem.activityType,
+    ),
+    activities: booking.activities.map((activity) => ({
+      id: activity.id,
+      activityType: activity.activityType,
+      activityLabel: activity.activityType
+        ? formatScheduleActivityLabel(activity.activityType)
+        : null,
+      specialtyCourse: activity.specialtyCourse,
+      requestedDate: activity.requestedDate,
+      requestedTime: activity.requestedTime,
+      notes: activity.notes,
+    })),
+    primaryCustomerName,
+    otherCustomerNames: booking.customers
+      .filter((bookingCustomer) => bookingCustomer !== displayBookingCustomer)
+      .map((bookingCustomer) => formatCustomerName(bookingCustomer.customer))
+      .filter((name): name is string => name !== null),
+    numberOfPeople: booking.numberOfPeople,
+    hotel:
+      displayBookingCustomer?.hotelAtBooking?.trim() ||
+      displayBookingCustomer?.customer.hotel?.trim() ||
+      null,
+    scheduleNotes: scheduleItem.scheduleNotes,
+    assignmentRole: currentUserAssignment.role,
+  };
+}
+
+/**
  * Maps selected assignment rows into the shared schedule assignment type.
  *
  * @param assignments - Assignment rows selected with each schedule item.
@@ -428,9 +615,11 @@ function mapScheduleAssignments(
  * @returns The formatted name, or null if no name is available.
  */
 function formatCustomerName(
-  customer:
-    | ScheduleItemForSchedulePage['bookingRequest']['customers'][number]['customer']
-    | null,
+  customer: {
+    fullName: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | null,
 ) {
   const fullName = customer?.fullName?.trim();
   if (fullName) {

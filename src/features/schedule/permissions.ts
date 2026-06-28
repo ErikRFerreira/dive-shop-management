@@ -22,6 +22,18 @@ export function canManageScheduleAssignments(
 }
 
 /**
+ * Determines whether the current user can view their own assigned schedule work.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @returns True only for instructor users.
+ */
+export function canViewMyScheduleAssignments(
+  currentUser: Pick<CurrentUser, 'role'>,
+) {
+  return currentUser.role === UserRole.INSTRUCTOR;
+}
+
+/**
  * Determines whether a user account role can be assigned to scheduled work.
  *
  * @param role - The persisted role on the user account.

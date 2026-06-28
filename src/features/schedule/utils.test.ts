@@ -1,14 +1,20 @@
 import { expect, test } from 'vitest';
 
 import type {
+  MyScheduleAssignment,
   ScheduleCalendarEvent,
   SchedulePageItem,
 } from '@/features/schedule/types';
 import {
+  groupMyScheduleAssignmentsByDay,
   groupScheduleItemsByDate,
   serializeScheduleCalendarEvents,
 } from '@/features/schedule/utils';
-import { ActivityType, BookingSource } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingSource,
+  ScheduleAssignmentRole,
+} from '@/generated/prisma/enums';
 
 function scheduleItem(
   overrides: Partial<SchedulePageItem>,
@@ -26,6 +32,36 @@ function scheduleItem(
     referrerName: null,
     notes: null,
     assignments: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Builds a default My Assignments row for grouping tests.
+ *
+ * @param overrides - Assignment fields to override for a specific scenario.
+ * @returns A complete My Assignments row.
+ */
+function myAssignment(
+  overrides: Partial<MyScheduleAssignment>,
+): MyScheduleAssignment {
+  return {
+    scheduleItemId: 'schedule-1',
+    bookingId: 'booking-1',
+    date: new Date('2026-07-14T00:00:00.000Z'),
+    startTime: null,
+    endTime: null,
+    isTimeTbd: true,
+    activityType: ActivityType.FUN_DIVE,
+    activityLabel: 'Fun Dive',
+    activitySummary: 'Fun Dive',
+    activities: [],
+    primaryCustomerName: null,
+    otherCustomerNames: [],
+    numberOfPeople: null,
+    hotel: null,
+    scheduleNotes: null,
+    assignmentRole: ScheduleAssignmentRole.DIVEMASTER,
     ...overrides,
   };
 }
@@ -66,6 +102,55 @@ test('preserves schedule item order inside each date group', () => {
 
 test('returns no date groups for an empty schedule', () => {
   expect(groupScheduleItemsByDate([])).toEqual([]);
+});
+
+test('groups my schedule assignments into today tomorrow and upcoming buckets', () => {
+  const groups = groupMyScheduleAssignmentsByDay(
+    [
+      myAssignment({
+        scheduleItemId: 'today',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+      }),
+      myAssignment({
+        scheduleItemId: 'tomorrow',
+        bookingId: 'booking-2',
+        date: new Date('2026-07-15T00:00:00.000Z'),
+      }),
+      myAssignment({
+        scheduleItemId: 'upcoming',
+        bookingId: 'booking-3',
+        date: new Date('2026-07-16T00:00:00.000Z'),
+      }),
+    ],
+    new Date('2026-07-14T09:30:00.000Z'),
+  );
+
+  expect(groups.map((group) => group.key)).toEqual([
+    'today',
+    'tomorrow',
+    'upcoming',
+  ]);
+  expect(groups.map((group) => group.label)).toEqual([
+    'Today',
+    'Tomorrow',
+    'Upcoming',
+  ]);
+});
+
+test('preserves my assignment order inside each bucket', () => {
+  const groups = groupMyScheduleAssignmentsByDay(
+    [
+      myAssignment({ scheduleItemId: 'first' }),
+      myAssignment({ scheduleItemId: 'second', bookingId: 'booking-2' }),
+    ],
+    new Date('2026-07-14T09:30:00.000Z'),
+  );
+
+  expect(groups).toHaveLength(1);
+  expect(groups[0]?.items.map((item) => item.scheduleItemId)).toEqual([
+    'first',
+    'second',
+  ]);
 });
 
 test('serializes calendar event date fields for client props', () => {
