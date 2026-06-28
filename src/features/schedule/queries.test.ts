@@ -55,6 +55,12 @@ const instructorUser = {
   role: UserRole.INSTRUCTOR,
 };
 
+const divemasterUser = {
+  ...adminUser,
+  id: 'divemaster-1',
+  role: UserRole.DIVEMASTER,
+};
+
 beforeEach(() => {
   mocks.findMany.mockReset();
   mocks.findManyUsers.mockReset();
@@ -297,19 +303,38 @@ test('queries my assignments with scheduled status and current user assignment f
   );
 });
 
+test('queries divemaster assignments with the current user assignment filter', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getMyScheduleAssignments(divemasterUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        assignments: {
+          some: {
+            userId: divemasterUser.id,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    }),
+  );
+});
+
 test('does not query my assignments for unauthorized customer service users', async () => {
   await expect(getMyScheduleAssignments(customerServiceUser)).resolves.toEqual([]);
 
   expect(mocks.findMany).not.toHaveBeenCalled();
 });
 
-test('does not query my assignments for admin manager or divemaster users', async () => {
+test('does not query my assignments for admin or manager users', async () => {
   await expect(getMyScheduleAssignments(adminUser)).resolves.toEqual([]);
   await expect(
     getMyScheduleAssignments({ ...adminUser, role: UserRole.MANAGER }),
-  ).resolves.toEqual([]);
-  await expect(
-    getMyScheduleAssignments({ ...adminUser, role: UserRole.DIVEMASTER }),
   ).resolves.toEqual([]);
 
   expect(mocks.findMany).not.toHaveBeenCalled();
@@ -442,7 +467,7 @@ test('scopes customer service schedule rows to their own bookings', () => {
   });
 });
 
-test('leaves admin and manager schedule rows unscoped except scheduled status', () => {
+test('leaves admin manager and instructor schedule rows unscoped except scheduled status', () => {
   expect(buildSchedulePageWhere(adminUser)).toEqual({
     bookingRequest: {
       status: BookingStatus.SCHEDULED,
@@ -455,11 +480,16 @@ test('leaves admin and manager schedule rows unscoped except scheduled status', 
       status: BookingStatus.SCHEDULED,
     },
   });
+  expect(buildSchedulePageWhere(instructorUser)).toEqual({
+    bookingRequest: {
+      status: BookingStatus.SCHEDULED,
+    },
+  });
 });
 
 test('returns no schedule rows for unsupported roles', () => {
   expect(
-    buildSchedulePageWhere({ ...adminUser, role: UserRole.INSTRUCTOR }),
+    buildSchedulePageWhere({ ...adminUser, role: UserRole.DIVEMASTER }),
   ).toEqual({
     id: { in: [] },
     bookingRequest: {

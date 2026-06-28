@@ -316,6 +316,7 @@ function renderScheduleCalendar(
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[scheduleEvent()]}
       {...props}
     />,
@@ -383,6 +384,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[]}
     />,
   );
@@ -393,6 +395,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[event]}
     />,
   );
@@ -465,6 +468,18 @@ test('does not render schedule mutation controls', () => {
     screen.queryByRole('button', { name: /Cancel Scheduled Booking/i }),
   ).toBeNull();
   expect(screen.queryByRole('button', { name: /Edit schedule/i })).toBeNull();
+});
+
+test('hides the booking detail link for users without booking detail access', () => {
+  renderScheduleCalendar({
+    canViewBookingDetails: false,
+  });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(screen.queryByRole('link', { name: /View booking/i })).toBeNull();
 });
 
 test('renders multiple assigned staff in the event dialog', () => {

@@ -25,12 +25,12 @@ export function canManageScheduleAssignments(
  * Determines whether the current user can view their own assigned schedule work.
  *
  * @param currentUser - The authenticated user's role.
- * @returns True only for instructor users.
+ * @returns True for operational instructor and divemaster users.
  */
 export function canViewMyScheduleAssignments(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return currentUser.role === UserRole.INSTRUCTOR;
+  return isAssignableStaffRole(currentUser.role);
 }
 
 /**

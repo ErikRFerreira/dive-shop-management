@@ -27,6 +27,7 @@ import { formatDisplayDate } from '@/lib/format';
 type ScheduleCalendarProps = {
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  canViewBookingDetails: boolean;
   events: SerializedScheduleCalendarEvent[];
 };
 
@@ -39,6 +40,7 @@ type ScheduleCalendarProps = {
 export function ScheduleCalendar({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   events,
 }: ScheduleCalendarProps) {
   const eventMembershipKey = useMemo(
@@ -50,6 +52,7 @@ export function ScheduleCalendar({
     <ScheduleCalendarView
       assignableStaff={assignableStaff}
       canManageAssignments={canManageAssignments}
+      canViewBookingDetails={canViewBookingDetails}
       events={events}
       key={eventMembershipKey}
     />
@@ -59,6 +62,7 @@ export function ScheduleCalendar({
 function ScheduleCalendarView({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   events,
 }: ScheduleCalendarProps) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -131,6 +135,7 @@ function ScheduleCalendarView({
             <ScheduleEventDialogContent
               assignableStaff={assignableStaff}
               canManageAssignments={canManageAssignments}
+              canViewBookingDetails={canViewBookingDetails}
               event={selectedEvent}
             />
           ) : null}
@@ -144,15 +149,17 @@ function ScheduleCalendarView({
  * Renders the clicked schedule event summary inside the dialog.
  *
  * @param props - The selected schedule event to summarize.
- * @returns Staff-facing booking summary content and a booking detail link.
+ * @returns Staff-facing booking summary content and an optional booking detail link.
  */
 function ScheduleEventDialogContent({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   event,
 }: {
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  canViewBookingDetails: boolean;
   event: SerializedScheduleCalendarEvent;
 }) {
   return (
@@ -192,14 +199,16 @@ function ScheduleEventDialogContent({
         />
       </div>
 
-      <DialogFooter>
-        <Button asChild>
-          <Link href={`/bookings/${event.bookingId}`}>
-            <ExternalLink className="h-4 w-4" />
-            View booking
-          </Link>
-        </Button>
-      </DialogFooter>
+      {canViewBookingDetails ? (
+        <DialogFooter>
+          <Button asChild>
+            <Link href={`/bookings/${event.bookingId}`}>
+              <ExternalLink className="h-4 w-4" />
+              View booking
+            </Link>
+          </Button>
+        </DialogFooter>
+      ) : null}
     </>
   );
 }

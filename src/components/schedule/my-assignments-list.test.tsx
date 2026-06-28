@@ -1,0 +1,179 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
+import type { MyScheduleAssignment } from '@/features/schedule/types';
+import {
+  ActivityType,
+  ScheduleAssignmentRole,
+} from '@/generated/prisma/enums';
+import { MyAssignmentsList } from './my-assignments-list';
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-06-28T08:00:00.000Z'));
+});
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+
+test('renders a whole-page empty state when there are no assignments', () => {
+  render(<MyAssignmentsList assignments={[]} />);
+
+  expect(screen.getByText('No assignments yet')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Assigned activities will appear here after a manager adds you to the schedule.',
+    ),
+  ).not.toBeNull();
+});
+
+test('renders assignments grouped into today tomorrow and upcoming sections', () => {
+  render(
+    <MyAssignmentsList
+      assignments={[
+        assignment({
+          scheduleItemId: 'today',
+          date: new Date('2026-06-28T00:00:00.000Z'),
+          primaryCustomerName: 'Today Customer',
+        }),
+        assignment({
+          scheduleItemId: 'tomorrow',
+          bookingId: 'booking-2',
+          date: new Date('2026-06-29T00:00:00.000Z'),
+          primaryCustomerName: 'Tomorrow Customer',
+          startTime: null,
+          endTime: null,
+          isTimeTbd: true,
+        }),
+        assignment({
+          scheduleItemId: 'upcoming',
+          bookingId: 'booking-3',
+          date: new Date('2026-07-02T00:00:00.000Z'),
+          primaryCustomerName: 'Upcoming Customer',
+        }),
+      ]}
+    />,
+  );
+
+  expect(screen.getByRole('heading', { name: 'Today' })).not.toBeNull();
+  expect(screen.getByRole('heading', { name: 'Tomorrow' })).not.toBeNull();
+  expect(screen.getByRole('heading', { name: 'Upcoming' })).not.toBeNull();
+  expect(screen.getByText('Today Customer')).not.toBeNull();
+  expect(screen.getByText('Tomorrow Customer')).not.toBeNull();
+  expect(screen.getByText('Upcoming Customer')).not.toBeNull();
+});
+
+test('renders assignment card details without edit or booking links', () => {
+  render(
+    <MyAssignmentsList
+      assignments={[
+        assignment({
+          scheduleItemId: 'schedule-1',
+          date: new Date('2026-06-28T00:00:00.000Z'),
+          startTime: '08:00',
+          endTime: '12:30',
+          isTimeTbd: false,
+          activitySummary: 'Fun Dive + Snorkeling',
+          primaryCustomerName: 'Maria Santos',
+          otherCustomerNames: ['Participant Diver', 'Second Diver', 'Third Diver'],
+          numberOfPeople: 3,
+          hotel: 'Primary Booking Hotel',
+          scheduleNotes: 'Meet at the shop.',
+          assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+        }),
+      ]}
+    />,
+  );
+
+  expect(screen.getByText('Fun Dive + Snorkeling')).not.toBeNull();
+  expect(screen.getByText('Maria Santos')).not.toBeNull();
+  expect(screen.getByText('28 Jun 2026')).not.toBeNull();
+  expect(screen.getByText('08:00 - 12:30')).not.toBeNull();
+  expect(screen.getByText('3 people/divers')).not.toBeNull();
+  expect(screen.getByText('Primary Booking Hotel')).not.toBeNull();
+  expect(screen.getByText('Fun Dive')).not.toBeNull();
+  expect(screen.getByText('Snorkeling')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Other customers/divers: Participant Diver, Second Diver + 1 more',
+    ),
+  ).not.toBeNull();
+  expect(screen.getByText('Meet at the shop.')).not.toBeNull();
+  expect(screen.getByText('Lead Instructor')).not.toBeNull();
+  expect(screen.queryByRole('link')).toBeNull();
+  expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByText('Edit booking')).toBeNull();
+  expect(screen.queryByText('Cancel booking')).toBeNull();
+  expect(screen.queryByText('Add assignment')).toBeNull();
+});
+
+test('renders TBD time and section empty states when only one bucket has work', () => {
+  render(
+    <MyAssignmentsList
+      assignments={[
+        assignment({
+          scheduleItemId: 'tomorrow',
+          date: new Date('2026-06-29T00:00:00.000Z'),
+          startTime: null,
+          endTime: null,
+          isTimeTbd: true,
+        }),
+      ]}
+    />,
+  );
+
+  expect(screen.getByText('No assignments today.')).not.toBeNull();
+  expect(screen.getByText('No upcoming assignments.')).not.toBeNull();
+  expect(screen.getByText('TBD')).not.toBeNull();
+});
+
+/**
+ * Builds a complete personal assignment record for component tests.
+ *
+ * @param overrides - Assignment fields to replace for a specific assertion.
+ * @returns A My Assignments row suitable for rendering tests.
+ */
+function assignment(
+  overrides: Partial<MyScheduleAssignment> = {},
+): MyScheduleAssignment {
+  return {
+    scheduleItemId: 'schedule-1',
+    bookingId: 'booking-1',
+    date: new Date('2026-06-28T00:00:00.000Z'),
+    startTime: '08:00',
+    endTime: null,
+    isTimeTbd: false,
+    activityType: ActivityType.FUN_DIVE,
+    activityLabel: 'Fun Dive',
+    activitySummary: 'Fun Dive',
+    activities: [
+      {
+        id: 'activity-1',
+        activityType: ActivityType.FUN_DIVE,
+        activityLabel: 'Fun Dive',
+        specialtyCourse: null,
+        requestedDate: new Date('2026-06-28T00:00:00.000Z'),
+        requestedTime: '08:00',
+        notes: null,
+      },
+      {
+        id: 'activity-2',
+        activityType: ActivityType.SNORKELING,
+        activityLabel: 'Snorkeling',
+        specialtyCourse: null,
+        requestedDate: new Date('2026-06-28T00:00:00.000Z'),
+        requestedTime: '10:00',
+        notes: null,
+      },
+    ],
+    primaryCustomerName: 'Maria Santos',
+    otherCustomerNames: [],
+    numberOfPeople: 2,
+    hotel: null,
+    scheduleNotes: null,
+    assignmentRole: ScheduleAssignmentRole.DIVEMASTER,
+    ...overrides,
+  };
+}

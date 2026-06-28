@@ -201,7 +201,8 @@ export async function getAssignableStaff(): Promise<AssignableStaff[]> {
  * @param currentUser - The authenticated user whose role scopes visibility.
  * @param filters - Optional schedule filters to apply after visibility rules.
  * @returns A ScheduleItem filter that always requires an official scheduled
- * booking and scopes Customer Service users to bookings they created.
+ * booking, scopes Customer Service users to bookings they created, and lets
+ * instructors view the full internal schedule.
  */
 export function buildSchedulePageWhere(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
@@ -216,7 +217,8 @@ export function buildSchedulePageWhere(
     bookingRequest.createdById = currentUser.id;
   } else if (
     currentUser.role !== UserRole.ADMIN &&
-    currentUser.role !== UserRole.MANAGER
+    currentUser.role !== UserRole.MANAGER &&
+    currentUser.role !== UserRole.INSTRUCTOR
   ) {
     where.id = { in: [] };
   }
