@@ -322,6 +322,17 @@ function renderScheduleCalendar(
   );
 }
 
+/**
+ * Matches a paragraph by exact rendered text content, including child text nodes.
+ *
+ * @param text - Full rendered text content to match.
+ * @returns A Testing Library text matcher.
+ */
+function hasExactText(text: string) {
+  return (_content: string, element: Element | null) =>
+    element?.tagName === 'P' && element.textContent === text;
+}
+
 test('renders passed schedule events in the FullCalendar layer', () => {
   renderScheduleCalendar();
 
@@ -345,14 +356,76 @@ test('opens an operational booking summary dialog from an event click', () => {
   );
 
   expect(screen.getByRole('dialog')).not.toBeNull();
-  expect(screen.getByText('Booking reference: BOOK-1')).not.toBeNull();
+  expect(screen.getByRole('heading', { name: 'Fun Dive' })).not.toBeNull();
   expect(screen.getByText('Maria Santos')).not.toBeNull();
   expect(screen.getByText('2 people/divers')).not.toBeNull();
-  expect(screen.getByText('Ocean View')).not.toBeNull();
-  expect(screen.getByText('Wechat / Lina')).not.toBeNull();
+  expect(screen.getByText('14 Jul 2026, 08:00-12:00')).not.toBeNull();
   expect(screen.getByText('Bring cash for marine park fees.')).not.toBeNull();
+  expect(screen.queryByText(/BOOK-1/)).toBeNull();
+  expect(screen.queryByText('Ocean View')).toBeNull();
+  expect(screen.queryByText('Wechat / Lina')).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Activities' })).toBeNull();
   expect(screen.getByRole('link', { name: /View booking/i }).getAttribute('href'))
     .toBe('/bookings/booking-1');
+});
+
+test('does not reopen a stale dialog when a filtered event leaves and returns', async () => {
+  const event = scheduleEvent();
+  const { rerender } = renderScheduleCalendar({ events: [event] });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(screen.getByRole('dialog')).not.toBeNull();
+
+  rerender(
+    <ScheduleCalendar
+      assignableStaff={[]}
+      canManageAssignments={false}
+      events={[]}
+    />,
+  );
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  rerender(
+    <ScheduleCalendar
+      assignableStaff={[]}
+      canManageAssignments={false}
+      events={[event]}
+    />,
+  );
+
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('renders notes above assigned staff in the event dialog', () => {
+  renderScheduleCalendar();
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  const notesHeading = screen.getByRole('heading', { name: 'Notes' });
+  const staffHeading = screen.getByRole('heading', { name: 'Assigned staff' });
+
+  expect(notesHeading.compareDocumentPosition(staffHeading)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+});
+
+test('renders a subtle empty notes state in the event dialog', () => {
+  renderScheduleCalendar({
+    events: [scheduleEvent({ notes: null })],
+  });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(screen.getByRole('heading', { name: 'Notes' })).not.toBeNull();
+  expect(screen.getByText('No notes')).not.toBeNull();
 });
 
 test('makes no-time schedule events clear in the summary dialog', () => {
@@ -428,10 +501,14 @@ test('renders multiple assigned staff in the event dialog', () => {
   );
 
   expect(screen.getByText('Assigned staff')).not.toBeNull();
-  expect(screen.getByText('Inez Instructor')).not.toBeNull();
-  expect(screen.getByText('Dina Divemaster')).not.toBeNull();
-  expect(screen.getByText('Lead Instructor')).not.toBeNull();
-  expect(screen.getByText('Divemaster')).not.toBeNull();
+  expect(
+    screen.getByText(hasExactText('Inez Instructor \u2014 Lead Instructor')),
+  ).not.toBeNull();
+  expect(
+    screen.getByText(hasExactText('Dina Divemaster \u2014 Divemaster')),
+  ).not.toBeNull();
+  expect(screen.queryByText(/inez@example\.test/)).toBeNull();
+  expect(screen.queryByText(/dina@example\.test/)).toBeNull();
 });
 
 test('renders unassigned state when the event has no assignments', () => {

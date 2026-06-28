@@ -5,6 +5,17 @@ import type {
   UserRole,
 } from '@/generated/prisma/enums';
 
+/** Supported date-range shortcuts for schedule filtering. */
+export type ScheduleRangeFilter = 'all' | 'today' | 'tomorrow' | 'this-week';
+
+/** Server-side filters accepted by schedule queries. */
+export type ScheduleFilters = {
+  range?: ScheduleRangeFilter;
+  staffId?: string;
+  activityType?: ActivityType;
+  unassignedOnly?: boolean;
+};
+
 /** Staff user data safe to show in schedule assignment controls. */
 export type AssignableStaff = {
   id: string;

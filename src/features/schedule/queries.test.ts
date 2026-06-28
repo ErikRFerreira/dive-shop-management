@@ -87,6 +87,165 @@ test('queries calendar items with the official scheduled booking filter', async 
   );
 });
 
+test('queries calendar items with a schedule date range filter', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, { range: 'today' });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        date: {
+          gte: expect.any(Date),
+          lt: expect.any(Date),
+        },
+      },
+    }),
+  );
+});
+
+test('queries calendar items assigned to a selected staff user', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, { staffId: 'staff-1' });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        AND: [
+          {
+            assignments: {
+              some: {
+                userId: 'staff-1',
+              },
+            },
+          },
+        ],
+      },
+    }),
+  );
+});
+
+test('queries calendar items with zero assignments for unassigned-only filters', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, { unassignedOnly: true });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        AND: [
+          {
+            assignments: {
+              none: {},
+            },
+          },
+        ],
+      },
+    }),
+  );
+});
+
+test('queries calendar items by schedule item or booking activity type', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, {
+    activityType: ActivityType.FUN_DIVE,
+  });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        AND: [
+          {
+            OR: [
+              {
+                activityType: ActivityType.FUN_DIVE,
+              },
+              {
+                bookingRequest: {
+                  activities: {
+                    some: {
+                      activityType: ActivityType.FUN_DIVE,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  );
+});
+
+test('queries calendar items with combined schedule filters', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, {
+    activityType: ActivityType.SNORKELING,
+    range: 'this-week',
+    staffId: 'staff-2',
+    unassignedOnly: true,
+  });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        date: {
+          gte: expect.any(Date),
+          lt: expect.any(Date),
+        },
+        AND: [
+          {
+            assignments: {
+              some: {
+                userId: 'staff-2',
+              },
+            },
+          },
+          {
+            assignments: {
+              none: {},
+            },
+          },
+          {
+            OR: [
+              {
+                activityType: ActivityType.SNORKELING,
+              },
+              {
+                bookingRequest: {
+                  activities: {
+                    some: {
+                      activityType: ActivityType.SNORKELING,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  );
+});
+
 test('queries active instructors and divemasters as assignable staff', async () => {
   mocks.findManyUsers.mockResolvedValue([]);
 

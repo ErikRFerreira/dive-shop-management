@@ -1,10 +1,12 @@
 import { ScheduleCalendar } from '@/components/schedule/schedule-calendar';
+import { ScheduleFilters } from '@/components/schedule/schedule-filters';
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { parseScheduleFiltersFromSearchParams } from '@/features/schedule/filters';
 import { canManageScheduleAssignments } from '@/features/schedule/permissions';
 import {
   getAssignableStaff,
@@ -17,15 +19,26 @@ import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-acces
 /**
  * Renders the internal schedule calendar for official scheduled bookings.
  *
+ * @param props - Next.js page props containing URL search params.
  * @returns The schedule page with server-fetched events passed to the client calendar.
  */
-async function SchedulePage() {
+async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'schedule');
   const canManageAssignments = canManageScheduleAssignments(currentUser);
-  const scheduleItems = await getScheduleItemsForCalendar(currentUser);
+  const scheduleFilters = parseScheduleFiltersFromSearchParams(
+    await searchParams,
+  );
+  const scheduleItems = await getScheduleItemsForCalendar(
+    currentUser,
+    scheduleFilters,
+  );
   const scheduleEvents = serializeScheduleCalendarEvents(scheduleItems);
-  const assignableStaff = canManageAssignments ? await getAssignableStaff() : [];
+  const assignableStaff = await getAssignableStaff();
 
   return (
     <div className="space-y-6">
@@ -36,8 +49,13 @@ async function SchedulePage() {
         </p>
       </div>
 
-      <ScheduleCalendar
+      <ScheduleFilters
         assignableStaff={assignableStaff}
+        filters={scheduleFilters}
+      />
+
+      <ScheduleCalendar
+        assignableStaff={canManageAssignments ? assignableStaff : []}
         canManageAssignments={canManageAssignments}
         events={scheduleEvents}
       />

@@ -37,6 +37,7 @@ type ScheduleAssignmentsListProps = {
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
   scheduleItemId: string;
+  variant?: ScheduleAssignmentsListVariant;
 };
 
 type ScheduleAssignmentBadgeProps = {
@@ -53,10 +54,12 @@ type AssignmentActionErrorProps = {
   message?: string;
 };
 
+type ScheduleAssignmentsListVariant = 'default' | 'compact';
+
 /**
  * Renders the schedule assignment section for a selected schedule event.
  *
- * @param props - Assignment data, available staff, and permission state.
+ * @param props - Assignment data, available staff, permission state, and display variant.
  * @returns A read-only assignment list with optional admin/manager controls.
  */
 export function ScheduleAssignmentsList({
@@ -64,6 +67,7 @@ export function ScheduleAssignmentsList({
   assignableStaff,
   canManageAssignments,
   scheduleItemId,
+  variant = 'default',
 }: ScheduleAssignmentsListProps) {
   return (
     <section className="space-y-3">
@@ -75,10 +79,18 @@ export function ScheduleAssignmentsList({
       {assignments.length > 0 ? (
         <ul className="space-y-2">
           {assignments.map((assignment) => (
-            <li className="rounded-md border p-3" key={assignment.id}>
+            <li
+              className={
+                variant === 'compact'
+                  ? 'rounded-md border px-3 py-2'
+                  : 'rounded-md border p-3'
+              }
+              key={assignment.id}
+            >
               <ScheduleAssignmentRow
                 assignment={assignment}
                 canManageAssignments={canManageAssignments}
+                variant={variant}
               />
             </li>
           ))}
@@ -119,15 +131,17 @@ export function ScheduleAssignmentBadge({
 /**
  * Renders one assigned staff row with optional role update and remove controls.
  *
- * @param props - Assignment detail and management permission state.
+ * @param props - Assignment detail, management permission state, and display variant.
  * @returns A row describing an assigned staff member.
  */
 function ScheduleAssignmentRow({
   assignment,
   canManageAssignments,
+  variant,
 }: {
   assignment: ScheduleAssignmentDetail;
   canManageAssignments: boolean;
+  variant: ScheduleAssignmentsListVariant;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -158,23 +172,84 @@ function ScheduleAssignmentRow({
     });
   }
 
+  if (variant === 'compact' && !canManageAssignments) {
+    return (
+      <p className="text-sm">
+        {assignment.user.name} <span aria-hidden="true">{'\u2014'}</span>{' '}
+        {formatEnumLabel(assignment.role)}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div
+        className={
+          variant === 'compact'
+            ? 'grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-center'
+            : 'flex flex-wrap items-start justify-between gap-3'
+        }
+      >
         <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={
+              variant === 'compact'
+                ? 'min-h-9 content-center'
+                : 'flex flex-wrap items-center gap-2'
+            }
+          >
             <p className="font-medium">{assignment.user.name}</p>
-            <ScheduleAssignmentBadge assignment={assignment} />
+            {variant === 'default' ? (
+              <ScheduleAssignmentBadge assignment={assignment} />
+            ) : null}
           </div>
-          <p className="break-words text-sm text-muted-foreground">
-            {formatEnumLabel(assignment.user.role)}
-            {assignment.user.email ? ` / ${assignment.user.email}` : ''}
-          </p>
+          {variant === 'default' ? (
+            <p className="break-words text-sm text-muted-foreground">
+              {formatEnumLabel(assignment.user.role)}
+              {assignment.user.email ? ` / ${assignment.user.email}` : ''}
+            </p>
+          ) : null}
         </div>
+
+        {canManageAssignments ? (
+          <div
+            className={
+              variant === 'compact' ? 'grid gap-1' : 'grid gap-2 sm:max-w-64'
+            }
+          >
+            <Label
+              className={variant === 'compact' ? 'sr-only' : undefined}
+              htmlFor={roleSelectId}
+            >
+              Assignment role
+            </Label>
+            <Select
+              disabled={isPending}
+              onValueChange={handleRoleChange}
+              value={assignment.role}
+            >
+              <SelectTrigger id={roleSelectId}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {assignmentRoles.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {formatEnumLabel(role)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
 
         {canManageAssignments ? (
           <Button
             aria-label={`Remove ${assignment.user.name}`}
+            className={
+              variant === 'compact'
+                ? 'justify-self-start sm:justify-self-end'
+                : undefined
+            }
             disabled={isPending}
             onClick={handleRemoveAssignment}
             size="icon-sm"
@@ -185,28 +260,6 @@ function ScheduleAssignmentRow({
           </Button>
         ) : null}
       </div>
-
-      {canManageAssignments ? (
-        <div className="grid gap-2 sm:max-w-64">
-          <Label htmlFor={roleSelectId}>Assignment role</Label>
-          <Select
-            disabled={isPending}
-            onValueChange={handleRoleChange}
-            value={assignment.role}
-          >
-            <SelectTrigger id={roleSelectId}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {assignmentRoles.map((role) => (
-                <SelectItem key={role} value={role}>
-                  {formatEnumLabel(role)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
 
       <AssignmentActionError message={error} />
     </div>
