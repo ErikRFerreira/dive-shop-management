@@ -1,4 +1,5 @@
 import { ScheduleCalendar } from '@/components/schedule/schedule-calendar';
+import { ScheduleFilters } from '@/components/schedule/schedule-filters';
 import {
   Card,
   CardDescription,
@@ -37,7 +38,7 @@ async function SchedulePage({
     scheduleFilters,
   );
   const scheduleEvents = serializeScheduleCalendarEvents(scheduleItems);
-  const assignableStaff = canManageAssignments ? await getAssignableStaff() : [];
+  const assignableStaff = await getAssignableStaff();
 
   return (
     <div className="space-y-6">
@@ -48,8 +49,13 @@ async function SchedulePage({
         </p>
       </div>
 
-      <ScheduleCalendar
+      <ScheduleFilters
         assignableStaff={assignableStaff}
+        filters={scheduleFilters}
+      />
+
+      <ScheduleCalendar
+        assignableStaff={canManageAssignments ? assignableStaff : []}
         canManageAssignments={canManageAssignments}
         events={scheduleEvents}
       />

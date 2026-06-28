@@ -8,14 +8,13 @@ import 'server-only';
 
 import { Prisma } from '@/generated/prisma/client';
 import {
-  ActivityType,
   BookingCustomerRole,
   BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
-import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { formatDateInputValue } from '@/lib/format';
 import { getScheduleDateRangeForFilter } from './date-ranges';
 import type {
   AssignableStaff,
@@ -24,6 +23,7 @@ import type {
   ScheduleFilters,
   SchedulePageItem,
 } from './types';
+import { formatScheduleActivityLabel } from './utils';
 
 const schedulePageItemArgs = {
   select: {
@@ -510,30 +510,6 @@ function summarizeScheduleActivities(
   }
 
   return `${labels[0]} + ${labels.length - 1} more`;
-}
-
-/**
- * Formats activity types for compact schedule calendar display.
- *
- * @param activityType - The activity enum value stored on a schedule or booking activity.
- * @returns A short staff-facing label for calendar event titles.
- */
-function formatScheduleActivityLabel(
-  activityType: ScheduleItemForSchedulePage['activityType'],
-) {
-  if (activityType === ActivityType.DISCOVER_SCUBA_DIVING) {
-    return 'DSD';
-  }
-
-  if (activityType === ActivityType.OPEN_WATER_COURSE) {
-    return 'Open Water';
-  }
-
-  if (activityType === ActivityType.ADVANCED_OPEN_WATER_COURSE) {
-    return 'Advanced Open Water';
-  }
-
-  return formatEnumLabel(activityType);
 }
 
 /**
