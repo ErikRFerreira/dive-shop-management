@@ -4,7 +4,8 @@ import type {
   SchedulePageItem,
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
-import { formatDateInputValue } from '@/lib/format';
+import { ActivityType } from '@/generated/prisma/enums';
+import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
 
 /**
  * Groups already-sorted schedule rows by calendar date for the simple schedule page.
@@ -66,4 +67,26 @@ export function serializeScheduleCalendarEvents(
       requestedDate: activity.requestedDate?.toISOString() ?? null,
     })),
   }));
+}
+
+/**
+ * Formats activity types for compact schedule display.
+ *
+ * @param activityType - Activity enum value stored on a schedule or booking activity.
+ * @returns A short staff-facing label for schedule filters and calendar titles.
+ */
+export function formatScheduleActivityLabel(activityType: ActivityType) {
+  if (activityType === ActivityType.DISCOVER_SCUBA_DIVING) {
+    return 'DSD';
+  }
+
+  if (activityType === ActivityType.OPEN_WATER_COURSE) {
+    return 'Open Water';
+  }
+
+  if (activityType === ActivityType.ADVANCED_OPEN_WATER_COURSE) {
+    return 'Advanced Open Water';
+  }
+
+  return formatEnumLabel(activityType);
 }

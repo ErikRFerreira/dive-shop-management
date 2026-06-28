@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,7 +22,7 @@ import type {
   AssignableStaff,
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
-import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
+import { formatDisplayDate } from '@/lib/format';
 
 type ScheduleCalendarProps = {
   assignableStaff: AssignableStaff[];
@@ -38,6 +37,26 @@ type ScheduleCalendarProps = {
  * @returns A calendar UI that opens a booking summary dialog on event click.
  */
 export function ScheduleCalendar({
+  assignableStaff,
+  canManageAssignments,
+  events,
+}: ScheduleCalendarProps) {
+  const eventMembershipKey = useMemo(
+    () => events.map((event) => event.id).join('|'),
+    [events],
+  );
+
+  return (
+    <ScheduleCalendarView
+      assignableStaff={assignableStaff}
+      canManageAssignments={canManageAssignments}
+      events={events}
+      key={eventMembershipKey}
+    />
+  );
+}
+
+function ScheduleCalendarView({
   assignableStaff,
   canManageAssignments,
   events,
@@ -136,19 +155,14 @@ function ScheduleEventDialogContent({
   canManageAssignments: boolean;
   event: SerializedScheduleCalendarEvent;
 }) {
-  const sourceReferrer = formatSourceReferrer(event);
-
   return (
     <>
       <DialogHeader>
         <DialogTitle>{event.activitySummary}</DialogTitle>
-        <DialogDescription>
-          Booking reference: {event.bookingReference}
-        </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <DetailField
             label="Primary customer"
             value={event.primaryCustomerName ?? 'Customer not recorded'}
@@ -158,32 +172,14 @@ function ScheduleEventDialogContent({
             value={formatPeopleCount(event.numberOfPeople)}
           />
           <DetailField label="Date/time" value={formatEventDateTime(event)} />
-          {event.hotel ? <DetailField label="Hotel" value={event.hotel} /> : null}
-          {sourceReferrer ? (
-            <DetailField label="Source/referrer" value={sourceReferrer} />
-          ) : null}
-          <DetailField label="Booking reference" value={event.bookingReference} />
         </div>
 
         <section className="space-y-2">
-          <h3 className="text-sm font-medium">Activities</h3>
-          {event.activities.length > 0 ? (
-            <ul className="space-y-2 text-sm">
-              {event.activities.map((activity) => (
-                <li className="rounded-md border p-3" key={activity.id}>
-                  <p>{formatActivityDisplay(activity, event.activityLabel)}</p>
-                  {activity.notes ? (
-                    <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                      {activity.notes}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+          <h3 className="text-sm font-medium">Notes</h3>
+          {event.notes ? (
+            <p className="whitespace-pre-wrap text-sm">{event.notes}</p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              {event.activityLabel}
-            </p>
+            <p className="text-sm text-muted-foreground">No notes</p>
           )}
         </section>
 
@@ -192,14 +188,8 @@ function ScheduleEventDialogContent({
           assignments={event.assignments}
           canManageAssignments={canManageAssignments}
           scheduleItemId={event.scheduleItemId}
+          variant="compact"
         />
-
-        {event.notes ? (
-          <section className="space-y-2">
-            <h3 className="text-sm font-medium">Schedule/internal notes</h3>
-            <p className="whitespace-pre-wrap text-sm">{event.notes}</p>
-          </section>
-        ) : null}
       </div>
 
       <DialogFooter>
@@ -290,23 +280,6 @@ function isSerializedScheduleCalendarEvent(
 }
 
 /**
- * Formats source and referrer information for the booking summary.
- *
- * @param event - The selected schedule event.
- * @returns Combined source/referrer text, or null when neither is available.
- */
-function formatSourceReferrer(event: SerializedScheduleCalendarEvent) {
-  const source = event.source ? formatEnumLabel(event.source) : null;
-  const referrer = event.referrerName?.trim();
-
-  if (source && referrer) {
-    return `${source} / ${referrer}`;
-  }
-
-  return source ?? referrer ?? null;
-}
-
-/**
  * Formats the number of people for operational schedule display.
  *
  * @param numberOfPeople - Stored booking party size.
@@ -340,27 +313,4 @@ function formatEventDateTime(event: SerializedScheduleCalendarEvent) {
   }
 
   return `${dateText}, ${event.startTime ?? 'time TBD'}`;
-}
-
-/**
- * Formats one activity row in the booking summary activity list.
- *
- * @param activity - Serialized activity detail attached to the event.
- * @param fallbackLabel - Event-level activity label used when activity label is missing.
- * @returns Compact activity text with requested timing when available.
- */
-function formatActivityDisplay(
-  activity: SerializedScheduleCalendarEvent['activities'][number],
-  fallbackLabel: string,
-) {
-  const label = activity.activityLabel ?? fallbackLabel;
-  const specialtyCourse = activity.specialtyCourse?.trim();
-  const date = activity.requestedDate
-    ? formatDisplayDate(new Date(activity.requestedDate))
-    : null;
-  const time = activity.requestedTime?.trim();
-  const timing = [date, time].filter(Boolean).join(', ');
-  const labelText = specialtyCourse ? `${label}: ${specialtyCourse}` : label;
-
-  return timing ? `${labelText} - ${timing}` : labelText;
 }
