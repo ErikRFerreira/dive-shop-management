@@ -4,6 +4,7 @@ import type { CurrentUser } from '@/lib/current-user';
 export type DashboardRouteKey =
   | 'dashboard'
   | 'bookings'
+  | 'assignments'
   | 'schedule'
   | 'customers'
   | 'settings';
@@ -25,6 +26,7 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
       UserRole.MANAGER,
       UserRole.CUSTOMER_SERVICE,
       UserRole.INSTRUCTOR,
+      UserRole.DIVEMASTER,
     ],
   },
   {
@@ -37,7 +39,18 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'schedule',
     href: '/schedule',
     label: 'Schedule',
-    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
+    allowedRoles: [
+      UserRole.ADMIN,
+      UserRole.MANAGER,
+      UserRole.CUSTOMER_SERVICE,
+      UserRole.INSTRUCTOR,
+    ],
+  },
+  {
+    key: 'assignments',
+    href: '/assignments',
+    label: 'My Assignments',
+    allowedRoles: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
   },
   {
     key: 'customers',

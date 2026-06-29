@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 
 import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,6 +28,7 @@ import { formatDisplayDate } from '@/lib/format';
 type ScheduleCalendarProps = {
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  canViewBookingDetails: boolean;
   events: SerializedScheduleCalendarEvent[];
 };
 
@@ -39,6 +41,7 @@ type ScheduleCalendarProps = {
 export function ScheduleCalendar({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   events,
 }: ScheduleCalendarProps) {
   const eventMembershipKey = useMemo(
@@ -50,6 +53,7 @@ export function ScheduleCalendar({
     <ScheduleCalendarView
       assignableStaff={assignableStaff}
       canManageAssignments={canManageAssignments}
+      canViewBookingDetails={canViewBookingDetails}
       events={events}
       key={eventMembershipKey}
     />
@@ -59,6 +63,7 @@ export function ScheduleCalendar({
 function ScheduleCalendarView({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   events,
 }: ScheduleCalendarProps) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -131,6 +136,7 @@ function ScheduleCalendarView({
             <ScheduleEventDialogContent
               assignableStaff={assignableStaff}
               canManageAssignments={canManageAssignments}
+              canViewBookingDetails={canViewBookingDetails}
               event={selectedEvent}
             />
           ) : null}
@@ -144,15 +150,17 @@ function ScheduleCalendarView({
  * Renders the clicked schedule event summary inside the dialog.
  *
  * @param props - The selected schedule event to summarize.
- * @returns Staff-facing booking summary content and a booking detail link.
+ * @returns Staff-facing booking summary content and an optional booking detail link.
  */
 function ScheduleEventDialogContent({
   assignableStaff,
   canManageAssignments,
+  canViewBookingDetails,
   event,
 }: {
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  canViewBookingDetails: boolean;
   event: SerializedScheduleCalendarEvent;
 }) {
   return (
@@ -162,17 +170,11 @@ function ScheduleEventDialogContent({
       </DialogHeader>
 
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <DetailField
-            label="Primary customer"
-            value={event.primaryCustomerName ?? 'Customer not recorded'}
-          />
-          <DetailField
-            label="People/divers"
-            value={formatPeopleCount(event.numberOfPeople)}
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
           <DetailField label="Date/time" value={formatEventDateTime(event)} />
         </div>
+
+        <CustomerDiversSection customers={event.customers} />
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium">Notes</h3>
@@ -192,15 +194,58 @@ function ScheduleEventDialogContent({
         />
       </div>
 
-      <DialogFooter>
-        <Button asChild>
-          <Link href={`/bookings/${event.bookingId}`}>
-            <ExternalLink className="h-4 w-4" />
-            View booking
-          </Link>
-        </Button>
-      </DialogFooter>
+      {canViewBookingDetails ? (
+        <DialogFooter>
+          <Button asChild>
+            <Link href={`/bookings/${event.bookingId}`}>
+              <ExternalLink className="h-4 w-4" />
+              View booking
+            </Link>
+          </Button>
+        </DialogFooter>
+      ) : null}
     </>
+  );
+}
+
+/**
+ * Renders all customers and divers attached to the selected schedule event.
+ *
+ * @param props - Customer/diver rows prepared by the schedule query mapper.
+ * @returns A compact customer list with primary contact markers.
+ */
+function CustomerDiversSection({
+  customers,
+}: {
+  customers: SerializedScheduleCalendarEvent['customers'];
+}) {
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-medium">
+        Customers/divers &middot; {customers.length}
+      </h3>
+      {customers.length > 0 ? (
+        <ul className="space-y-1 text-sm">
+          {customers.map((customer, index) => (
+            <li
+              className="flex flex-wrap items-center gap-2"
+              key={`${customer.role}-${customer.name}-${index}`}
+            >
+              <span>{customer.name}</span>
+              {customer.isPrimaryContact ? (
+                <Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
+                  Primary
+                </Badge>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No customers/divers recorded
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -277,22 +322,6 @@ function isSerializedScheduleCalendarEvent(
     'bookingId' in value &&
     'scheduleItemId' in value
   );
-}
-
-/**
- * Formats the number of people for operational schedule display.
- *
- * @param numberOfPeople - Stored booking party size.
- * @returns Staff-facing people/diver count text.
- */
-function formatPeopleCount(numberOfPeople: number | null) {
-  if (numberOfPeople === null) {
-    return 'TBD people/divers';
-  }
-
-  return `${numberOfPeople} ${
-    numberOfPeople === 1 ? 'person/diver' : 'people/divers'
-  }`;
 }
 
 /**
