@@ -1,5 +1,6 @@
 import type {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
   UserRole,
@@ -31,6 +32,55 @@ export type ScheduleAssignmentDetail = {
   role: ScheduleAssignmentRole;
   notes: string | null;
   user: AssignableStaff;
+};
+
+/** Activity detail included with each personal assignment row. */
+export type MyScheduleAssignmentActivity = {
+  id: string;
+  activityType: ActivityType | null;
+  activityLabel: string | null;
+  specialtyCourse: string | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  notes: string | null;
+};
+
+/** Customer or diver attached to a scheduled booking for compact display. */
+export type ScheduleBookingCustomerDisplay = {
+  name: string;
+  chineseName: string | null;
+  isPrimaryContact: boolean;
+  role: BookingCustomerRole;
+};
+
+/** Read-only schedule item assigned to the current staff user. */
+export type MyScheduleAssignment = {
+  scheduleItemId: string;
+  bookingId: string;
+  date: Date;
+  startTime: string | null;
+  endTime: string | null;
+  isTimeTbd: boolean;
+  activityType: ActivityType;
+  activityLabel: string;
+  activitySummary: string;
+  activities: MyScheduleAssignmentActivity[];
+  primaryCustomerName: string | null;
+  customers: ScheduleBookingCustomerDisplay[];
+  numberOfPeople: number | null;
+  hotel: string | null;
+  scheduleNotes: string | null;
+  assignmentRole: ScheduleAssignmentRole;
+};
+
+/** Supported personal assignment buckets for the My Assignments page. */
+export type MyScheduleAssignmentGroupKey = 'today' | 'tomorrow' | 'upcoming';
+
+/** Date bucket rendered by the future read-only My Assignments page. */
+export type MyScheduleAssignmentGroup = {
+  key: MyScheduleAssignmentGroupKey;
+  label: string;
+  items: MyScheduleAssignment[];
 };
 
 /** UI-friendly row for the simple internal schedule page. */
@@ -93,6 +143,7 @@ export type ScheduleCalendarEvent = {
   activitySummary: string;
   activities: ScheduleCalendarActivity[];
   primaryCustomerName: string | null;
+  customers: ScheduleBookingCustomerDisplay[];
   numberOfPeople: number | null;
   hotel: string | null;
   source: BookingSource | null;

@@ -1,4 +1,7 @@
 import type {
+  MyScheduleAssignment,
+  MyScheduleAssignmentGroup,
+  MyScheduleAssignmentGroupKey,
   ScheduleDateGroup,
   ScheduleCalendarEvent,
   SchedulePageItem,
@@ -38,6 +41,35 @@ export function groupScheduleItemsByDate(
 }
 
 /**
+ * Groups personal assignment rows into Today, Tomorrow, and Upcoming buckets.
+ *
+ * @param items - Assignment rows sorted by date and time by the query layer.
+ * @param baseDate - Date used as "today" for deterministic tests.
+ * @returns Assignment groups in staff-facing bucket order, omitting empty groups.
+ */
+export function groupMyScheduleAssignmentsByDay(
+  items: MyScheduleAssignment[],
+  baseDate = new Date(),
+): MyScheduleAssignmentGroup[] {
+  const todayKey = getScheduleDateKey(baseDate);
+  const tomorrowKey = getScheduleDateKey(addUtcDays(baseDate, 1));
+  const groups = createMyScheduleAssignmentGroups();
+
+  items.forEach((item) => {
+    const itemDateKey = getScheduleDateKey(item.date);
+    const groupKey = getMyScheduleAssignmentGroupKey(
+      itemDateKey,
+      todayKey,
+      tomorrowKey,
+    );
+
+    groups[groupKey].items.push(item);
+  });
+
+  return Object.values(groups).filter((group) => group.items.length > 0);
+}
+
+/**
  * Converts a schedule date into a stable `YYYY-MM-DD` key.
  *
  * Schedule dates are stored as date-only values. The UTC slice avoids grouping
@@ -48,6 +80,71 @@ export function groupScheduleItemsByDate(
  */
 export function getScheduleDateKey(date: Date) {
   return formatDateInputValue(date) ?? '';
+}
+
+/**
+ * Creates empty My Assignments buckets in display order.
+ *
+ * @returns Empty assignment groups keyed by bucket identifier.
+ */
+function createMyScheduleAssignmentGroups(): Record<
+  MyScheduleAssignmentGroupKey,
+  MyScheduleAssignmentGroup
+> {
+  return {
+    today: {
+      key: 'today',
+      label: 'Today',
+      items: [],
+    },
+    tomorrow: {
+      key: 'tomorrow',
+      label: 'Tomorrow',
+      items: [],
+    },
+    upcoming: {
+      key: 'upcoming',
+      label: 'Upcoming',
+      items: [],
+    },
+  };
+}
+
+/**
+ * Resolves the staff-facing assignment bucket for a schedule date key.
+ *
+ * @param itemDateKey - The assignment schedule date key.
+ * @param todayKey - The date key considered "today".
+ * @param tomorrowKey - The date key considered "tomorrow".
+ * @returns The matching My Assignments group key.
+ */
+function getMyScheduleAssignmentGroupKey(
+  itemDateKey: string,
+  todayKey: string,
+  tomorrowKey: string,
+): MyScheduleAssignmentGroupKey {
+  if (itemDateKey === todayKey) {
+    return 'today';
+  }
+
+  if (itemDateKey === tomorrowKey) {
+    return 'tomorrow';
+  }
+
+  return 'upcoming';
+}
+
+/**
+ * Adds whole UTC days without mutating the source date.
+ *
+ * @param date - Date to offset.
+ * @param days - Number of UTC days to add.
+ * @returns A new Date offset by the requested number of days.
+ */
+function addUtcDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setUTCDate(nextDate.getUTCDate() + days);
+  return nextDate;
 }
 
 /**

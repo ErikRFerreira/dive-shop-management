@@ -30,6 +30,7 @@ vi.mock('@/lib/db', () => ({
 import {
   buildSchedulePageWhere,
   getAssignableStaff,
+  getMyScheduleAssignments,
   getScheduleItemsForCalendar,
   getScheduledBookingsForSchedulePage,
   mapScheduleItemsToCalendarEvents,
@@ -46,6 +47,18 @@ const customerServiceUser = {
   ...adminUser,
   id: 'customer-service-1',
   role: UserRole.CUSTOMER_SERVICE,
+};
+
+const instructorUser = {
+  ...adminUser,
+  id: 'instructor-1',
+  role: UserRole.INSTRUCTOR,
+};
+
+const divemasterUser = {
+  ...adminUser,
+  id: 'divemaster-1',
+  role: UserRole.DIVEMASTER,
 };
 
 beforeEach(() => {
@@ -85,6 +98,10 @@ test('queries calendar items with the official scheduled booking filter', async 
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     }),
   );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
 });
 
 test('queries calendar items with a schedule date range filter', async () => {
@@ -268,6 +285,206 @@ test('queries active instructors and divemasters as assignable staff', async () 
   });
 });
 
+test('queries my assignments with scheduled status and current user assignment filter', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getMyScheduleAssignments(instructorUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        assignments: {
+          some: {
+            userId: instructorUser.id,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    }),
+  );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
+});
+
+test('queries divemaster assignments with the current user assignment filter', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getMyScheduleAssignments(divemasterUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        assignments: {
+          some: {
+            userId: divemasterUser.id,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    }),
+  );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
+});
+
+test('does not query my assignments for unauthorized customer service users', async () => {
+  await expect(getMyScheduleAssignments(customerServiceUser)).resolves.toEqual([]);
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+});
+
+test('does not query my assignments for admin or manager users', async () => {
+  await expect(getMyScheduleAssignments(adminUser)).resolves.toEqual([]);
+  await expect(
+    getMyScheduleAssignments({ ...adminUser, role: UserRole.MANAGER }),
+  ).resolves.toEqual([]);
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+});
+
+test('maps my assignments with the current user role from multiple assignments', async () => {
+  const scheduleDate = new Date('2026-07-14T00:00:00.000Z');
+
+  mocks.findMany.mockResolvedValue([
+    {
+      id: 'schedule-1',
+      bookingRequestId: 'booking-1',
+      date: scheduleDate,
+      startTime: '08:00',
+      activityType: ActivityType.FUN_DIVE,
+      scheduleNotes: 'Meet at the shop.',
+      createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      assignments: [
+        {
+          id: 'assignment-other',
+          userId: 'divemaster-1',
+          role: ScheduleAssignmentRole.DIVEMASTER,
+        },
+        {
+          id: 'assignment-current',
+          userId: instructorUser.id,
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+        },
+      ],
+      bookingRequest: {
+        id: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+        numberOfPeople: 3,
+        endAt: new Date('2026-07-14T12:30:00.000Z'),
+        activities: [
+          {
+            id: 'activity-1',
+            activityType: ActivityType.FUN_DIVE,
+            specialtyCourse: null,
+            requestedDate: scheduleDate,
+            requestedTime: '08:00',
+            notes: 'Two tanks.',
+            sortOrder: 0,
+          },
+          {
+            id: 'activity-2',
+            activityType: ActivityType.SNORKELING,
+            specialtyCourse: null,
+            requestedDate: scheduleDate,
+            requestedTime: '10:00',
+            notes: null,
+            sortOrder: 1,
+          },
+        ],
+        customers: [
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:00:00.000Z'),
+            customer: {
+              fullName: 'Participant Diver',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: 'Participant Hotel',
+            },
+          },
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            hotelAtBooking: 'Primary Booking Hotel',
+            createdAt: new Date('2026-06-24T00:01:00.000Z'),
+            customer: {
+              fullName: 'Maria Santos',
+              chineseName: '玛丽亚',
+              firstName: null,
+              lastName: null,
+              hotel: 'Customer Hotel',
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  await expect(getMyScheduleAssignments(instructorUser)).resolves.toEqual([
+    {
+      scheduleItemId: 'schedule-1',
+      bookingId: 'booking-1',
+      date: scheduleDate,
+      startTime: '08:00',
+      endTime: '12:30',
+      isTimeTbd: false,
+      activityType: ActivityType.FUN_DIVE,
+      activityLabel: 'Fun Dive',
+      activitySummary: 'Fun Dive + Snorkeling',
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.FUN_DIVE,
+          activityLabel: 'Fun Dive',
+          specialtyCourse: null,
+          requestedDate: scheduleDate,
+          requestedTime: '08:00',
+          notes: 'Two tanks.',
+        },
+        {
+          id: 'activity-2',
+          activityType: ActivityType.SNORKELING,
+          activityLabel: 'Snorkeling',
+          specialtyCourse: null,
+          requestedDate: scheduleDate,
+          requestedTime: '10:00',
+          notes: null,
+        },
+      ],
+      primaryCustomerName: 'Maria Santos',
+      customers: [
+        {
+          name: 'Participant Diver',
+          chineseName: null,
+          isPrimaryContact: false,
+          role: BookingCustomerRole.PARTICIPANT,
+        },
+        {
+          name: 'Maria Santos / 玛丽亚',
+          chineseName: '玛丽亚',
+          isPrimaryContact: true,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+        },
+      ],
+      numberOfPeople: 3,
+      hotel: 'Primary Booking Hotel',
+      scheduleNotes: 'Meet at the shop.',
+      assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+    },
+  ]);
+});
+
 test('scopes customer service schedule rows to their own bookings', () => {
   expect(buildSchedulePageWhere(customerServiceUser)).toEqual({
     bookingRequest: {
@@ -277,7 +494,7 @@ test('scopes customer service schedule rows to their own bookings', () => {
   });
 });
 
-test('leaves admin and manager schedule rows unscoped except scheduled status', () => {
+test('leaves admin manager and instructor schedule rows unscoped except scheduled status', () => {
   expect(buildSchedulePageWhere(adminUser)).toEqual({
     bookingRequest: {
       status: BookingStatus.SCHEDULED,
@@ -290,11 +507,16 @@ test('leaves admin and manager schedule rows unscoped except scheduled status', 
       status: BookingStatus.SCHEDULED,
     },
   });
+  expect(buildSchedulePageWhere(instructorUser)).toEqual({
+    bookingRequest: {
+      status: BookingStatus.SCHEDULED,
+    },
+  });
 });
 
 test('returns no schedule rows for unsupported roles', () => {
   expect(
-    buildSchedulePageWhere({ ...adminUser, role: UserRole.INSTRUCTOR }),
+    buildSchedulePageWhere({ ...adminUser, role: UserRole.DIVEMASTER }),
   ).toEqual({
     id: { in: [] },
     bookingRequest: {
@@ -344,6 +566,7 @@ test('maps schedule rows into schedule page items', async () => {
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: 'Participant Diver',
+              chineseName: null,
               firstName: null,
               lastName: null,
               hotel: 'Participant Hotel',
@@ -355,6 +578,7 @@ test('maps schedule rows into schedule page items', async () => {
             createdAt: new Date('2026-06-24T00:01:00.000Z'),
             customer: {
               fullName: 'Maria Santos',
+              chineseName: null,
               firstName: null,
               lastName: null,
               hotel: 'Customer Hotel',
@@ -424,6 +648,7 @@ test('falls back to booking internal notes and customer hotel', async () => {
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: null,
+              chineseName: null,
               firstName: 'Ari',
               lastName: 'Tan',
               hotel: 'Harbor Inn',
@@ -498,6 +723,7 @@ test('maps timed schedule rows into calendar events', () => {
               createdAt: new Date('2026-06-24T00:01:00.000Z'),
               customer: {
                 fullName: 'Anchie',
+                chineseName: null,
                 firstName: null,
                 lastName: null,
                 hotel: 'Customer Hotel',
@@ -535,6 +761,14 @@ test('maps timed schedule rows into calendar events', () => {
         },
       ],
       primaryCustomerName: 'Anchie',
+      customers: [
+        {
+          name: 'Anchie',
+          chineseName: null,
+          isPrimaryContact: true,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+        },
+      ],
       numberOfPeople: 2,
       hotel: 'Primary Booking Hotel',
       source: BookingSource.WECHAT,
@@ -590,6 +824,7 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
               createdAt: new Date('2026-06-24T00:00:00.000Z'),
               customer: {
                 fullName: null,
+                chineseName: null,
                 firstName: 'Li',
                 lastName: 'Na',
                 hotel: 'Harbor Inn',

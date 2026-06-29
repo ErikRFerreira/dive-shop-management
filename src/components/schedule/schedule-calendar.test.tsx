@@ -14,6 +14,7 @@ import type {
 } from '@/features/schedule/types';
 import {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
   UserRole,
@@ -276,6 +277,20 @@ function scheduleEvent(
       },
     ],
     primaryCustomerName: 'Maria Santos',
+    customers: [
+      {
+        name: 'Maria Santos / 玛丽亚',
+        chineseName: '玛丽亚',
+        isPrimaryContact: true,
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+      },
+      {
+        name: 'Participant Diver',
+        chineseName: null,
+        isPrimaryContact: false,
+        role: BookingCustomerRole.PARTICIPANT,
+      },
+    ],
     numberOfPeople: 2,
     hotel: 'Ocean View',
     source: BookingSource.WECHAT,
@@ -316,6 +331,7 @@ function renderScheduleCalendar(
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[scheduleEvent()]}
       {...props}
     />,
@@ -357,8 +373,11 @@ test('opens an operational booking summary dialog from an event click', () => {
 
   expect(screen.getByRole('dialog')).not.toBeNull();
   expect(screen.getByRole('heading', { name: 'Fun Dive' })).not.toBeNull();
-  expect(screen.getByText('Maria Santos')).not.toBeNull();
-  expect(screen.getByText('2 people/divers')).not.toBeNull();
+  expect(screen.getByText('Customers/divers · 2')).not.toBeNull();
+  expect(screen.getByText('Maria Santos / 玛丽亚')).not.toBeNull();
+  expect(screen.getByText('Participant Diver')).not.toBeNull();
+  expect(screen.getByText('Primary')).not.toBeNull();
+  expect(screen.queryByText('2 people/divers')).toBeNull();
   expect(screen.getByText('14 Jul 2026, 08:00-12:00')).not.toBeNull();
   expect(screen.getByText('Bring cash for marine park fees.')).not.toBeNull();
   expect(screen.queryByText(/BOOK-1/)).toBeNull();
@@ -383,6 +402,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[]}
     />,
   );
@@ -393,6 +413,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
     <ScheduleCalendar
       assignableStaff={[]}
       canManageAssignments={false}
+      canViewBookingDetails={true}
       events={[event]}
     />,
   );
@@ -465,6 +486,18 @@ test('does not render schedule mutation controls', () => {
     screen.queryByRole('button', { name: /Cancel Scheduled Booking/i }),
   ).toBeNull();
   expect(screen.queryByRole('button', { name: /Edit schedule/i })).toBeNull();
+});
+
+test('hides the booking detail link for users without booking detail access', () => {
+  renderScheduleCalendar({
+    canViewBookingDetails: false,
+  });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(screen.queryByRole('link', { name: /View booking/i })).toBeNull();
 });
 
 test('renders multiple assigned staff in the event dialog', () => {

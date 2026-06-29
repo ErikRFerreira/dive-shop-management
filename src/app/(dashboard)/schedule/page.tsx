@@ -12,6 +12,7 @@ import {
   getAssignableStaff,
   getScheduleItemsForCalendar,
 } from '@/features/schedule/queries';
+import { UserRole } from '@/generated/prisma/enums';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
@@ -30,6 +31,7 @@ async function SchedulePage({
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'schedule');
   const canManageAssignments = canManageScheduleAssignments(currentUser);
+  const canViewBookingDetails = currentUser.role !== UserRole.INSTRUCTOR;
   const scheduleFilters = parseScheduleFiltersFromSearchParams(
     await searchParams,
   );
@@ -57,6 +59,7 @@ async function SchedulePage({
       <ScheduleCalendar
         assignableStaff={canManageAssignments ? assignableStaff : []}
         canManageAssignments={canManageAssignments}
+        canViewBookingDetails={canViewBookingDetails}
         events={scheduleEvents}
       />
       {scheduleEvents.length === 0 ? <ScheduleEmptyState /> : null}
