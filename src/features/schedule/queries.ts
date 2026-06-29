@@ -87,6 +87,7 @@ const schedulePageItemArgs = {
             customer: {
               select: {
                 fullName: true,
+                chineseName: true,
                 firstName: true,
                 lastName: true,
                 hotel: true,
@@ -153,6 +154,7 @@ const myScheduleAssignmentArgs = {
             customer: {
               select: {
                 fullName: true,
+                chineseName: true,
                 firstName: true,
                 lastName: true,
                 hotel: true,
@@ -482,6 +484,7 @@ function mapScheduleItemToCalendarEvent(
       notes: activity.notes,
     })),
     primaryCustomerName,
+    customers: mapBookingCustomersForDisplay(booking.customers),
     numberOfPeople: booking.numberOfPeople,
     hotel:
       displayBookingCustomer?.hotelAtBooking?.trim() ||
@@ -572,10 +575,7 @@ function mapScheduleItemToMyScheduleAssignment(
       notes: activity.notes,
     })),
     primaryCustomerName,
-    otherCustomerNames: booking.customers
-      .filter((bookingCustomer) => bookingCustomer !== displayBookingCustomer)
-      .map((bookingCustomer) => formatCustomerName(bookingCustomer.customer))
-      .filter((name): name is string => name !== null),
+    customers: mapBookingCustomersForDisplay(booking.customers),
     numberOfPeople: booking.numberOfPeople,
     hotel:
       displayBookingCustomer?.hotelAtBooking?.trim() ||
@@ -610,6 +610,52 @@ function mapScheduleAssignments(
 }
 
 /**
+ * Maps booking customer links into compact schedule customer display rows.
+ *
+ * @param customers - Booking customer rows selected with each schedule item.
+ * @returns Customer/diver rows in query order with safe display names.
+ */
+function mapBookingCustomersForDisplay(
+  customers:
+    | ScheduleItemForSchedulePage['bookingRequest']['customers']
+    | ScheduleItemForMyAssignments['bookingRequest']['customers'],
+) {
+  return customers.map((bookingCustomer) => {
+    const chineseName = bookingCustomer.customer.chineseName?.trim() || null;
+
+    return {
+      name: formatCustomerDisplayName(bookingCustomer.customer),
+      chineseName,
+      isPrimaryContact:
+        bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
+      role: bookingCustomer.role,
+    };
+  });
+}
+
+/**
+ * Formats a customer name for detailed schedule customer/diver lists.
+ *
+ * @param customer - Customer name fields selected from the booking relation.
+ * @returns English and Chinese names together, Chinese-only, or a safe fallback.
+ */
+function formatCustomerDisplayName(customer: {
+  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  chineseName: string | null;
+}) {
+  const englishName = formatCustomerEnglishName(customer);
+  const chineseName = customer.chineseName?.trim();
+
+  if (englishName && chineseName) {
+    return `${englishName} / ${chineseName}`;
+  }
+
+  return englishName || chineseName || 'Unnamed customer';
+}
+
+/**
  * Formats a customer name for display, falling back to first/last name if
  * fullName is not available.
  *
@@ -617,6 +663,26 @@ function mapScheduleAssignments(
  * @returns The formatted name, or null if no name is available.
  */
 function formatCustomerName(
+  customer: {
+    fullName: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    chineseName?: string | null;
+  } | null,
+) {
+  const englishName = formatCustomerEnglishName(customer);
+  const chineseName = customer?.chineseName?.trim();
+
+  return englishName || chineseName || null;
+}
+
+/**
+ * Formats the English portion of a customer name.
+ *
+ * @param customer - Customer name fields selected from the booking relation.
+ * @returns Full name, first/last name, or null when no English name is available.
+ */
+function formatCustomerEnglishName(
   customer: {
     fullName: string | null;
     firstName: string | null;

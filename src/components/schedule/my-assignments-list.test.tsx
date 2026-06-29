@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { MyScheduleAssignment } from '@/features/schedule/types';
 import {
   ActivityType,
+  BookingCustomerRole,
   ScheduleAssignmentRole,
 } from '@/generated/prisma/enums';
 import { MyAssignmentsList } from './my-assignments-list';
@@ -77,7 +78,32 @@ test('renders assignment card details without edit or booking links', () => {
           isTimeTbd: false,
           activitySummary: 'Fun Dive + Snorkeling',
           primaryCustomerName: 'Maria Santos',
-          otherCustomerNames: ['Participant Diver', 'Second Diver', 'Third Diver'],
+          customers: [
+            {
+              name: 'Maria Santos',
+              chineseName: null,
+              isPrimaryContact: true,
+              role: BookingCustomerRole.PRIMARY_CONTACT,
+            },
+            {
+              name: 'Participant Diver',
+              chineseName: null,
+              isPrimaryContact: false,
+              role: BookingCustomerRole.PARTICIPANT,
+            },
+            {
+              name: 'Second Diver',
+              chineseName: null,
+              isPrimaryContact: false,
+              role: BookingCustomerRole.PARTICIPANT,
+            },
+            {
+              name: 'Third Diver / 第三位',
+              chineseName: '第三位',
+              isPrimaryContact: false,
+              role: BookingCustomerRole.PARTICIPANT,
+            },
+          ],
           numberOfPeople: 3,
           hotel: 'Primary Booking Hotel',
           scheduleNotes: 'Meet at the shop.',
@@ -88,18 +114,21 @@ test('renders assignment card details without edit or booking links', () => {
   );
 
   expect(screen.getByText('Fun Dive + Snorkeling')).not.toBeNull();
-  expect(screen.getByText('Maria Santos')).not.toBeNull();
+  expect(screen.getAllByText('Maria Santos')).toHaveLength(2);
   expect(screen.getByText('28 Jun 2026')).not.toBeNull();
   expect(screen.getByText('08:00 - 12:30')).not.toBeNull();
-  expect(screen.getByText('3 people/divers')).not.toBeNull();
+  expect(screen.getByText('Customers/divers')).not.toBeNull();
+  expect(screen.getByText('Participant Diver')).not.toBeNull();
+  expect(screen.getByText('Second Diver')).not.toBeNull();
+  expect(screen.getByText('Third Diver / 第三位')).not.toBeNull();
+  expect(screen.getByText('Primary')).not.toBeNull();
+  expect(screen.queryByText('3 people/divers')).toBeNull();
   expect(screen.getByText('Primary Booking Hotel')).not.toBeNull();
   expect(screen.getByText('Fun Dive')).not.toBeNull();
   expect(screen.getByText('Snorkeling')).not.toBeNull();
   expect(
-    screen.getByText(
-      'Other customers/divers: Participant Diver, Second Diver + 1 more',
-    ),
-  ).not.toBeNull();
+    screen.queryByText(/Other customers\/divers:|\+ 1 more/),
+  ).toBeNull();
   expect(screen.getByText('Meet at the shop.')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
   expect(screen.queryByRole('link')).toBeNull();
@@ -169,7 +198,14 @@ function assignment(
       },
     ],
     primaryCustomerName: 'Maria Santos',
-    otherCustomerNames: [],
+    customers: [
+      {
+        name: 'Maria Santos',
+        chineseName: null,
+        isPrimaryContact: true,
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+      },
+    ],
     numberOfPeople: 2,
     hotel: null,
     scheduleNotes: null,

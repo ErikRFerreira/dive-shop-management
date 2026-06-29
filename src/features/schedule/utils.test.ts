@@ -12,6 +12,7 @@ import {
 } from '@/features/schedule/utils';
 import {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
 } from '@/generated/prisma/enums';
@@ -57,7 +58,7 @@ function myAssignment(
     activitySummary: 'Fun Dive',
     activities: [],
     primaryCustomerName: null,
-    otherCustomerNames: [],
+    customers: [],
     numberOfPeople: null,
     hotel: null,
     scheduleNotes: null,
@@ -181,6 +182,14 @@ test('serializes calendar event date fields for client props', () => {
       },
     ],
     primaryCustomerName: 'Maria Santos',
+    customers: [
+      {
+        name: 'Maria Santos',
+        chineseName: null,
+        isPrimaryContact: true,
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+      },
+    ],
     numberOfPeople: 2,
     hotel: 'Ocean View',
     source: BookingSource.WECHAT,

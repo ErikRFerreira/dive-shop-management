@@ -1,5 +1,6 @@
 import type {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
   UserRole,
@@ -44,6 +45,14 @@ export type MyScheduleAssignmentActivity = {
   notes: string | null;
 };
 
+/** Customer or diver attached to a scheduled booking for compact display. */
+export type ScheduleBookingCustomerDisplay = {
+  name: string;
+  chineseName: string | null;
+  isPrimaryContact: boolean;
+  role: BookingCustomerRole;
+};
+
 /** Read-only schedule item assigned to the current staff user. */
 export type MyScheduleAssignment = {
   scheduleItemId: string;
@@ -57,7 +66,7 @@ export type MyScheduleAssignment = {
   activitySummary: string;
   activities: MyScheduleAssignmentActivity[];
   primaryCustomerName: string | null;
-  otherCustomerNames: string[];
+  customers: ScheduleBookingCustomerDisplay[];
   numberOfPeople: number | null;
   hotel: string | null;
   scheduleNotes: string | null;
@@ -134,6 +143,7 @@ export type ScheduleCalendarEvent = {
   activitySummary: string;
   activities: ScheduleCalendarActivity[];
   primaryCustomerName: string | null;
+  customers: ScheduleBookingCustomerDisplay[];
   numberOfPeople: number | null;
   hotel: string | null;
   source: BookingSource | null;

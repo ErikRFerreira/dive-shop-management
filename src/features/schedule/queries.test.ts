@@ -98,6 +98,10 @@ test('queries calendar items with the official scheduled booking filter', async 
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     }),
   );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
 });
 
 test('queries calendar items with a schedule date range filter', async () => {
@@ -301,6 +305,10 @@ test('queries my assignments with scheduled status and current user assignment f
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     }),
   );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
 });
 
 test('queries divemaster assignments with the current user assignment filter', async () => {
@@ -323,6 +331,10 @@ test('queries divemaster assignments with the current user assignment filter', a
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
     }),
   );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
+      .select.customer.select.chineseName,
+  ).toBe(true);
 });
 
 test('does not query my assignments for unauthorized customer service users', async () => {
@@ -396,6 +408,7 @@ test('maps my assignments with the current user role from multiple assignments',
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: 'Participant Diver',
+              chineseName: null,
               firstName: null,
               lastName: null,
               hotel: 'Participant Hotel',
@@ -407,6 +420,7 @@ test('maps my assignments with the current user role from multiple assignments',
             createdAt: new Date('2026-06-24T00:01:00.000Z'),
             customer: {
               fullName: 'Maria Santos',
+              chineseName: '玛丽亚',
               firstName: null,
               lastName: null,
               hotel: 'Customer Hotel',
@@ -449,7 +463,20 @@ test('maps my assignments with the current user role from multiple assignments',
         },
       ],
       primaryCustomerName: 'Maria Santos',
-      otherCustomerNames: ['Participant Diver'],
+      customers: [
+        {
+          name: 'Participant Diver',
+          chineseName: null,
+          isPrimaryContact: false,
+          role: BookingCustomerRole.PARTICIPANT,
+        },
+        {
+          name: 'Maria Santos / 玛丽亚',
+          chineseName: '玛丽亚',
+          isPrimaryContact: true,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+        },
+      ],
       numberOfPeople: 3,
       hotel: 'Primary Booking Hotel',
       scheduleNotes: 'Meet at the shop.',
@@ -539,6 +566,7 @@ test('maps schedule rows into schedule page items', async () => {
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: 'Participant Diver',
+              chineseName: null,
               firstName: null,
               lastName: null,
               hotel: 'Participant Hotel',
@@ -550,6 +578,7 @@ test('maps schedule rows into schedule page items', async () => {
             createdAt: new Date('2026-06-24T00:01:00.000Z'),
             customer: {
               fullName: 'Maria Santos',
+              chineseName: null,
               firstName: null,
               lastName: null,
               hotel: 'Customer Hotel',
@@ -619,6 +648,7 @@ test('falls back to booking internal notes and customer hotel', async () => {
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: null,
+              chineseName: null,
               firstName: 'Ari',
               lastName: 'Tan',
               hotel: 'Harbor Inn',
@@ -693,6 +723,7 @@ test('maps timed schedule rows into calendar events', () => {
               createdAt: new Date('2026-06-24T00:01:00.000Z'),
               customer: {
                 fullName: 'Anchie',
+                chineseName: null,
                 firstName: null,
                 lastName: null,
                 hotel: 'Customer Hotel',
@@ -730,6 +761,14 @@ test('maps timed schedule rows into calendar events', () => {
         },
       ],
       primaryCustomerName: 'Anchie',
+      customers: [
+        {
+          name: 'Anchie',
+          chineseName: null,
+          isPrimaryContact: true,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+        },
+      ],
       numberOfPeople: 2,
       hotel: 'Primary Booking Hotel',
       source: BookingSource.WECHAT,
@@ -785,6 +824,7 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
               createdAt: new Date('2026-06-24T00:00:00.000Z'),
               customer: {
                 fullName: null,
+                chineseName: null,
                 firstName: 'Li',
                 lastName: 'Na',
                 hotel: 'Harbor Inn',

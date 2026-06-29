@@ -14,6 +14,7 @@ import type {
 } from '@/features/schedule/types';
 import {
   ActivityType,
+  BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
   UserRole,
@@ -276,6 +277,20 @@ function scheduleEvent(
       },
     ],
     primaryCustomerName: 'Maria Santos',
+    customers: [
+      {
+        name: 'Maria Santos / 玛丽亚',
+        chineseName: '玛丽亚',
+        isPrimaryContact: true,
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+      },
+      {
+        name: 'Participant Diver',
+        chineseName: null,
+        isPrimaryContact: false,
+        role: BookingCustomerRole.PARTICIPANT,
+      },
+    ],
     numberOfPeople: 2,
     hotel: 'Ocean View',
     source: BookingSource.WECHAT,
@@ -358,8 +373,11 @@ test('opens an operational booking summary dialog from an event click', () => {
 
   expect(screen.getByRole('dialog')).not.toBeNull();
   expect(screen.getByRole('heading', { name: 'Fun Dive' })).not.toBeNull();
-  expect(screen.getByText('Maria Santos')).not.toBeNull();
-  expect(screen.getByText('2 people/divers')).not.toBeNull();
+  expect(screen.getByText('Customers/divers · 2')).not.toBeNull();
+  expect(screen.getByText('Maria Santos / 玛丽亚')).not.toBeNull();
+  expect(screen.getByText('Participant Diver')).not.toBeNull();
+  expect(screen.getByText('Primary')).not.toBeNull();
+  expect(screen.queryByText('2 people/divers')).toBeNull();
   expect(screen.getByText('14 Jul 2026, 08:00-12:00')).not.toBeNull();
   expect(screen.getByText('Bring cash for marine park fees.')).not.toBeNull();
   expect(screen.queryByText(/BOOK-1/)).toBeNull();

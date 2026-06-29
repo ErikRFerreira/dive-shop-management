@@ -99,8 +99,6 @@ export function MyAssignmentsList({ assignments }: MyAssignmentsListProps) {
  * @returns A compact card with schedule, booking, and current-user role details.
  */
 export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
-  const otherCustomers = formatOtherCustomerNames(assignment.otherCustomerNames);
-
   return (
     <Card>
       <CardHeader className="gap-3 md:flex md:flex-row md:items-start md:justify-between">
@@ -117,20 +115,18 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
-        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <AssignmentDetail label="Date" value={formatDisplayDate(assignment.date)} />
           <AssignmentDetail
             label="Time"
             value={formatAssignmentTime(assignment)}
           />
-          <AssignmentDetail
-            label="People"
-            value={formatPeopleCount(assignment.numberOfPeople)}
-          />
           {assignment.hotel ? (
             <AssignmentDetail label="Hotel" value={assignment.hotel} />
           ) : null}
         </dl>
+
+        <AssignmentCustomersSection customers={assignment.customers} />
 
         {assignment.activities.length > 0 ? (
           <div className="space-y-1">
@@ -150,12 +146,6 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
           </div>
         ) : null}
 
-        {otherCustomers ? (
-          <p className="text-sm text-muted-foreground">
-            Other customers/divers: {otherCustomers}
-          </p>
-        ) : null}
-
         {assignment.scheduleNotes ? (
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase text-muted-foreground">
@@ -168,6 +158,47 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Renders the customer/diver list for a personal assignment card.
+ *
+ * @param props - Customer/diver rows attached to the scheduled booking.
+ * @returns A compact uppercase-labeled customer/diver section.
+ */
+function AssignmentCustomersSection({
+  customers,
+}: {
+  customers: MyScheduleAssignment['customers'];
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        Customers/divers
+      </p>
+      {customers.length > 0 ? (
+        <ul className="space-y-1 text-sm">
+          {customers.map((customer, index) => (
+            <li
+              className="flex flex-wrap items-center gap-2"
+              key={`${customer.role}-${customer.name}-${index}`}
+            >
+              <span>{customer.name}</span>
+              {customer.isPrimaryContact ? (
+                <Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
+                  Primary
+                </Badge>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No customers/divers recorded
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -228,38 +259,4 @@ function formatAssignmentTime(assignment: MyScheduleAssignment) {
   return assignment.endTime
     ? `${assignment.startTime} - ${assignment.endTime}`
     : assignment.startTime;
-}
-
-/**
- * Formats the assigned booking party size.
- *
- * @param numberOfPeople - Stored booking party size.
- * @returns Staff-facing people/divers count text.
- */
-function formatPeopleCount(numberOfPeople: number | null) {
-  if (numberOfPeople === null) {
-    return 'TBD people/divers';
-  }
-
-  return `${numberOfPeople} ${
-    numberOfPeople === 1 ? 'person/diver' : 'people/divers'
-  }`;
-}
-
-/**
- * Formats additional linked customers without overwhelming the assignment card.
- *
- * @param names - Other customer names already ordered by the query mapper.
- * @returns A short comma-separated summary, or null when no names are available.
- */
-function formatOtherCustomerNames(names: string[]) {
-  if (names.length === 0) {
-    return null;
-  }
-
-  if (names.length <= 2) {
-    return names.join(', ');
-  }
-
-  return `${names.slice(0, 2).join(', ')} + ${names.length - 2} more`;
 }
