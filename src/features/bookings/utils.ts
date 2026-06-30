@@ -5,10 +5,16 @@
  * @module features/bookings/utils
  */
 
-import { BookingCustomerRole, UserRole } from '@/generated/prisma/enums';
+import {
+  BookingCustomerRole,
+  BookingStatus,
+  UserRole,
+} from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
 import {
+  bookingQueueFilters,
   bookingStatusFilters,
+  type BookingQueueFilter,
   type BookingRequestFilter,
   type BookingStatusFilter,
 } from './types';
@@ -37,10 +43,28 @@ export function parseBookingStatusFilter(
 }
 
 /**
+ * Parses a single URL queue value into a supported operational booking queue.
+ *
+ * @param value - The raw value read from a URL search parameter.
+ * @returns The matching supported queue, or `undefined` for missing, repeated,
+ * or unsupported values.
+ */
+export function parseBookingQueueFilter(
+  value: string | string[] | undefined,
+): BookingQueueFilter | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  return bookingQueueFilters.find((queue) => queue === value);
+}
+
+/**
  * Builds a booking-request filter that enforces list visibility for a user.
  *
  * @param currentUser - The authenticated user whose role determines visibility.
  * @param status - An optional supported status to add to the filter.
+ * @param queue - An optional operational queue to add to the filter.
  * @returns A filter that Customer Service users can use only for their own
  * bookings, Admin and Manager users can use for all bookings, and unsupported
  * roles can use only to retrieve no bookings.
@@ -50,10 +74,20 @@ export function parseBookingStatusFilter(
 export function buildBookingRequestWhere(
   currentUser: BookingQueryUser,
   status?: BookingStatusFilter,
+  queue?: BookingQueueFilter,
 ): BookingRequestFilter {
   const where: BookingRequestFilter = {};
 
-  if (status) {
+  if (queue === 'unassigned') {
+    where.status = BookingStatus.SCHEDULED;
+    where.scheduleItem = {
+      is: {
+        assignments: {
+          none: {},
+        },
+      },
+    };
+  } else if (status) {
     where.status = status;
   }
 

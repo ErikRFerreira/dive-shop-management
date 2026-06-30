@@ -2,29 +2,72 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { BookingStatus } from '@/generated/prisma/enums';
-import type { BookingStatusFilter as BookingStatusFilterValue } from '@/features/bookings/queries';
+import type {
+  BookingQueueFilter,
+  BookingStatusFilter as BookingStatusFilterValue,
+} from '@/features/bookings/queries';
 
-const filters: { label: string; status?: BookingStatusFilterValue }[] = [
-  { label: 'All' },
-  { label: 'Draft', status: BookingStatus.DRAFT },
-  { label: 'Pending Approval', status: BookingStatus.PENDING_APPROVAL },
-  { label: 'Needs More Info', status: BookingStatus.NEEDS_MORE_INFO },
-  { label: 'Approved', status: BookingStatus.APPROVED },
-  { label: 'Cancelled', status: BookingStatus.CANCELLED },
+const filters: {
+  href: string;
+  label: string;
+  queue?: BookingQueueFilter;
+  status?: BookingStatusFilterValue;
+}[] = [
+  { href: '/bookings', label: 'All' },
+  {
+    href: '/bookings?status=DRAFT',
+    label: 'Draft',
+    status: BookingStatus.DRAFT,
+  },
+  {
+    href: '/bookings?status=PENDING_APPROVAL',
+    label: 'Pending Approval',
+    status: BookingStatus.PENDING_APPROVAL,
+  },
+  {
+    href: '/bookings?status=NEEDS_MORE_INFO',
+    label: 'Needs More Info',
+    status: BookingStatus.NEEDS_MORE_INFO,
+  },
+  {
+    href: '/bookings?status=APPROVED',
+    label: 'Approved',
+    status: BookingStatus.APPROVED,
+  },
+  {
+    href: '/bookings?status=CANCELLED',
+    label: 'Cancelled',
+    status: BookingStatus.CANCELLED,
+  },
+  {
+    href: '/bookings?queue=unassigned',
+    label: 'Unassigned',
+    queue: 'unassigned',
+  },
 ];
 
+/**
+ * Renders booking work-queue filter chips for status filters and operational queues.
+ *
+ * @param props - The selected status or queue parsed from the current URL.
+ * @returns A link-based filter chip navigation.
+ */
 export function BookingStatusFilter({
+  selectedQueue,
   selectedStatus,
 }: {
+  selectedQueue?: BookingQueueFilter;
   selectedStatus?: BookingStatusFilterValue;
 }) {
   return (
-    <nav aria-label="Filter bookings by status" className="flex flex-wrap gap-2">
+    <nav
+      aria-label="Filter bookings by status or operational queue"
+      className="flex flex-wrap gap-2"
+    >
       {filters.map((filter) => {
-        const isActive = filter.status === selectedStatus;
-        const href = filter.status
-          ? `/bookings?status=${filter.status}`
-          : '/bookings';
+        const isActive = filter.queue
+          ? filter.queue === selectedQueue
+          : !selectedQueue && filter.status === selectedStatus;
 
         return (
           <Button
@@ -33,7 +76,10 @@ export function BookingStatusFilter({
             size="sm"
             variant={isActive ? 'default' : 'outline'}
           >
-            <Link href={href} aria-current={isActive ? 'page' : undefined}>
+            <Link
+              href={filter.href}
+              aria-current={isActive ? 'page' : undefined}
+            >
               {filter.label}
             </Link>
           </Button>

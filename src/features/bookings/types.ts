@@ -1,5 +1,6 @@
 /** Booking feature types shared by the intake form, validation, and queries. */
 
+import type { Prisma } from '@/generated/prisma/client';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -20,11 +21,11 @@ export const bookingStatusFilters = [
 
 export type BookingStatusFilter = (typeof bookingStatusFilters)[number];
 
-export type BookingRequestFilter = {
-  status?: BookingStatusFilter;
-  createdById?: string;
-  id?: { in: string[] };
-};
+export const bookingQueueFilters = ['unassigned'] as const;
+
+export type BookingQueueFilter = (typeof bookingQueueFilters)[number];
+
+export type BookingRequestFilter = Prisma.BookingRequestWhereInput;
 
 /** Browser values for one requested activity. */
 export type BookingActivityFormValues = {

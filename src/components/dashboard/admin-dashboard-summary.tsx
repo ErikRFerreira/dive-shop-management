@@ -44,7 +44,7 @@ export function AdminDashboardSummary({
       <DashboardSummaryCard
         title="Unassigned Activities"
         value={summary.unassignedActivitiesCount}
-        href="/schedule?unassignedOnly=true"
+        href="/bookings?queue=unassigned"
         description="Scheduled activities without staff."
       />
     </div>
