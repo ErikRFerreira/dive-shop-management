@@ -53,7 +53,7 @@ export default async function BookingsPage({
       </div>
 
       <BookingStatusFilter selectedQueue={queue} selectedStatus={status} />
-      <BookingList bookings={bookingRequests} />
+      <BookingList bookings={bookingRequests} currentUser={currentUser} />
     </div>
   );
 }

@@ -11,6 +11,13 @@ import type { CurrentUser } from '@/lib/current-user';
 
 import { canTransitionBookingStatus } from './status';
 
+export type BookingRowAction = 'view' | 'edit' | 'review';
+
+type BookingRowPermissionSubject = {
+  createdById: string;
+  status: BookingStatus;
+};
+
 /**
  * Determines whether the current user is allowed to create a booking request.
  *
@@ -47,6 +54,46 @@ export function canReviewBookingRequest(
 ) {
   return (
     currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
+  );
+}
+
+/**
+ * Determines whether the current user may open a booking detail page.
+ *
+ * This mirrors booking-list visibility: Admin and Manager users can view any
+ * booking row, while Customer Service users can view only bookings they
+ * created. Other roles should not receive booking-list rows.
+ *
+ * @param currentUser - The authenticated user's ID and role.
+ * @param createdById - The ID of the user who created the booking request.
+ * @returns `true` if the user may navigate to the booking detail page.
+ */
+export function canViewBooking(
+  currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  createdById: string,
+) {
+  return (
+    currentUser.role === UserRole.ADMIN ||
+    currentUser.role === UserRole.MANAGER ||
+    (currentUser.role === UserRole.CUSTOMER_SERVICE &&
+      currentUser.id === createdById)
+  );
+}
+
+/**
+ * Determines whether the current user should see the review navigation action.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @param status - The current status of the booking request.
+ * @returns `true` only for Admin and Manager users reviewing pending bookings.
+ */
+export function canReviewBooking(
+  currentUser: Pick<CurrentUser, 'role'>,
+  status: BookingStatus,
+) {
+  return (
+    canReviewBookingRequest(currentUser) &&
+    status === BookingStatus.PENDING_APPROVAL
   );
 }
 
@@ -156,4 +203,32 @@ export function canEditBooking(
     currentUser.id === createdById &&
     (status === BookingStatus.DRAFT || status === BookingStatus.NEEDS_MORE_INFO)
   );
+}
+
+/**
+ * Returns the booking row navigation actions available to the current user.
+ *
+ * @param currentUser - The authenticated user's ID and role.
+ * @param booking - Booking row fields needed for permission checks.
+ * @returns Ordered row actions that should be shown in the bookings table.
+ */
+export function getAvailableBookingRowActions(
+  currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  booking: BookingRowPermissionSubject,
+): BookingRowAction[] {
+  const actions: BookingRowAction[] = [];
+
+  if (canViewBooking(currentUser, booking.createdById)) {
+    actions.push('view');
+  }
+
+  if (canEditBooking(currentUser, booking.createdById, booking.status)) {
+    actions.push('edit');
+  }
+
+  if (canReviewBooking(currentUser, booking.status)) {
+    actions.push('review');
+  }
+
+  return actions;
 }
