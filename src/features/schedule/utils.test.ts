@@ -157,7 +157,7 @@ test('preserves my assignment order inside each bucket', () => {
 test('serializes calendar event date fields for client props', () => {
   const event: ScheduleCalendarEvent = {
     id: 'schedule-1',
-    title: 'Fun Dive - Maria Santos - 2 pax',
+    title: '[Unassigned] Fun Dive x2 Maria Santos',
     start: '2026-07-14T08:00:00',
     end: '2026-07-14T12:00:00',
     allDay: false,

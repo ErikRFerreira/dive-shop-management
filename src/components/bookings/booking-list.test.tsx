@@ -131,8 +131,10 @@ function renderBookingList(bookings: BookingListItem[]) {
   );
 }
 
-test('renders operational columns and hides cluttered default columns', () => {
-  renderBookingList([booking()]);
+test('renders operational and audit columns', () => {
+  renderBookingList([
+    booking({ updatedAt: new Date('2026-07-02T09:30:00.000Z') }),
+  ]);
 
   expect(screen.getByRole('columnheader', { name: 'Status' })).not.toBeNull();
   expect(
@@ -141,16 +143,25 @@ test('renders operational columns and hides cluttered default columns', () => {
   expect(
     screen.getByRole('columnheader', { name: 'Activities' }),
   ).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Date/time' })).not.toBeNull();
+  expect(
+    screen.getByRole('columnheader', { name: 'Activity date/time' }),
+  ).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Hotel' })).not.toBeNull();
+  expect(
+    screen.getByRole('columnheader', { name: 'Created by' }),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole('columnheader', { name: 'Created/edited' }),
+  ).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
+  expect(screen.getByText('Casey Service')).not.toBeNull();
+  expect(screen.getByText('Created 01 Jul 2026, 04:00 pm')).not.toBeNull();
+  expect(screen.getByText('Edited 02 Jul 2026, 05:30 pm')).not.toBeNull();
   expect(screen.queryByRole('columnheader', { name: 'Source/referrer' })).toBeNull();
   expect(
     screen.queryByRole('columnheader', { name: 'Customer service owner' }),
   ).toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Created date' })).toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Updated date' })).toBeNull();
 });
 
 test('renders assigned staff names without exposing emails', () => {

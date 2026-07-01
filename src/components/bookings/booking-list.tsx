@@ -18,7 +18,7 @@ import {
 import type { BookingListItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import type { CurrentUser } from '@/lib/current-user';
-import { formatDisplayDate } from '@/lib/format';
+import { formatDisplayDate, formatDisplayDateTime } from '@/lib/format';
 
 type BookingListProps = {
   bookings: BookingListItem[];
@@ -81,6 +81,31 @@ function formatBookingDateTime(booking: BookingListItem) {
   }
 
   return `${formatDisplayDate(date)} ${trimmedTime || 'TBD'}`;
+}
+
+/**
+ * Formats the staff member who created a booking request.
+ *
+ * @param booking - Booking list item with creator relation.
+ * @returns Creator name, or the empty placeholder when no name is stored.
+ */
+function formatBookingCreator(booking: BookingListItem) {
+  return booking.createdBy.name?.trim() || '\u2014';
+}
+
+/**
+ * Renders created and edited timestamps for a booking list row.
+ *
+ * @param booking - Booking list item with audit timestamps.
+ * @returns A compact two-line audit timestamp display.
+ */
+function renderBookingAuditDates(booking: BookingListItem) {
+  return (
+    <div className="space-y-1 whitespace-nowrap text-sm">
+      <div>Created {formatDisplayDateTime(booking.createdAt)}</div>
+      <div>Edited {formatDisplayDateTime(booking.updatedAt)}</div>
+    </div>
+  );
 }
 
 /**
@@ -151,9 +176,11 @@ export function BookingList({ bookings, currentUser }: BookingListProps) {
               <TableHead>Status</TableHead>
               <TableHead>Customers/divers</TableHead>
               <TableHead>Activities</TableHead>
-              <TableHead>Date/time</TableHead>
+              <TableHead>Activity date/time</TableHead>
               <TableHead>Staff</TableHead>
               <TableHead>Hotel</TableHead>
+              <TableHead>Created by</TableHead>
+              <TableHead>Created/edited</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -173,6 +200,8 @@ export function BookingList({ bookings, currentUser }: BookingListProps) {
                 <TableCell>{formatBookingDateTime(booking)}</TableCell>
                 <TableCell>{formatStaffAssignments(booking)}</TableCell>
                 <TableCell>{formatBookingHotel(booking)}</TableCell>
+                <TableCell>{formatBookingCreator(booking)}</TableCell>
+                <TableCell>{renderBookingAuditDates(booking)}</TableCell>
                 <TableCell className="text-right">
                   <BookingRowActions
                     booking={booking}

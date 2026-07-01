@@ -61,6 +61,76 @@ const divemasterUser = {
   role: UserRole.DIVEMASTER,
 };
 
+type ScheduleCalendarQueryItem = Parameters<
+  typeof mapScheduleItemsToCalendarEvents
+>[0][number];
+
+type ScheduleCalendarBookingRequest =
+  ScheduleCalendarQueryItem['bookingRequest'];
+
+/**
+ * Builds a schedule query row for focused calendar event mapping tests.
+ *
+ * @param overrides - Schedule item and nested booking fields to override.
+ * @returns A complete schedule row matching the calendar mapper input.
+ */
+function scheduleCalendarQueryItem(
+  overrides: Partial<Omit<ScheduleCalendarQueryItem, 'bookingRequest'>> & {
+    bookingRequest?: Partial<ScheduleCalendarBookingRequest>;
+  } = {},
+): ScheduleCalendarQueryItem {
+  const scheduleDate = new Date('2026-07-14T00:00:00.000Z');
+  const bookingRequest: ScheduleCalendarBookingRequest = {
+    id: 'booking-1',
+    status: BookingStatus.SCHEDULED,
+    createdById: 'customer-service-1',
+    numberOfPeople: 2,
+    source: BookingSource.WECHAT,
+    referrerName: null,
+    endAt: new Date('2026-07-14T12:30:00.000Z'),
+    internalNotes: null,
+    activities: [
+      {
+        id: 'activity-1',
+        activityType: ActivityType.FUN_DIVE,
+        specialtyCourse: null,
+        requestedDate: scheduleDate,
+        requestedTime: '08:00',
+        notes: null,
+        sortOrder: 0,
+      },
+    ],
+    customers: [
+      {
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        hotelAtBooking: null,
+        createdAt: new Date('2026-06-24T00:00:00.000Z'),
+        customer: {
+          fullName: 'Maria Santos',
+          chineseName: null,
+          firstName: null,
+          lastName: null,
+          hotel: null,
+        },
+      },
+    ],
+    ...overrides.bookingRequest,
+  };
+
+  return {
+    id: 'schedule-1',
+    bookingRequestId: bookingRequest.id,
+    date: scheduleDate,
+    startTime: '08:00',
+    activityType: ActivityType.FUN_DIVE,
+    scheduleNotes: null,
+    createdAt: new Date('2026-06-25T00:00:00.000Z'),
+    assignments: [],
+    ...overrides,
+    bookingRequest,
+  };
+}
+
 beforeEach(() => {
   mocks.findMany.mockReset();
   mocks.findManyUsers.mockReset();
@@ -736,7 +806,7 @@ test('maps timed schedule rows into calendar events', () => {
   ).toEqual([
     {
       id: 'schedule-1',
-      title: 'Fun Dive - Anchie - 2 pax',
+      title: '[Dina] Fun Dive x2 Anchie',
       start: '2026-07-14T08:00:00',
       end: '2026-07-14T12:30:00',
       allDay: false,
@@ -837,7 +907,7 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
   ).toEqual([
     expect.objectContaining({
       id: 'schedule-2',
-      title: 'TBD - Open Water - Li Na - 1 pax',
+      title: '[Unassigned] Open Water x1 Li Na',
       start: '2026-07-15',
       end: null,
       allDay: true,
@@ -848,4 +918,97 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
       isTimeTbd: true,
     }),
   ]);
+});
+
+test('maps multiple assigned staff into a compact calendar event title prefix', () => {
+  const [event] = mapScheduleItemsToCalendarEvents([
+    scheduleCalendarQueryItem({
+      activityType: ActivityType.RESCUE_DIVER_COURSE,
+      assignments: [
+        {
+          id: 'assignment-1',
+          userId: 'instructor-1',
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          notes: null,
+          user: {
+            id: 'instructor-1',
+            name: 'Mark Instructor',
+            email: 'mark@example.test',
+            role: UserRole.INSTRUCTOR,
+          },
+        },
+        {
+          id: 'assignment-2',
+          userId: 'divemaster-1',
+          role: ScheduleAssignmentRole.DIVEMASTER,
+          notes: null,
+          user: {
+            id: 'divemaster-1',
+            name: 'Erik Divemaster',
+            email: 'erik@example.test',
+            role: UserRole.DIVEMASTER,
+          },
+        },
+      ],
+      bookingRequest: {
+        activities: [
+          {
+            id: 'activity-1',
+            activityType: ActivityType.RESCUE_DIVER_COURSE,
+            specialtyCourse: null,
+            requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+            requestedTime: '08:00',
+            notes: null,
+            sortOrder: 0,
+          },
+        ],
+        customers: [
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:00:00.000Z'),
+            customer: {
+              fullName: 'John Doe',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+        ],
+        numberOfPeople: 1,
+      },
+    }),
+  ]);
+
+  expect(event?.title).toBe('[Mark/Erik] Rescue Diver Course x1 John Doe');
+  expect(event?.title).not.toContain('example.test');
+});
+
+test('falls back safely for blank staff names and unknown party size', () => {
+  const [event] = mapScheduleItemsToCalendarEvents([
+    scheduleCalendarQueryItem({
+      assignments: [
+        {
+          id: 'assignment-1',
+          userId: 'instructor-1',
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          notes: null,
+          user: {
+            id: 'instructor-1',
+            name: ' ',
+            email: 'instructor@example.test',
+            role: UserRole.INSTRUCTOR,
+          },
+        },
+      ],
+      bookingRequest: {
+        numberOfPeople: null,
+        customers: [],
+      },
+    }),
+  ]);
+
+  expect(event?.title).toBe('[Lead Instructor] Fun Dive xTBD Customer TBD');
+  expect(event?.title).not.toContain('instructor@example.test');
 });
