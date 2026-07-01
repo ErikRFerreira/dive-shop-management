@@ -19,12 +19,24 @@ import { applyExistingCustomer } from './customer-form-actions';
 
 const selectedCustomerIdSeparator = '\u001f';
 
+/**
+ * Parses the compact selected-customer ID dependency key.
+ *
+ * @param selectedCustomerIdKey - Joined selected customer IDs for effect dependencies.
+ * @returns Individual selected customer IDs.
+ */
 function selectedCustomerIdsFromKey(selectedCustomerIdKey: string) {
   return selectedCustomerIdKey
     ? selectedCustomerIdKey.split(selectedCustomerIdSeparator)
     : [];
 }
 
+/**
+ * Formats duplicate-match field names for staff-facing warning copy.
+ *
+ * @param fields - Strong duplicate fields returned by duplicate detection.
+ * @returns Comma-separated field labels.
+ */
 function formatMatchedFields(
   fields: PotentialDuplicateBookingCustomer['matchedFields'],
 ) {
@@ -42,6 +54,12 @@ function formatMatchedFields(
   return fields.map((field) => labels[field]).join(', ');
 }
 
+/**
+ * Renders the custom toast content for possible duplicate customer matches.
+ *
+ * @param props - Duplicate matches and actions for dismissing or applying one.
+ * @returns Toast content with duplicate details and selection controls.
+ */
 function DuplicateCustomerToastContent({
   duplicates,
   onDismiss,
@@ -73,7 +91,7 @@ function DuplicateCustomerToastContent({
             key={duplicate.id}
           >
             <p>
-              {duplicate.name} matches by{' '}
+              {duplicate.name} matches existing customer details by{' '}
               {formatMatchedFields(duplicate.matchedFields)}.
             </p>
             <Button
@@ -92,6 +110,12 @@ function DuplicateCustomerToastContent({
   );
 }
 
+/**
+ * Watches one booking customer row and warns when it may duplicate a customer.
+ *
+ * @param props - Form row identity, selected customer IDs, and duplicate suppression state.
+ * @returns Null because warnings are displayed through toast notifications.
+ */
 export function PotentialDuplicateCustomerWarning({
   form,
   index,

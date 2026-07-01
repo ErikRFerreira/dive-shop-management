@@ -1,4 +1,8 @@
+'use client';
+
 import { Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FormEvent, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +18,34 @@ type CustomerSearchProps = {
  * @returns A search form that submits to `/customers?q=...`.
  */
 export function CustomerSearch({ query }: CustomerSearchProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  /**
+   * Navigates to the customer search results page with the submitted query.
+   *
+   * @param event - Browser submit event from the search form.
+   */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const normalizedQuery = String(formData.get('q') ?? '').trim();
+    const href = normalizedQuery
+      ? `/customers?q=${encodeURIComponent(normalizedQuery)}`
+      : '/customers';
+
+    startTransition(() => {
+      router.push(href);
+    });
+  }
+
   return (
-    <form action="/customers" className="flex max-w-2xl flex-wrap gap-2">
+    <form
+      action="/customers"
+      className="flex max-w-2xl flex-wrap gap-2"
+      onSubmit={handleSubmit}
+    >
       <div className="min-w-64 flex-1">
         <label className="sr-only" htmlFor="customer-search">
           Search customers
@@ -25,12 +55,13 @@ export function CustomerSearch({ query }: CustomerSearchProps) {
           name="q"
           type="search"
           defaultValue={query}
+          disabled={isPending}
           placeholder="Search name, Chinese name, WeChat, WhatsApp, email, or phone"
         />
       </div>
-      <Button type="submit">
+      <Button disabled={isPending} type="submit">
         <Search className="h-4 w-4" />
-        Search
+        {isPending ? 'Searching...' : 'Search'}
       </Button>
     </form>
   );

@@ -573,6 +573,39 @@ test('renders assignment controls for managers and admins', () => {
   expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
 });
 
+test('renders a helpful empty picker state when all available staff are assigned', () => {
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+    events: [
+      scheduleEvent({
+        assignments: [
+          {
+            id: 'assignment-1',
+            userId: 'instructor-1',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+            notes: null,
+            user: assignableStaff(),
+          },
+        ],
+      }),
+    ],
+  });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+  );
+
+  expect(
+    screen.getByText(
+      'All available staff are already assigned to this activity.',
+    ),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add assignment' }).hasAttribute('disabled'),
+  ).toBe(true);
+});
+
 test('does not render assignment controls for read-only users', () => {
   renderScheduleCalendar({
     assignableStaff: [assignableStaff()],

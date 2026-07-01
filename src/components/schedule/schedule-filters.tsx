@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useId } from 'react';
+import { useId, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,6 +45,7 @@ export function ScheduleFilters({
   const staffSelectId = useId();
   const activitySelectId = useId();
   const unassignedOnlyId = useId();
+  const [isPending, startTransition] = useTransition();
   const hasActiveFilters = hasActiveScheduleFilters(filters);
 
   /**
@@ -53,7 +54,9 @@ export function ScheduleFilters({
    * @param updates - Filter values to set or clear.
    */
   function updateFilters(updates: Partial<ScheduleFiltersValue>) {
-    router.push(buildScheduleFilterHref(filters, updates));
+    startTransition(() => {
+      router.push(buildScheduleFilterHref(filters, updates));
+    });
   }
 
   return (
@@ -61,10 +64,12 @@ export function ScheduleFilters({
       aria-label="Schedule filters"
       className="rounded-lg border bg-card p-3 text-card-foreground"
     >
+      <h2 className="sr-only">Filters</h2>
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid min-w-48 gap-1">
           <Label htmlFor={staffSelectId}>Staff</Label>
           <Select
+            disabled={isPending}
             onValueChange={(value) =>
               updateFilters({
                 staffId: value === allStaffValue ? undefined : value,
@@ -89,6 +94,7 @@ export function ScheduleFilters({
         <div className="grid min-w-52 gap-1">
           <Label htmlFor={activitySelectId}>Activity</Label>
           <Select
+            disabled={isPending}
             onValueChange={(value) =>
               updateFilters({
                 activityType:
@@ -116,6 +122,7 @@ export function ScheduleFilters({
         <div className="flex h-8 items-center gap-2">
           <Checkbox
             checked={filters.unassignedOnly ?? false}
+            disabled={isPending}
             id={unassignedOnlyId}
             onCheckedChange={(checked) =>
               updateFilters({
@@ -127,6 +134,12 @@ export function ScheduleFilters({
             Unassigned only
           </Label>
         </div>
+
+        {isPending ? (
+          <p aria-live="polite" className="pb-1 text-sm text-muted-foreground">
+            Updating filters...
+          </p>
+        ) : null}
 
         {hasActiveFilters ? (
           <Button asChild size="sm" variant="ghost">

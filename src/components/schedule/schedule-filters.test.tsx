@@ -72,15 +72,18 @@ vi.mock('@/components/ui/select', () => {
    */
   function Select({
     children,
+    disabled,
     onValueChange,
     value,
   }: {
     children: React.ReactNode;
+    disabled?: boolean;
     onValueChange?: (value: string) => void;
     value?: string;
   }) {
     return (
       <select
+        disabled={disabled}
         id={getTriggerId(children)}
         onChange={(event) => onValueChange?.(event.target.value)}
         value={value ?? ''}

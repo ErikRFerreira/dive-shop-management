@@ -320,7 +320,10 @@ export function ScheduleAssignmentForm({
   }
 
   return (
-    <form className="grid gap-3 rounded-md border p-3" onSubmit={handleAddAssignment}>
+    <form
+      className="grid gap-3 rounded-md border p-3"
+      onSubmit={handleAddAssignment}
+    >
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <div className="grid gap-2">
           <Label htmlFor={staffSelectId}>Staff</Label>
@@ -333,7 +336,7 @@ export function ScheduleAssignmentForm({
               <SelectValue
                 placeholder={
                   availableStaff.length === 0
-                    ? 'All staff assigned'
+                    ? 'All available staff assigned'
                     : 'Select staff'
                 }
               />
@@ -379,6 +382,12 @@ export function ScheduleAssignmentForm({
           </Button>
         </div>
       </div>
+
+      {availableStaff.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          All available staff are already assigned to this activity.
+        </p>
+      ) : null}
 
       <AssignmentActionError message={error} />
     </form>

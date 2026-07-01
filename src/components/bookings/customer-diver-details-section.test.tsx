@@ -139,6 +139,26 @@ test('links an existing customer selected from search results', async () => {
   expect(screen.getByText('Linked existing customer')).not.toBeNull();
 });
 
+test('shows a clear empty state when existing customer search has no results', async () => {
+  mocks.searchBookingCustomers.mockResolvedValue([]);
+
+  render(<CustomerDetailsHarness />);
+
+  fireEvent.change(screen.getByLabelText('Search existing customers'), {
+    target: { value: 'Unknown Customer' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+  expect(
+    await screen.findByText(
+      'No customers found. Try searching by name, Chinese name, WeChat, WhatsApp, email, or phone.',
+    ),
+  ).not.toBeNull();
+  expect(mocks.searchBookingCustomers).toHaveBeenCalledWith(
+    'Unknown Customer',
+  );
+});
+
 test('promotes the first remaining customer when removing the primary contact', async () => {
   render(
     <CustomerDetailsHarness

@@ -194,7 +194,7 @@ test('rejects add assignment when the schedule item is missing', async () => {
     ),
   ).resolves.toEqual({
     success: false,
-    formError: 'Schedule item not found.',
+    formError: 'Scheduled activity not found. Refresh and try again.',
   });
 
   expect(mocks.createAssignment).not.toHaveBeenCalled();
@@ -211,7 +211,7 @@ test('rejects add assignment when the selected user is missing', async () => {
     ),
   ).resolves.toEqual({
     success: false,
-    formError: 'Selected staff user not found.',
+    formError: 'Selected staff member not found. Refresh and try again.',
   });
 
   expect(mocks.createAssignment).not.toHaveBeenCalled();
@@ -231,7 +231,8 @@ test.each([
     ),
   ).resolves.toEqual({
     success: false,
-    formError: 'Selected user cannot be assigned to scheduled activities.',
+    formError:
+      'Only active instructors and divemasters can be assigned to scheduled activities.',
   });
 
   expect(mocks.createAssignment).not.toHaveBeenCalled();
@@ -262,7 +263,8 @@ test('rejects duplicate staff assignment before create', async () => {
     ),
   ).resolves.toEqual({
     success: false,
-    formError: 'This staff member is already assigned to this schedule item.',
+    formError:
+      'This staff member is already assigned to this scheduled activity.',
   });
 
   expect(mocks.createAssignment).not.toHaveBeenCalled();

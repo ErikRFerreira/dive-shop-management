@@ -63,7 +63,7 @@ export function CustomerBookingHistory({
         <CardHeader>
           <CardTitle>Booking history</CardTitle>
           <CardDescription>
-            This customer does not have any linked bookings yet.
+            This customer has no booking history yet.
           </CardDescription>
         </CardHeader>
       </Card>

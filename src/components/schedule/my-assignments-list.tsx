@@ -34,9 +34,9 @@ const assignmentGroupLabels: Record<MyScheduleAssignmentGroupKey, string> = {
 
 const assignmentGroupEmptyMessages: Record<MyScheduleAssignmentGroupKey, string> =
   {
-    today: 'No assignments today.',
-    tomorrow: 'No assignments tomorrow.',
-    upcoming: 'No upcoming assignments.',
+    today: 'You have no assigned activities today.',
+    tomorrow: 'You have no assigned activities tomorrow.',
+    upcoming: 'You have no upcoming assigned activities.',
   };
 
 /**
@@ -209,7 +209,7 @@ function AssignmentCustomersSection({
  * @returns A compact card explaining that no assignments are available.
  */
 export function InstructorScheduleEmptyState({
-  title = 'No assignments yet',
+  title = 'You have no assigned activities today or upcoming',
   description = 'Assigned activities will appear here after a manager adds you to the schedule.',
 }: InstructorScheduleEmptyStateProps = {}) {
   return (
