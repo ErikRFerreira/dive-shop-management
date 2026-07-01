@@ -18,34 +18,133 @@ import {
 import type { BookingListItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import type { CurrentUser } from '@/lib/current-user';
-import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
+import { formatDisplayDate, formatDisplayDateTime } from '@/lib/format';
 
 type BookingListProps = {
   bookings: BookingListItem[];
   currentUser: Pick<CurrentUser, 'id' | 'role'>;
 };
 
+type BookingCustomerListItem = BookingListItem['customers'][number];
+
 /**
- * Formats the customer label shown for a booking list row.
+ * Formats one linked customer/diver name for the booking list.
  *
- * @param booking - Booking list item with its resolved display customer.
- * @returns Customer display name, multiple-customer summary, or the empty placeholder.
+ * @param bookingCustomer - Customer relation attached to a booking.
+ * @returns Customer display name, or a safe fallback when no name is stored.
  */
-function formatCustomerName(booking: BookingListItem) {
-  const customer = booking.displayCustomer;
+function formatCustomerName(bookingCustomer: BookingCustomerListItem) {
+  const customer = bookingCustomer.customer;
   const fullName = customer?.fullName?.trim();
   const name = [customer?.firstName, customer?.lastName]
-    .filter((part): part is string => Boolean(part))
+    .filter((part): part is string => Boolean(part?.trim()))
     .join(' ');
-  const displayName = fullName || name;
 
-  if (!displayName) {
-    return booking.customers.length > 1 ? 'Multiple customers' : '\u2014';
+  return fullName || name || customer?.chineseName?.trim() || 'Unnamed customer';
+}
+
+/**
+ * Renders every customer/diver attached to a booking as visible line items.
+ *
+ * @param booking - Booking list item with customer booking relations.
+ * @returns A stacked customer list, or a safe fallback when no customers exist.
+ */
+function renderCustomerNames(booking: BookingListItem) {
+  if (booking.customers.length === 0) {
+    return 'No primary customer';
   }
 
-  return booking.customers.length > 1
-    ? `${displayName} + ${booking.customers.length - 1} more`
-    : displayName;
+  return (
+    <div className="space-y-1">
+      {booking.customers.map((bookingCustomer) => (
+        <div key={bookingCustomer.customerId}>
+          {formatCustomerName(bookingCustomer)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Formats the operational date/time label for a booking list row.
+ *
+ * @param booking - Booking list item with optional scheduled date/time.
+ * @returns Scheduled or requested date with time, `TBD`, or the empty placeholder.
+ */
+function formatBookingDateTime(booking: BookingListItem) {
+  const date = booking.scheduleItem?.date ?? booking.requestedDate;
+  const time = booking.scheduleItem?.startTime ?? booking.requestedTime;
+  const trimmedTime = time?.trim();
+
+  if (!date) {
+    return '\u2014';
+  }
+
+  return `${formatDisplayDate(date)} ${trimmedTime || 'TBD'}`;
+}
+
+/**
+ * Formats the staff member who created a booking request.
+ *
+ * @param booking - Booking list item with creator relation.
+ * @returns Creator name, or the empty placeholder when no name is stored.
+ */
+function formatBookingCreator(booking: BookingListItem) {
+  return booking.createdBy.name?.trim() || '\u2014';
+}
+
+/**
+ * Renders created and edited timestamps for a booking list row.
+ *
+ * @param booking - Booking list item with audit timestamps.
+ * @returns A compact two-line audit timestamp display.
+ */
+function renderBookingAuditDates(booking: BookingListItem) {
+  return (
+    <div className="space-y-1 whitespace-nowrap text-sm">
+      <div>Created {formatDisplayDateTime(booking.createdAt)}</div>
+      <div>Edited {formatDisplayDateTime(booking.updatedAt)}</div>
+    </div>
+  );
+}
+
+/**
+ * Formats assigned staff for a booking list row without exposing emails.
+ *
+ * @param booking - Booking list item with optional schedule assignments.
+ * @returns Staff names, `Unassigned` for scheduled rows without staff, or the empty placeholder.
+ */
+function formatStaffAssignments(booking: BookingListItem) {
+  if (!booking.scheduleItem) {
+    return '\u2014';
+  }
+
+  const staffNames = booking.scheduleItem.assignments
+    .map((assignment) => assignment.user.name.trim())
+    .filter(Boolean);
+
+  return staffNames.length > 0 ? staffNames.join(', ') : 'Unassigned';
+}
+
+/**
+ * Formats the hotel attached to the display customer for this booking.
+ *
+ * @param booking - Booking list item with customer booking relations.
+ * @returns Booking-specific hotel, customer hotel fallback, or the empty placeholder.
+ */
+function formatBookingHotel(booking: BookingListItem) {
+  const displayCustomerId = booking.displayCustomer?.id;
+  const bookingCustomer =
+    booking.customers.find(
+      (customer) => customer.customerId === displayCustomerId,
+    ) ??
+    booking.customers[0] ??
+    null;
+  const hotel =
+    bookingCustomer?.hotelAtBooking?.trim() ||
+    bookingCustomer?.customer.hotel?.trim();
+
+  return hotel || '\u2014';
 }
 
 /**
@@ -75,15 +174,14 @@ export function BookingList({ bookings, currentUser }: BookingListProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Status</TableHead>
-              <TableHead>Customer name</TableHead>
+              <TableHead>Customers/divers</TableHead>
               <TableHead>Activities</TableHead>
-              <TableHead>Requested date</TableHead>
-              <TableHead>Number of people</TableHead>
-              <TableHead>Source/referrer</TableHead>
-              <TableHead>Customer service owner</TableHead>
-              <TableHead>Created date</TableHead>
-              <TableHead>Updated date</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Activity date/time</TableHead>
+              <TableHead>Staff</TableHead>
+              <TableHead>Hotel</TableHead>
+              <TableHead>Created by</TableHead>
+              <TableHead>Created/edited</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -92,19 +190,18 @@ export function BookingList({ bookings, currentUser }: BookingListProps) {
                 <TableCell>
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
-                <TableCell>{formatCustomerName(booking)}</TableCell>
+                <TableCell>{renderCustomerNames(booking)}</TableCell>
                 <TableCell>
                   {summarizeBookingActivities(
                     booking.activities,
                     booking.activityType,
                   )}
                 </TableCell>
-                <TableCell>{formatDisplayDate(booking.requestedDate)}</TableCell>
-                <TableCell>{booking.numberOfPeople ?? '\u2014'}</TableCell>
-                <TableCell>{formatEnumLabel(booking.source)}</TableCell>
-                <TableCell>{booking.createdBy.name}</TableCell>
-                <TableCell>{formatDisplayDate(booking.createdAt)}</TableCell>
-                <TableCell>{formatDisplayDate(booking.updatedAt)}</TableCell>
+                <TableCell>{formatBookingDateTime(booking)}</TableCell>
+                <TableCell>{formatStaffAssignments(booking)}</TableCell>
+                <TableCell>{formatBookingHotel(booking)}</TableCell>
+                <TableCell>{formatBookingCreator(booking)}</TableCell>
+                <TableCell>{renderBookingAuditDates(booking)}</TableCell>
                 <TableCell className="text-right">
                   <BookingRowActions
                     booking={booking}

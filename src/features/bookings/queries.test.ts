@@ -42,6 +42,28 @@ test('queries scheduled bookings with schedule items that have no assignments', 
 
   expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
     expect.objectContaining({
+      include: expect.objectContaining({
+        scheduleItem: {
+          select: {
+            id: true,
+            date: true,
+            startTime: true,
+            assignments: {
+              select: {
+                id: true,
+                user: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
+          },
+        },
+      }),
       where: {
         status: BookingStatus.SCHEDULED,
         scheduleItem: {

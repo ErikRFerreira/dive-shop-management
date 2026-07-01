@@ -24,13 +24,18 @@ function formatSourceReferrer(item: SchedulePageItem) {
   return source ?? referrer ?? null;
 }
 
-/** Renders scheduled bookings as simple date groups for the internal schedule page. */
+/**
+ * Renders scheduled bookings as simple date groups for the internal schedule page.
+ *
+ * @param props - Official scheduled booking rows to group by date.
+ * @returns Date-grouped schedule rows or an empty-state card.
+ */
 export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
   if (items.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>No scheduled bookings yet</CardTitle>
+          <CardTitle>No scheduled activities yet</CardTitle>
           <CardDescription>
             Approved bookings will appear here after admin schedules them.
           </CardDescription>

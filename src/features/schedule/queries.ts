@@ -14,7 +14,7 @@ import {
 } from '@/generated/prisma/enums';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
-import { formatDateInputValue } from '@/lib/format';
+import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
 import { getScheduleDateRangeForFilter } from './date-ranges';
 import { canViewMyScheduleAssignments } from './permissions';
 import type {
@@ -451,13 +451,14 @@ function mapScheduleItemToCalendarEvent(
     booking.activities,
     scheduleItem.activityType,
   );
+  const assignments = mapScheduleAssignments(scheduleItem.assignments);
 
   return {
     id: scheduleItem.id,
     title: buildScheduleCalendarEventTitle({
       activitySummary,
+      assignments,
       customerName: primaryCustomerName,
-      isTimeTbd,
       numberOfPeople: booking.numberOfPeople,
     }),
     start: startTime ? `${dateKey}T${startTime}:00` : dateKey,
@@ -493,7 +494,7 @@ function mapScheduleItemToCalendarEvent(
     source: booking.source,
     referrerName: booking.referrerName,
     notes: scheduleItem.scheduleNotes ?? booking.internalNotes,
-    assignments: mapScheduleAssignments(scheduleItem.assignments),
+    assignments,
     isTimeTbd,
   };
 }
@@ -703,35 +704,62 @@ function formatCustomerEnglishName(
 }
 
 /**
- * Builds a calendar event title that is useful in dense month/week views.
+ * Builds a calendar event title that is useful across FullCalendar views.
  *
  * @param input - Event title ingredients derived from the schedule item.
- * @returns A compact title including TBD when the schedule item has no time.
+ * @returns A compact operational title with staff, activity, party size, and customer.
  */
 function buildScheduleCalendarEventTitle(input: {
   activitySummary: string;
+  assignments: ScheduleAssignmentDetail[];
   customerName: string | null;
-  isTimeTbd: boolean;
   numberOfPeople: number | null;
 }) {
-  const titleParts = [
-    input.isTimeTbd ? 'TBD' : null,
+  return [
+    buildScheduleStaffPrefix(input.assignments),
     input.activitySummary,
+    formatPeopleCountLabel(input.numberOfPeople),
     input.customerName ?? 'Customer TBD',
-    formatPaxLabel(input.numberOfPeople),
-  ].filter((part): part is string => Boolean(part));
+  ].join(' ');
+}
 
-  return titleParts.join(' - ');
+/**
+ * Builds the bracketed staff prefix for a schedule calendar event title.
+ *
+ * @param assignments - Staff assignments already mapped for schedule display.
+ * @returns `[Unassigned]` or compact staff names in assignment order.
+ */
+function buildScheduleStaffPrefix(assignments: ScheduleAssignmentDetail[]) {
+  if (assignments.length === 0) {
+    return '[Unassigned]';
+  }
+
+  const staffNames = assignments.map(formatScheduleStaffName);
+
+  return `[${staffNames.join('/')}]`;
+}
+
+/**
+ * Formats one assigned staff member for compact calendar event titles.
+ *
+ * @param assignment - Staff assignment used to derive a safe display name.
+ * @returns The staff first name, role label, or generic fallback.
+ */
+function formatScheduleStaffName(assignment: ScheduleAssignmentDetail) {
+  const displayName = assignment.user.name.trim();
+  const firstName = displayName.split(/\s+/)[0]?.trim();
+
+  return firstName || formatEnumLabel(assignment.role) || 'Staff';
 }
 
 /**
  * Formats the number of people for compact calendar event titles.
  *
  * @param numberOfPeople - The stored booking party size.
- * @returns A compact pax label, using TBD when party size is unknown.
+ * @returns A compact people count, using TBD when party size is unknown.
  */
-function formatPaxLabel(numberOfPeople: number | null) {
-  return `${numberOfPeople ?? 'TBD'} pax`;
+function formatPeopleCountLabel(numberOfPeople: number | null) {
+  return `x${numberOfPeople ?? 'TBD'}`;
 }
 
 /**

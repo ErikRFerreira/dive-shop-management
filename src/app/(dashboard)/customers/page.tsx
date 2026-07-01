@@ -64,7 +64,8 @@ async function Customers({ searchParams }: CustomersPageProps) {
           <CardHeader>
             <CardTitle>No customers found</CardTitle>
             <CardDescription>
-              No existing customers match &quot;{query}&quot;.
+              Try searching by name, Chinese name, WeChat, WhatsApp, email, or
+              phone.
             </CardDescription>
           </CardHeader>
         </Card>

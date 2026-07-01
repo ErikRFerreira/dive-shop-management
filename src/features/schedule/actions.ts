@@ -188,7 +188,10 @@ export async function addScheduleAssignment(
   );
 
   if (!scheduleItem) {
-    return { success: false, formError: 'Schedule item not found.' };
+    return {
+      success: false,
+      formError: 'Scheduled activity not found. Refresh and try again.',
+    };
   }
 
   const statusError = getScheduleStatusError(scheduleItem);
@@ -206,13 +209,17 @@ export async function addScheduleAssignment(
   });
 
   if (!selectedUser) {
-    return { success: false, formError: 'Selected staff user not found.' };
+    return {
+      success: false,
+      formError: 'Selected staff member not found. Refresh and try again.',
+    };
   }
 
   if (!selectedUser.isActive || !isAssignableStaffRole(selectedUser.role)) {
     return {
       success: false,
-      formError: 'Selected user cannot be assigned to scheduled activities.',
+      formError:
+        'Only active instructors and divemasters can be assigned to scheduled activities.',
     };
   }
 
@@ -231,7 +238,8 @@ export async function addScheduleAssignment(
   if (existingAssignment) {
     return {
       success: false,
-      formError: 'This staff member is already assigned to this schedule item.',
+      formError:
+        'This staff member is already assigned to this scheduled activity.',
     };
   }
 
@@ -251,7 +259,7 @@ export async function addScheduleAssignment(
       return {
         success: false,
         formError:
-          'This staff member is already assigned to this schedule item.',
+          'This staff member is already assigned to this scheduled activity.',
       };
     }
 

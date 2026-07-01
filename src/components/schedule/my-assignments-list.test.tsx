@@ -22,7 +22,9 @@ afterEach(() => {
 test('renders a whole-page empty state when there are no assignments', () => {
   render(<MyAssignmentsList assignments={[]} />);
 
-  expect(screen.getByText('No assignments yet')).not.toBeNull();
+  expect(
+    screen.getByText('You have no assigned activities today or upcoming'),
+  ).not.toBeNull();
   expect(
     screen.getByText(
       'Assigned activities will appear here after a manager adds you to the schedule.',
@@ -153,8 +155,12 @@ test('renders TBD time and section empty states when only one bucket has work', 
     />,
   );
 
-  expect(screen.getByText('No assignments today.')).not.toBeNull();
-  expect(screen.getByText('No upcoming assignments.')).not.toBeNull();
+  expect(
+    screen.getByText('You have no assigned activities today.'),
+  ).not.toBeNull();
+  expect(
+    screen.getByText('You have no upcoming assigned activities.'),
+  ).not.toBeNull();
   expect(screen.getByText('TBD')).not.toBeNull();
 });
 

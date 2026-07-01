@@ -241,6 +241,8 @@ afterEach(() => {
 
 import { ScheduleCalendar } from './schedule-calendar';
 
+const DEFAULT_EVENT_TITLE = '[Unassigned] Fun Dive x2 Maria Santos';
+
 /**
  * Builds a serialized schedule event for calendar component tests.
  *
@@ -252,7 +254,7 @@ function scheduleEvent(
 ): SerializedScheduleCalendarEvent {
   return {
     id: 'schedule-1',
-    title: 'Fun Dive - Maria Santos - 2 pax',
+    title: DEFAULT_EVENT_TITLE,
     start: '2026-07-14T08:00:00',
     end: '2026-07-14T12:00:00',
     allDay: false,
@@ -354,8 +356,7 @@ test('renders passed schedule events in the FullCalendar layer', () => {
 
   const calendar = screen.getByTestId('full-calendar');
 
-  expect(screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }))
-    .not.toBeNull();
+  expect(screen.getByRole('button', { name: DEFAULT_EVENT_TITLE })).not.toBeNull();
   expect(calendar.getAttribute('data-initial-view')).toBe('dayGridMonth');
   expect(calendar.getAttribute('data-views')).toBe(
     'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
@@ -368,7 +369,7 @@ test('opens an operational booking summary dialog from an event click', () => {
   renderScheduleCalendar();
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByRole('dialog')).not.toBeNull();
@@ -393,7 +394,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
   const { rerender } = renderScheduleCalendar({ events: [event] });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByRole('dialog')).not.toBeNull();
@@ -425,7 +426,7 @@ test('renders notes above assigned staff in the event dialog', () => {
   renderScheduleCalendar();
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   const notesHeading = screen.getByRole('heading', { name: 'Notes' });
@@ -442,7 +443,7 @@ test('renders a subtle empty notes state in the event dialog', () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByRole('heading', { name: 'Notes' })).not.toBeNull();
@@ -458,14 +459,14 @@ test('makes no-time schedule events clear in the summary dialog', () => {
         isTimeTbd: true,
         start: '2026-07-14',
         startTime: null,
-        title: 'TBD - Fun Dive - Maria Santos - 2 pax',
+        title: DEFAULT_EVENT_TITLE,
       }),
     ],
   });
 
   fireEvent.click(
     screen.getByRole('button', {
-      name: 'TBD - Fun Dive - Maria Santos - 2 pax',
+      name: DEFAULT_EVENT_TITLE,
     }),
   );
 
@@ -476,7 +477,7 @@ test('does not render schedule mutation controls', () => {
   renderScheduleCalendar();
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(
@@ -494,7 +495,7 @@ test('hides the booking detail link for users without booking detail access', ()
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.queryByRole('link', { name: /View booking/i })).toBeNull();
@@ -530,7 +531,7 @@ test('renders multiple assigned staff in the event dialog', () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByText('Assigned staff')).not.toBeNull();
@@ -548,7 +549,7 @@ test('renders unassigned state when the event has no assignments', () => {
   renderScheduleCalendar();
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByText('Assigned staff')).not.toBeNull();
@@ -565,12 +566,45 @@ test('renders assignment controls for managers and admins', () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.getByLabelText('Staff')).not.toBeNull();
   expect(screen.getByLabelText('Role')).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
+});
+
+test('renders a helpful empty picker state when all available staff are assigned', () => {
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+    events: [
+      scheduleEvent({
+        assignments: [
+          {
+            id: 'assignment-1',
+            userId: 'instructor-1',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+            notes: null,
+            user: assignableStaff(),
+          },
+        ],
+      }),
+    ],
+  });
+
+  fireEvent.click(
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
+  );
+
+  expect(
+    screen.getByText(
+      'All available staff are already assigned to this activity.',
+    ),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add assignment' }).hasAttribute('disabled'),
+  ).toBe(true);
 });
 
 test('does not render assignment controls for read-only users', () => {
@@ -580,7 +614,7 @@ test('does not render assignment controls for read-only users', () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
   expect(screen.queryByLabelText('Staff')).toBeNull();
@@ -597,7 +631,7 @@ test('refreshes the schedule after adding an assignment', async () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
   fireEvent.change(screen.getByLabelText('Staff'), {
     target: { value: 'instructor-1' },
@@ -637,7 +671,7 @@ test('refreshes the schedule after updating an assignment role', async () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
   fireEvent.change(screen.getByLabelText('Assignment role'), {
     target: { value: ScheduleAssignmentRole.ASSISTANT_INSTRUCTOR },
@@ -672,7 +706,7 @@ test('refreshes the schedule after removing an assignment', async () => {
   });
 
   fireEvent.click(
-    screen.getByRole('button', { name: 'Fun Dive - Maria Santos - 2 pax' }),
+    screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Remove Inez Instructor' }));
 

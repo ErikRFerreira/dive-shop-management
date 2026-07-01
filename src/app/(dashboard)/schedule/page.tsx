@@ -6,12 +6,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { getScheduleEmptyStateCopy } from '@/features/schedule/empty-states';
 import { parseScheduleFiltersFromSearchParams } from '@/features/schedule/filters';
 import { canManageScheduleAssignments } from '@/features/schedule/permissions';
 import {
   getAssignableStaff,
   getScheduleItemsForCalendar,
 } from '@/features/schedule/queries';
+import type { ScheduleFilters as ScheduleFiltersValue } from '@/features/schedule/types';
 import { UserRole } from '@/generated/prisma/enums';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
@@ -62,24 +64,27 @@ async function SchedulePage({
         canViewBookingDetails={canViewBookingDetails}
         events={scheduleEvents}
       />
-      {scheduleEvents.length === 0 ? <ScheduleEmptyState /> : null}
+      {scheduleEvents.length === 0 ? (
+        <ScheduleEmptyState filters={scheduleFilters} />
+      ) : null}
     </div>
   );
 }
 
 /**
- * Renders a clear empty state when there are no official scheduled bookings.
+ * Renders a clear empty state when there are no matching scheduled activities.
  *
+ * @param props - Active schedule filters used to choose operational copy.
  * @returns Staff-facing empty state content for the schedule page.
  */
-function ScheduleEmptyState() {
+function ScheduleEmptyState({ filters }: { filters: ScheduleFiltersValue }) {
+  const emptyState = getScheduleEmptyStateCopy(filters);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>No scheduled bookings yet</CardTitle>
-        <CardDescription>
-          Approved bookings will appear here after admin schedules them.
-        </CardDescription>
+        <CardTitle>{emptyState.title}</CardTitle>
+        <CardDescription>{emptyState.description}</CardDescription>
       </CardHeader>
     </Card>
   );
