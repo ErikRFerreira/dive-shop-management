@@ -3,8 +3,11 @@ import { expect, test } from 'vitest';
 import {
   canApproveBookingRequest,
   canEditBooking,
+  canReviewBooking,
+  canViewBooking,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
+  getAvailableBookingRowActions,
 } from '@/features/bookings/permissions';
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
 
@@ -15,6 +18,42 @@ test('allows only admin and manager users to access booking review', () => {
     false,
   );
   expect(canReviewBookingRequest({ role: UserRole.INSTRUCTOR })).toBe(false);
+});
+
+test('allows only visible booking owners and operations roles to view bookings', () => {
+  expect(canViewBooking({ id: 'admin', role: UserRole.ADMIN }, 'owner')).toBe(
+    true,
+  );
+  expect(canViewBooking({ id: 'manager', role: UserRole.MANAGER }, 'owner')).toBe(
+    true,
+  );
+  expect(
+    canViewBooking({ id: 'owner', role: UserRole.CUSTOMER_SERVICE }, 'owner'),
+  ).toBe(true);
+  expect(
+    canViewBooking({ id: 'other', role: UserRole.CUSTOMER_SERVICE }, 'owner'),
+  ).toBe(false);
+  expect(
+    canViewBooking({ id: 'instructor', role: UserRole.INSTRUCTOR }, 'owner'),
+  ).toBe(false);
+});
+
+test('shows review navigation only to admin and manager users for pending bookings', () => {
+  expect(canReviewBooking({ role: UserRole.ADMIN }, BookingStatus.PENDING_APPROVAL)).toBe(
+    true,
+  );
+  expect(
+    canReviewBooking({ role: UserRole.MANAGER }, BookingStatus.PENDING_APPROVAL),
+  ).toBe(true);
+  expect(
+    canReviewBooking(
+      { role: UserRole.CUSTOMER_SERVICE },
+      BookingStatus.PENDING_APPROVAL,
+    ),
+  ).toBe(false);
+  expect(canReviewBooking({ role: UserRole.ADMIN }, BookingStatus.DRAFT)).toBe(
+    false,
+  );
 });
 
 test('allows only admin and manager users to approve bookings', () => {
@@ -63,5 +102,40 @@ test.each([
     expect(
       canEditBooking({ id: 'owner', role }, createdById, status),
     ).toBe(expected);
+  },
+);
+
+test.each([
+  [
+    { id: 'admin', role: UserRole.ADMIN },
+    { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    ['view', 'edit', 'review'],
+  ],
+  [
+    { id: 'manager', role: UserRole.MANAGER },
+    { createdById: 'owner', status: BookingStatus.NEEDS_MORE_INFO },
+    ['view', 'edit'],
+  ],
+  [
+    { id: 'owner', role: UserRole.CUSTOMER_SERVICE },
+    { createdById: 'owner', status: BookingStatus.DRAFT },
+    ['view', 'edit'],
+  ],
+  [
+    { id: 'owner', role: UserRole.CUSTOMER_SERVICE },
+    { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    ['view'],
+  ],
+  [
+    { id: 'instructor', role: UserRole.INSTRUCTOR },
+    { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    [],
+  ],
+] as const)(
+  'returns booking row actions for %s on %s',
+  (currentUser, booking, expectedActions) => {
+    expect(getAvailableBookingRowActions(currentUser, booking)).toEqual(
+      expectedActions,
+    );
   },
 );

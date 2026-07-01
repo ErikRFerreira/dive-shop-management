@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 
 import {
   buildBookingRequestWhere,
+  parseBookingQueueFilter,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
   summarizeBookingActivities,
@@ -26,6 +27,14 @@ test('accepts Needs More Info as a booking status filter', () => {
   expect(parseBookingStatusFilter(BookingStatus.NEEDS_MORE_INFO)).toBe(
     BookingStatus.NEEDS_MORE_INFO,
   );
+});
+
+/** Verifies that operational queues are parsed separately from statuses. */
+test('accepts only supported single booking queue filters', () => {
+  expect(parseBookingQueueFilter('unassigned')).toBe('unassigned');
+  expect(parseBookingQueueFilter(['unassigned'])).toBeUndefined();
+  expect(parseBookingQueueFilter(BookingStatus.SCHEDULED)).toBeUndefined();
+  expect(parseBookingQueueFilter('unknown')).toBeUndefined();
 });
 
 /** Verifies that a primary contact takes precedence over earlier participants. */
@@ -104,5 +113,32 @@ test('scopes booking queries to the current user role', () => {
   expect(buildBookingRequestWhere(managerUser)).toEqual({});
   expect(buildBookingRequestWhere(instructorUser)).toEqual({
     id: { in: [] },
+  });
+});
+
+/** Verifies that the unassigned queue is not treated as a booking status. */
+test('builds an operational unassigned schedule queue predicate', () => {
+  const adminUser = {
+    id: 'admin-user',
+    name: 'Admin User',
+    email: 'admin@example.test',
+    role: UserRole.ADMIN,
+  };
+
+  expect(
+    buildBookingRequestWhere(
+      adminUser,
+      BookingStatus.DRAFT,
+      'unassigned',
+    ),
+  ).toEqual({
+    status: BookingStatus.SCHEDULED,
+    scheduleItem: {
+      is: {
+        assignments: {
+          none: {},
+        },
+      },
+    },
   });
 });

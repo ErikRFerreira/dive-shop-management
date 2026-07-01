@@ -10,7 +10,7 @@ import 'server-only';
 import { Prisma } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
-import type { BookingStatusFilter } from './types';
+import type { BookingQueueFilter, BookingStatusFilter } from './types';
 import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
 
 /**
@@ -24,11 +24,12 @@ import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
  */
 export {
   buildBookingRequestWhere,
+  parseBookingQueueFilter,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
 } from './utils';
-export { bookingStatusFilters } from './types';
-export type { BookingStatusFilter } from './types';
+export { bookingQueueFilters, bookingStatusFilters } from './types';
+export type { BookingQueueFilter, BookingStatusFilter } from './types';
 
 /**
  * Relations fetched for each row in the internal booking list.
@@ -136,16 +137,18 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
  *
  * @param currentUser - The authenticated user whose role scopes visibility.
  * @param status - Optional status filter validated from the request URL.
+ * @param queue - Optional operational queue filter validated from the request URL.
  * @returns Booking-list rows, including their creator, customers, and derived
  * display customer.
  */
 export async function getBookingRequests(
   currentUser: CurrentUser,
   status?: BookingStatusFilter,
+  queue?: BookingQueueFilter,
 ): Promise<BookingListItem[]> {
   const bookingRequests = await db.bookingRequest.findMany({
     ...bookingRequestListArgs,
-    where: buildBookingRequestWhere(currentUser, status),
+    where: buildBookingRequestWhere(currentUser, status, queue),
     orderBy: {
       createdAt: 'desc',
     },

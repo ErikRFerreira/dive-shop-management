@@ -1,8 +1,5 @@
-import Link from 'next/link';
-import { Eye } from 'lucide-react';
-
+import { BookingRowActions } from '@/components/bookings/booking-row-actions';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -18,15 +15,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import type { BookingListItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
+import type { CurrentUser } from '@/lib/current-user';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
+
+type BookingListProps = {
+  bookings: BookingListItem[];
+  currentUser: Pick<CurrentUser, 'id' | 'role'>;
+};
 
 /**
  * Formats the customer label shown for a booking list row.
@@ -54,10 +51,10 @@ function formatCustomerName(booking: BookingListItem) {
 /**
  * Renders booking requests in the staff-facing list table.
  *
- * @param props - Booking rows visible to the current user.
+ * @param props - Booking rows and current user used to resolve row actions.
  * @returns Booking list table or an empty-state card.
  */
-export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
+export function BookingList({ bookings, currentUser }: BookingListProps) {
   if (bookings.length === 0) {
     return (
       <Card>
@@ -109,20 +106,10 @@ export function BookingList({ bookings }: { bookings: BookingListItem[] }) {
                 <TableCell>{formatDisplayDate(booking.createdAt)}</TableCell>
                 <TableCell>{formatDisplayDate(booking.updatedAt)}</TableCell>
                 <TableCell className="text-right">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button asChild size="icon" variant="outline">
-                          <Link href={`/bookings/${booking.id}`} aria-label="View booking">
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>View booking</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <BookingRowActions
+                    booking={booking}
+                    currentUser={currentUser}
+                  />
                 </TableCell>
               </TableRow>
             ))}
