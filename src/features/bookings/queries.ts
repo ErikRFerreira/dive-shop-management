@@ -62,6 +62,26 @@ const bookingRequestListArgs = {
         createdAt: 'desc',
       },
     },
+    scheduleItem: {
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        assignments: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    },
   },
 } satisfies Prisma.BookingRequestDefaultArgs;
 
