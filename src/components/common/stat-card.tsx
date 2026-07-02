@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-type DashboardSummaryCardProps = {
+type StatCardProps = {
   title: string;
   value: number;
   href: string;
@@ -16,17 +16,12 @@ type DashboardSummaryCardProps = {
 };
 
 /**
- * Renders a linked operational metric card for the dashboard.
+ * Renders a linked metric card for app-level summary views.
  *
  * @param props - The title, count, destination, and supporting copy to display.
- * @returns A single linked dashboard summary card.
+ * @returns A single reusable stat card.
  */
-export function DashboardSummaryCard({
-  title,
-  value,
-  href,
-  description,
-}: DashboardSummaryCardProps) {
+export function StatCard({ title, value, href, description }: StatCardProps) {
   return (
     <Link href={href} className="block h-full">
       <Card className="h-full transition-colors hover:bg-muted/40">

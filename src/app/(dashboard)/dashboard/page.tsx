@@ -1,16 +1,12 @@
 import { AdminDashboardSummary } from '@/components/dashboard/admin-dashboard-summary';
 import { CustomerServiceDashboardSummary } from '@/components/dashboard/customer-service-dashboard-summary';
-import {
-  DashboardEmptyState,
-  NeedsAttentionSection,
-  RecentActivitySection,
-  TodaysScheduleSection,
-} from '@/components/dashboard/dashboard-operational-sections';
 import { InstructorDashboardSummary } from '@/components/dashboard/instructor-dashboard-summary';
-import {
-  getDashboardOverviewForCurrentUser,
-  type DashboardSummary,
-} from '@/features/dashboard/queries';
+import { NeedsAttentionSection } from '@/components/dashboard/needs-attention-section';
+import { RecentActivitySection } from '@/components/dashboard/recent-activity-section';
+import { TodaysScheduleSection } from '@/components/dashboard/todays-schedule-section';
+import { EmptyState } from '@/components/common/empty-state';
+import { getDashboardOverviewForCurrentUser } from '@/features/dashboard/queries';
+import type { DashboardSummary } from '@/features/dashboard/types';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 import { requireCurrentUser } from '@/lib/current-user';
 
@@ -71,7 +67,7 @@ function DashboardSummaryContent({ summary }: { summary: DashboardSummary }) {
   }
 
   return (
-    <DashboardEmptyState
+    <EmptyState
       title="No dashboard summaries"
       description="There are no operational summary cards for your role yet."
     />
