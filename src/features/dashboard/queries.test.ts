@@ -452,7 +452,7 @@ describe('recent dashboard activity', () => {
       expect.objectContaining({
         where: {},
         orderBy: [{ updatedAt: 'desc' }],
-        take: expect.any(Number),
+        take: 3,
       }),
     );
   });

@@ -1,14 +1,14 @@
 import { AdminDashboardSummary } from '@/components/dashboard/admin-dashboard-summary';
 import { CustomerServiceDashboardSummary } from '@/components/dashboard/customer-service-dashboard-summary';
+import {
+  DashboardEmptyState,
+  NeedsAttentionSection,
+  RecentActivitySection,
+  TodaysScheduleSection,
+} from '@/components/dashboard/dashboard-operational-sections';
 import { InstructorDashboardSummary } from '@/components/dashboard/instructor-dashboard-summary';
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  getDashboardSummaryForCurrentUser,
+  getDashboardOverviewForCurrentUser,
   type DashboardSummary,
 } from '@/features/dashboard/queries';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
@@ -22,7 +22,7 @@ import { requireCurrentUser } from '@/lib/current-user';
 async function Dashboard() {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'dashboard');
-  const summary = await getDashboardSummaryForCurrentUser(currentUser);
+  const overview = await getDashboardOverviewForCurrentUser(currentUser);
 
   return (
     <div className="space-y-6">
@@ -33,7 +33,20 @@ async function Dashboard() {
         </p>
       </div>
 
-      <DashboardSummaryContent summary={summary} />
+      <DashboardSummaryContent summary={overview.summary} />
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <NeedsAttentionSection
+          currentUser={currentUser}
+          items={overview.needsAttention}
+        />
+        <TodaysScheduleSection
+          currentUser={currentUser}
+          items={overview.todaysSchedule}
+        />
+      </div>
+
+      <RecentActivitySection items={overview.recentActivity} />
     </div>
   );
 }
@@ -57,24 +70,11 @@ function DashboardSummaryContent({ summary }: { summary: DashboardSummary }) {
     return <InstructorDashboardSummary summary={summary} />;
   }
 
-  return <DashboardEmptyState />;
-}
-
-/**
- * Renders a neutral dashboard state for roles without summary cards in this task.
- *
- * @returns A small card explaining that there are no dashboard summaries.
- */
-function DashboardEmptyState() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>No dashboard summaries</CardTitle>
-        <CardDescription>
-          There are no operational summary cards for your role yet.
-        </CardDescription>
-      </CardHeader>
-    </Card>
+    <DashboardEmptyState
+      title="No dashboard summaries"
+      description="There are no operational summary cards for your role yet."
+    />
   );
 }
 

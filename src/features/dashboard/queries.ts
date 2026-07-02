@@ -45,7 +45,7 @@ export type {
 const NEEDS_ATTENTION_BOOKING_LIMIT = 8;
 const NEEDS_ATTENTION_UNASSIGNED_LIMIT = 4;
 const TODAY_SCHEDULE_LIMIT = 12;
-const RECENT_ACTIVITY_LIMIT = 8;
+const RECENT_ACTIVITY_LIMIT = 3;
 
 const dashboardBookingArgs = {
   select: {
