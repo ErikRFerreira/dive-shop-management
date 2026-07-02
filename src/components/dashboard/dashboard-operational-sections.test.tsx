@@ -40,7 +40,7 @@ test('renders clear empty states for every operational dashboard section', () =>
 
   expect(screen.getByText('Nothing needs attention')).not.toBeNull();
   expect(screen.getByText('No scheduled activities today')).not.toBeNull();
-  expect(screen.getByText('No recent activity')).not.toBeNull();
+  expect(screen.getByText('No recent activity yet')).not.toBeNull();
 });
 
 test('renders admin review action for pending approval attention items', () => {
@@ -60,6 +60,7 @@ test('renders admin review action for pending approval attention items', () => {
 
   expect(reviewLink).not.toBeNull();
   expect(reviewLink.getAttribute('href')).toBe('/bookings/booking-1/review');
+  expect(screen.queryByText('booking pending approval')).toBeNull();
 });
 
 test('renders customer service fix details action for needs more info items', () => {
@@ -81,6 +82,33 @@ test('renders customer service fix details action for needs more info items', ()
   expect(fixLink).not.toBeNull();
   expect(fixLink.getAttribute('href')).toBe('/bookings/booking-1/edit');
   expect(screen.getByText('Missing certification details.')).not.toBeNull();
+  expect(screen.queryByText('booking needs more information')).toBeNull();
+});
+
+test('does not render admin-only attention actions for customer service users', () => {
+  render(
+    <NeedsAttentionSection
+      currentUser={{ id: 'cs-1', role: UserRole.CUSTOMER_SERVICE }}
+      items={[
+        attentionItem({
+          status: BookingStatus.PENDING_APPROVAL,
+          label: 'booking pending approval',
+        }),
+        attentionItem({
+          id: 'schedule-schedule-1',
+          kind: 'schedule',
+          bookingId: 'booking-schedule-1',
+          scheduleItemId: 'schedule-1',
+          label: 'scheduled activity needs staff assignment',
+          status: BookingStatus.SCHEDULED,
+        }),
+      ]}
+    />,
+  );
+
+  expect(screen.queryByRole('link', { name: 'Review' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Assign staff' })).toBeNull();
+  expect(screen.getAllByRole('link', { name: 'View' })).toHaveLength(2);
 });
 
 test('does not render booking or assignment links for instructors', () => {
@@ -105,6 +133,45 @@ test('does not render booking or assignment links for instructors', () => {
   expect(screen.queryByRole('link')).toBeNull();
   expect(screen.queryByText('Assign staff')).toBeNull();
   expect(screen.queryByText('View booking')).toBeNull();
+});
+
+test('shows calm missing values in attention and schedule rows', () => {
+  render(
+    <div>
+      <NeedsAttentionSection
+        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+        items={[attentionItem({ primaryCustomerName: null, detail: null })]}
+      />
+      <TodaysScheduleSection
+        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+        items={[
+          scheduleItem({
+            primaryCustomerName: null,
+            customers: [],
+            startTime: null,
+            isTimeTbd: true,
+            hotel: null,
+            assignedStaffNames: [],
+            assignments: [],
+            isUnassigned: true,
+          }),
+        ]}
+      />
+      <RecentActivitySection
+        items={[
+          recentActivityItem({
+            primaryCustomerName: null,
+          }),
+        ]}
+      />
+    </div>,
+  );
+
+  expect(screen.getAllByText('No primary customer')).toHaveLength(2);
+  expect(screen.getByText(/No primary customer - Fun Dive/)).not.toBeNull();
+  expect(screen.getByText('TBD')).not.toBeNull();
+  expect(screen.getByText('No hotel')).not.toBeNull();
+  expect(screen.getByText('Unassigned')).not.toBeNull();
 });
 
 test('shows unassigned and assigned staff states on today schedule rows', () => {

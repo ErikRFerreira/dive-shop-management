@@ -36,7 +36,7 @@ export function CustomerServiceDashboardSummary({
         description="Your bookings needing updates."
       />
       <DashboardSummaryCard
-        title="My Approved/Scheduled Bookings"
+        title="Approved/Scheduled"
         value={summary.myApprovedScheduledBookingsCount}
         href="/bookings"
         description="Your approved or scheduled bookings."

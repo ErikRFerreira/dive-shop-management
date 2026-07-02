@@ -46,6 +46,7 @@ type RecentActivitySectionProps = {
 
 const operationsRoles = [UserRole.ADMIN, UserRole.MANAGER] as const;
 const RECENT_ACTIVITY_DISPLAY_LIMIT = 3;
+const NO_PRIMARY_CUSTOMER_LABEL = 'No primary customer';
 
 /**
  * Renders a reusable compact dashboard empty state.
@@ -131,11 +132,11 @@ export function NeedsAttentionItem({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          {item.primaryCustomerName ?? 'Customer not recorded'}
+          {formatPrimaryCustomerName(item.primaryCustomerName)}
         </p>
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>{item.label}</span>
+          {shouldShowAttentionLabel(item) ? <span>{item.label}</span> : null}
           {item.date ? <span>{formatDisplayDate(item.date)}</span> : null}
           {item.detail ? <span>{item.detail}</span> : null}
         </div>
@@ -218,7 +219,7 @@ export function TodaysScheduleItem({
         <div>
           <h3 className="text-sm font-medium">{item.activitySummary}</h3>
           <p className="text-sm text-muted-foreground">
-            {item.primaryCustomerName ?? 'Customer not recorded'}
+            {formatPrimaryCustomerName(item.primaryCustomerName)}
           </p>
         </div>
 
@@ -262,7 +263,7 @@ export function RecentActivitySection({ items }: RecentActivitySectionProps) {
   if (recentItems.length === 0) {
     return (
       <DashboardEmptyState
-        title="No recent activity"
+        title="No recent activity yet"
         description="Recent booking and schedule updates will appear here."
       />
     );
@@ -303,7 +304,7 @@ export function RecentActivityItem({
         <BookingStatusBadge status={item.status} />
       </div>
       <p className="text-sm text-muted-foreground">
-        {item.primaryCustomerName ?? 'Customer not recorded'} -{' '}
+        {formatPrimaryCustomerName(item.primaryCustomerName)} -{' '}
         {item.activitySummary}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -328,6 +329,26 @@ function ScheduleDetail({ label, value }: { label: string; value: string }) {
       <p className="mt-1">{value}</p>
     </div>
   );
+}
+
+/**
+ * Formats the primary customer display value for dashboard rows.
+ *
+ * @param name - Primary customer name from the dashboard query layer.
+ * @returns The provided name, or a calm missing-customer fallback.
+ */
+function formatPrimaryCustomerName(name: string | null) {
+  return name ?? NO_PRIMARY_CUSTOMER_LABEL;
+}
+
+/**
+ * Decides whether an attention row needs its text label in addition to badges.
+ *
+ * @param item - Attention row being rendered.
+ * @returns True for non-booking rows where the label adds operational context.
+ */
+function shouldShowAttentionLabel(item: DashboardNeedsAttentionItemData) {
+  return item.kind !== 'booking';
 }
 
 /**
