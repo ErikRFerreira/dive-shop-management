@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { BookingStatus, UserRole } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingCustomerRole,
+  BookingStatus,
+  ScheduleAssignmentRole,
+  UserRole,
+} from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
   bookingRequestCount: vi.fn(),
+  bookingRequestFindMany: vi.fn(),
   scheduleItemCount: vi.fn(),
+  scheduleItemFindMany: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -13,9 +21,11 @@ vi.mock('@/lib/db', () => ({
   db: {
     bookingRequest: {
       count: mocks.bookingRequestCount,
+      findMany: mocks.bookingRequestFindMany,
     },
     scheduleItem: {
       count: mocks.scheduleItemCount,
+      findMany: mocks.scheduleItemFindMany,
     },
   },
 }));
@@ -23,8 +33,12 @@ vi.mock('@/lib/db', () => ({
 import {
   getAdminDashboardSummary,
   getCustomerServiceDashboardSummary,
+  getDashboardOverviewForCurrentUser,
   getDashboardSummaryForCurrentUser,
   getInstructorDashboardSummary,
+  getNeedsAttentionItems,
+  getRecentDashboardActivity,
+  getTodaysScheduleItems,
 } from '@/features/dashboard/queries';
 
 const adminUser = {
@@ -58,9 +72,14 @@ const divemasterUser = {
   role: UserRole.DIVEMASTER,
 };
 
+const baseDate = new Date('2026-07-14T00:00:00.000Z');
+const updatedAt = new Date('2026-07-14T08:30:00.000Z');
+
 beforeEach(() => {
   mocks.bookingRequestCount.mockReset();
+  mocks.bookingRequestFindMany.mockReset();
   mocks.scheduleItemCount.mockReset();
+  mocks.scheduleItemFindMany.mockReset();
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-07-14T10:30:00.000Z'));
 });
@@ -250,7 +269,272 @@ describe('instructor dashboard summary', () => {
   });
 });
 
-test('does not query admin or customer-service summaries for unsupported roles', async () => {
+describe('dashboard needs attention', () => {
+  test('queries global booking queues and unassigned scheduled items for operations users', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([
+      bookingRecord({ status: BookingStatus.PENDING_APPROVAL }),
+    ]);
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([
+      scheduleRecord({ assignments: [] }),
+    ]);
+
+    await expect(getNeedsAttentionItems(adminUser)).resolves.toEqual([
+      expect.objectContaining({
+        kind: 'booking',
+        label: 'booking pending approval',
+        bookingId: 'booking-1',
+      }),
+      expect.objectContaining({
+        kind: 'schedule',
+        label: 'scheduled activity needs staff assignment',
+        scheduleItemId: 'schedule-1',
+      }),
+    ]);
+
+    expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: {
+            in: [BookingStatus.PENDING_APPROVAL, BookingStatus.NEEDS_MORE_INFO],
+          },
+        },
+        take: expect.any(Number),
+      }),
+    );
+    expect(mocks.scheduleItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          bookingRequest: {
+            status: BookingStatus.SCHEDULED,
+          },
+          date: {
+            gte: expect.any(Date),
+          },
+          assignments: {
+            none: {},
+          },
+        },
+        take: expect.any(Number),
+      }),
+    );
+  });
+
+  test('queries only owned draft, pending, and needs-more-info bookings for customer service', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([
+      bookingRecord({ status: BookingStatus.NEEDS_MORE_INFO }),
+    ]);
+
+    await getNeedsAttentionItems(customerServiceUser);
+
+    expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          createdById: customerServiceUser.id,
+          status: {
+            in: [
+              BookingStatus.NEEDS_MORE_INFO,
+              BookingStatus.DRAFT,
+              BookingStatus.PENDING_APPROVAL,
+            ],
+          },
+        },
+      }),
+    );
+    expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
+  });
+
+  test('returns no needs-attention items for instructors', async () => {
+    await expect(getNeedsAttentionItems(instructorUser)).resolves.toEqual([]);
+
+    expect(mocks.bookingRequestFindMany).not.toHaveBeenCalled();
+    expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("today's dashboard schedule", () => {
+  test('queries global official scheduled items for operations users', async () => {
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([
+      scheduleRecord({ assignments: [] }),
+    ]);
+
+    await expect(getTodaysScheduleItems(managerUser)).resolves.toEqual([
+      expect.objectContaining({
+        scheduleItemId: 'schedule-1',
+        bookingId: 'booking-1',
+        activityLabel: 'Open Water',
+        activitySummary: 'Open Water',
+        primaryCustomerName: 'Ada Lovelace',
+        hotel: 'Sea View',
+        isTimeTbd: false,
+        isUnassigned: true,
+      }),
+    ]);
+
+    expect(mocks.scheduleItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          bookingRequest: {
+            status: BookingStatus.SCHEDULED,
+          },
+          date: {
+            gte: expect.any(Date),
+            lt: expect.any(Date),
+          },
+        },
+      }),
+    );
+  });
+
+  test('scopes customer service schedule rows to owned scheduled bookings', async () => {
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
+
+    await getTodaysScheduleItems(customerServiceUser);
+
+    expect(mocks.scheduleItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          bookingRequest: {
+            status: BookingStatus.SCHEDULED,
+            createdById: customerServiceUser.id,
+          },
+          date: {
+            gte: expect.any(Date),
+            lt: expect.any(Date),
+          },
+        },
+      }),
+    );
+  });
+
+  test('scopes instructor schedule rows to current-user assignments', async () => {
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([
+      scheduleRecord({ assignments: [assignmentRecord()] }),
+    ]);
+
+    await getTodaysScheduleItems(instructorUser);
+
+    expect(mocks.scheduleItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          bookingRequest: {
+            status: BookingStatus.SCHEDULED,
+          },
+          assignments: {
+            some: {
+              userId: instructorUser.id,
+            },
+          },
+          date: {
+            gte: expect.any(Date),
+            lt: expect.any(Date),
+          },
+        },
+      }),
+    );
+  });
+});
+
+describe('recent dashboard activity', () => {
+  test('uses recently updated bookings globally for operations users', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([
+      bookingRecord({ status: BookingStatus.SCHEDULED }),
+    ]);
+
+    await expect(getRecentDashboardActivity(adminUser)).resolves.toEqual([
+      expect.objectContaining({
+        bookingId: 'booking-1',
+        label: 'booking approved and scheduled',
+        occurredAt: updatedAt,
+      }),
+    ]);
+
+    expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+        orderBy: [{ updatedAt: 'desc' }],
+        take: 3,
+      }),
+    );
+  });
+
+  test('scopes customer service activity to owned bookings', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([]);
+
+    await getRecentDashboardActivity(customerServiceUser);
+
+    expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          createdById: customerServiceUser.id,
+        },
+      }),
+    );
+  });
+
+  test('scopes instructor activity to assigned scheduled bookings', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([]);
+
+    await getRecentDashboardActivity(instructorUser);
+
+    expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: BookingStatus.SCHEDULED,
+          scheduleItem: {
+            is: {
+              assignments: {
+                some: {
+                  userId: instructorUser.id,
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+  });
+});
+
+test('overview query returns summary plus operational sections', async () => {
+  mocks.bookingRequestCount.mockResolvedValueOnce(2).mockResolvedValueOnce(3);
+  mocks.scheduleItemCount
+    .mockResolvedValueOnce(4)
+    .mockResolvedValueOnce(5)
+    .mockResolvedValueOnce(6);
+  mocks.bookingRequestFindMany
+    .mockResolvedValueOnce([
+      bookingRecord({ status: BookingStatus.PENDING_APPROVAL }),
+    ])
+    .mockResolvedValueOnce([
+      bookingRecord({ id: 'recent-booking', status: BookingStatus.SCHEDULED }),
+    ]);
+  mocks.scheduleItemFindMany
+    .mockResolvedValueOnce([scheduleRecord({ id: 'unassigned-schedule' })])
+    .mockResolvedValueOnce([scheduleRecord({ id: 'today-schedule' })]);
+
+  await expect(getDashboardOverviewForCurrentUser(adminUser)).resolves.toEqual({
+    summary: {
+      kind: 'admin',
+      pendingApprovalCount: 2,
+      needsMoreInfoCount: 3,
+      todayScheduleCount: 4,
+      tomorrowScheduleCount: 5,
+      unassignedActivitiesCount: 6,
+    },
+    needsAttention: expect.arrayContaining([
+      expect.objectContaining({ kind: 'booking' }),
+      expect.objectContaining({ kind: 'schedule' }),
+    ]),
+    todaysSchedule: [
+      expect.objectContaining({ scheduleItemId: 'today-schedule' }),
+    ],
+    recentActivity: [
+      expect.objectContaining({ bookingId: 'recent-booking' }),
+    ],
+  });
+});
+
+test('does not query protected sections for unsupported roles', async () => {
   await expect(getAdminDashboardSummary(instructorUser)).resolves.toEqual({
     kind: 'empty',
   });
@@ -264,7 +548,141 @@ test('does not query admin or customer-service summaries for unsupported roles',
       kind: 'empty',
     },
   );
+  await expect(getNeedsAttentionItems(divemasterUser)).resolves.toEqual([]);
+  await expect(getTodaysScheduleItems(divemasterUser)).resolves.toEqual([]);
+  await expect(getRecentDashboardActivity(divemasterUser)).resolves.toEqual([]);
 
   expect(mocks.bookingRequestCount).not.toHaveBeenCalled();
   expect(mocks.scheduleItemCount).not.toHaveBeenCalled();
+  expect(mocks.bookingRequestFindMany).not.toHaveBeenCalled();
+  expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
 });
+
+/**
+ * Creates a mocked booking row matching the compact dashboard query selection.
+ *
+ * @param overrides - Field overrides for test-specific booking states.
+ * @returns A booking-like object returned by the mocked Prisma client.
+ */
+function bookingRecord(
+  overrides: Partial<ReturnType<typeof bookingRecordBase>> = {},
+) {
+  return {
+    ...bookingRecordBase(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates the default mocked booking row before test-specific overrides.
+ *
+ * @returns A booking-like object with compact customer and activity relations.
+ */
+function bookingRecordBase() {
+  return {
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL as BookingStatus,
+    activityType: ActivityType.OPEN_WATER_COURSE as ActivityType,
+    requestedDate: baseDate,
+    requestedTime: '09:00',
+    numberOfPeople: 2,
+    needsMoreInfoReason: 'Confirm certification.',
+    updatedAt,
+    activities: [
+      {
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        sortOrder: 0,
+      },
+    ],
+    customers: [
+      {
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        createdAt: updatedAt,
+        customer: {
+          fullName: 'Ada Lovelace',
+          firstName: null,
+          lastName: null,
+          chineseName: null,
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Creates a mocked schedule row matching the compact dashboard query selection.
+ *
+ * @param overrides - Field overrides for test-specific schedule states.
+ * @returns A schedule-like object returned by the mocked Prisma client.
+ */
+function scheduleRecord(
+  overrides: Partial<ReturnType<typeof scheduleRecordBase>> = {},
+) {
+  return {
+    ...scheduleRecordBase(),
+    ...overrides,
+  };
+}
+
+/**
+ * Creates the default mocked schedule row before test-specific overrides.
+ *
+ * @returns A schedule-like object with compact booking, customer, and assignment relations.
+ */
+function scheduleRecordBase() {
+  return {
+    id: 'schedule-1',
+    bookingRequestId: 'booking-1',
+    date: baseDate,
+    startTime: '09:00',
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    updatedAt,
+    assignments: [] as ReturnType<typeof assignmentRecord>[],
+    bookingRequest: {
+      id: 'booking-1',
+      status: BookingStatus.SCHEDULED as BookingStatus,
+      activityType: ActivityType.OPEN_WATER_COURSE as ActivityType,
+      numberOfPeople: 2,
+      updatedAt,
+      activities: [
+        {
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          sortOrder: 0,
+        },
+      ],
+      customers: [
+        {
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          hotelAtBooking: 'Sea View',
+          createdAt: updatedAt,
+          customer: {
+            fullName: 'Ada Lovelace',
+            firstName: null,
+            lastName: null,
+            chineseName: null,
+            hotel: 'Fallback Hotel',
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * Creates a mocked schedule assignment row.
+ *
+ * @returns An assignment-like object returned by the mocked Prisma client.
+ */
+function assignmentRecord() {
+  return {
+    id: 'assignment-1',
+    userId: instructorUser.id,
+    role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+    user: {
+      id: instructorUser.id,
+      name: 'Instructor One',
+      email: 'instructor@example.test',
+      role: UserRole.INSTRUCTOR,
+    },
+  };
+}
