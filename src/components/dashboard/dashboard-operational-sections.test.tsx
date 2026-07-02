@@ -5,7 +5,7 @@ import type {
   DashboardNeedsAttentionItem,
   DashboardRecentActivityItem,
   DashboardScheduleItem,
-} from '@/features/dashboard/queries';
+} from '@/features/dashboard/types';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -13,11 +13,9 @@ import {
   ScheduleAssignmentRole,
   UserRole,
 } from '@/generated/prisma/enums';
-import {
-  NeedsAttentionSection,
-  RecentActivitySection,
-  TodaysScheduleSection,
-} from './dashboard-operational-sections';
+import { NeedsAttentionSection } from './needs-attention-section';
+import { RecentActivitySection } from './recent-activity-section';
+import { TodaysScheduleSection } from './todays-schedule-section';
 
 afterEach(() => {
   cleanup();
