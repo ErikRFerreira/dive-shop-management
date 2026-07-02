@@ -1,6 +1,5 @@
-import type { CustomerServiceDashboardSummary as CustomerServiceDashboardSummaryData } from '@/features/dashboard/queries';
-
-import { DashboardSummaryCard } from './dashboard-summary-card';
+import type { CustomerServiceDashboardSummary as CustomerServiceDashboardSummaryData } from '@/features/dashboard/types';
+import { StatCard } from '@/components/common/stat-card';
 
 type CustomerServiceDashboardSummaryProps = {
   summary: CustomerServiceDashboardSummaryData;
@@ -17,25 +16,25 @@ export function CustomerServiceDashboardSummary({
 }: CustomerServiceDashboardSummaryProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <DashboardSummaryCard
+      <StatCard
         title="My Drafts"
         value={summary.myDraftsCount}
         href="/bookings?status=DRAFT"
         description="Bookings saved before submission."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="My Pending Approval"
         value={summary.myPendingApprovalCount}
         href="/bookings?status=PENDING_APPROVAL"
         description="Your bookings waiting for review."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Needs More Info"
         value={summary.myNeedsMoreInfoCount}
         href="/bookings?status=NEEDS_MORE_INFO"
         description="Your bookings needing updates."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Approved/Scheduled"
         value={summary.myApprovedScheduledBookingsCount}
         href="/bookings"

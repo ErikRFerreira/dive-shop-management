@@ -1,6 +1,5 @@
-import type { AdminDashboardSummary as AdminDashboardSummaryData } from '@/features/dashboard/queries';
-
-import { DashboardSummaryCard } from './dashboard-summary-card';
+import type { AdminDashboardSummary as AdminDashboardSummaryData } from '@/features/dashboard/types';
+import { StatCard } from '@/components/common/stat-card';
 
 type AdminDashboardSummaryProps = {
   summary: AdminDashboardSummaryData;
@@ -17,31 +16,31 @@ export function AdminDashboardSummary({
 }: AdminDashboardSummaryProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-      <DashboardSummaryCard
+      <StatCard
         title="Pending Approval"
         value={summary.pendingApprovalCount}
         href="/bookings?status=PENDING_APPROVAL"
         description="Bookings waiting for review."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Needs More Info"
         value={summary.needsMoreInfoCount}
         href="/bookings?status=NEEDS_MORE_INFO"
         description="Bookings sent back for details."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Today's Schedule"
         value={summary.todayScheduleCount}
         href="/schedule?range=today"
         description="Scheduled activities today."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Tomorrow's Schedule"
         value={summary.tomorrowScheduleCount}
         href="/schedule?range=tomorrow"
         description="Scheduled activities tomorrow."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Unassigned Activities"
         value={summary.unassignedActivitiesCount}
         href="/bookings?queue=unassigned"

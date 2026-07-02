@@ -1,6 +1,5 @@
-import type { InstructorDashboardSummary as InstructorDashboardSummaryData } from '@/features/dashboard/queries';
-
-import { DashboardSummaryCard } from './dashboard-summary-card';
+import type { InstructorDashboardSummary as InstructorDashboardSummaryData } from '@/features/dashboard/types';
+import { StatCard } from '@/components/common/stat-card';
 
 type InstructorDashboardSummaryProps = {
   summary: InstructorDashboardSummaryData;
@@ -17,19 +16,19 @@ export function InstructorDashboardSummary({
 }: InstructorDashboardSummaryProps) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <DashboardSummaryCard
+      <StatCard
         title="Today's Assignments"
         value={summary.todayAssignmentsCount}
         href="/assignments"
         description="Assigned scheduled activities today."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="Tomorrow's Assignments"
         value={summary.tomorrowAssignmentsCount}
         href="/assignments"
         description="Assigned scheduled activities tomorrow."
       />
-      <DashboardSummaryCard
+      <StatCard
         title="My Assignments"
         value={summary.myAssignmentsCount}
         href="/assignments"
