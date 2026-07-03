@@ -38,9 +38,6 @@ export function RecentActivitySection({ items }: RecentActivitySectionProps) {
     <Card>
       <CardHeader>
         <CardTitle>Recent activity</CardTitle>
-        <CardDescription>
-          Latest booking and schedule updates from your workflow.
-        </CardDescription>
       </CardHeader>
       <CardContent className="divide-y">
         {recentItems.map((item) => (
