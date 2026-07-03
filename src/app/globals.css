@@ -211,17 +211,22 @@
     min-height: 100dvh;
 
     display: grid;
-    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width, 15.625rem) minmax(0, 1fr);
     grid-template-rows: 64px minmax(0, 1fr);
     grid-template-areas:
       'sidebar header'
       'sidebar main';
+    transition: grid-template-columns 240ms ease-in-out;
   }
 
   .app-sidebar {
     grid-area: sidebar;
 
     @apply hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex;
+  }
+
+  .app-sidebar-collapsed {
+    overflow: hidden;
   }
 
   .app-header {

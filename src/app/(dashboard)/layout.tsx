@@ -1,22 +1,13 @@
-import DashboardHeader from '@/components/layout/dashboard-header';
-import DashboardSidebar from '@/components/layout/dashboard-sidebar';
+import DashboardShell from '@/components/layout/dashboard-shell';
 import { requireCurrentUser } from '@/lib/current-user';
 
 export const dynamic = 'force-dynamic';
 
+/** Renders the authenticated dashboard shell for the current user. */
 async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const currentUser = await requireCurrentUser();
 
-  return (
-    <div className="app-layout">
-      <DashboardSidebar currentUser={currentUser} />
-      <DashboardHeader currentUser={currentUser} />
-
-      <main className="app-main">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5">{children}</div>
-      </main>
-    </div>
-  );
+  return <DashboardShell currentUser={currentUser}>{children}</DashboardShell>;
 }
 
 export default DashboardLayout;
