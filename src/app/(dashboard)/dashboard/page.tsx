@@ -25,7 +25,7 @@ async function Dashboard() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Operational summary for your current workflow.
+          Operational overview for Blue Revival
         </p>
       </div>
 
