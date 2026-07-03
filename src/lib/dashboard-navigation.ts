@@ -1,5 +1,13 @@
 import { UserRole } from '@/generated/prisma/enums';
 import type { CurrentUser } from '@/lib/current-user';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  CalendarDays,
+  ClipboardCheck,
+  Users,
+  Settings,
+} from 'lucide-react';
 
 export type DashboardRouteKey =
   | 'dashboard'
@@ -13,6 +21,7 @@ type DashboardRoute = {
   key: DashboardRouteKey;
   href: string;
   label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   allowedRoles: readonly UserRole[];
 };
 
@@ -21,6 +30,7 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'dashboard',
     href: '/dashboard',
     label: 'Dashboard',
+    icon: LayoutDashboard,
     allowedRoles: [
       UserRole.ADMIN,
       UserRole.MANAGER,
@@ -33,12 +43,14 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'bookings',
     href: '/bookings',
     label: 'Bookings',
+    icon: ClipboardList,
     allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
   },
   {
     key: 'schedule',
     href: '/schedule',
     label: 'Schedule',
+    icon: CalendarDays,
     allowedRoles: [
       UserRole.ADMIN,
       UserRole.MANAGER,
@@ -50,18 +62,21 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     key: 'assignments',
     href: '/assignments',
     label: 'My Assignments',
+    icon: ClipboardCheck,
     allowedRoles: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
   },
   {
     key: 'customers',
     href: '/customers',
     label: 'Customers',
+    icon: Users,
     allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
   },
   {
     key: 'settings',
     href: '/settings',
     label: 'Settings',
+    icon: Settings,
     allowedRoles: [UserRole.ADMIN],
   },
 ];

@@ -211,7 +211,7 @@
     min-height: 100dvh;
 
     display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-columns: 250px minmax(0, 1fr);
     grid-template-rows: 64px minmax(0, 1fr);
     grid-template-areas:
       'sidebar header'
@@ -221,13 +221,13 @@
   .app-sidebar {
     grid-area: sidebar;
 
-    @apply bg-slate-100;
+    @apply hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex;
   }
 
   .app-header {
     grid-area: header;
 
-    @apply sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6;
+    @apply sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md sm:px-6;
   }
 
   .app-main {
