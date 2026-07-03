@@ -7,6 +7,7 @@ import type {
   BookingStatusFilter as BookingStatusFilterValue,
 } from '@/features/bookings/queries';
 import { bookingDefaultPageSize } from '@/features/bookings/queries';
+import { cn } from '@/lib/utils';
 
 const filters: {
   href: string;
@@ -66,7 +67,7 @@ export function BookingStatusFilter({
   return (
     <nav
       aria-label="Filter bookings by status or operational queue"
-      className="flex flex-wrap gap-2"
+      className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card/60 p-3 shadow-sm"
     >
       {filters.map((filter) => {
         const isActive = filter.queue
@@ -79,6 +80,12 @@ export function BookingStatusFilter({
             asChild
             size="sm"
             variant={isActive ? 'default' : 'outline'}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              isActive
+                ? 'border-primary/30 bg-primary/10 text-primary'
+                : 'border-transparent bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
           >
             <Link
               href={filter.href}

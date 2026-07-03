@@ -27,7 +27,7 @@ async function Dashboard() {
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Dashboard"
           description="Operational overview for Blue Revival"
