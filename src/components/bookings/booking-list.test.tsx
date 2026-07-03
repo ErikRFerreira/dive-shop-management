@@ -156,34 +156,40 @@ function renderBookingList(
   );
 }
 
-test('renders operational and audit columns', () => {
+test('renders compact operational columns', () => {
   renderBookingList([
     booking({ updatedAt: new Date('2026-07-02T09:30:00.000Z') }),
   ]);
 
   expect(screen.getByRole('columnheader', { name: 'Status' })).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Booking' })).not.toBeNull();
   expect(
-    screen.getByRole('columnheader', { name: 'Customers/divers' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Activities' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Activity date/time' }),
+    screen.getByRole('columnheader', { name: 'Activity / Schedule' }),
   ).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Hotel' })).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Created by' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Created/edited' }),
-  ).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Updated' })).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
-  expect(screen.getByText('Casey Service')).not.toBeNull();
-  expect(screen.getByText('Created 01 Jul 2026, 04:00 pm')).not.toBeNull();
-  expect(screen.getByText('Edited 02 Jul 2026, 05:30 pm')).not.toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Source/referrer' })).toBeNull();
+  expect(screen.getByText('02 Jul')).not.toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Customers/divers' }),
+  ).toBeNull();
+  expect(screen.queryByRole('columnheader', { name: 'Activities' })).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Activity date/time' }),
+  ).toBeNull();
+  expect(screen.queryByRole('columnheader', { name: 'Hotel' })).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Created by' }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Created/edited' }),
+  ).toBeNull();
+  expect(screen.queryByText('Casey Service')).toBeNull();
+  expect(screen.queryByText('Created 01 Jul 2026, 04:00 pm')).toBeNull();
+  expect(screen.queryByText('Edited 02 Jul 2026, 05:30 pm')).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Source/referrer' }),
+  ).toBeNull();
   expect(
     screen.queryByRole('columnheader', { name: 'Customer service owner' }),
   ).toBeNull();
@@ -204,7 +210,9 @@ test('renders assigned staff names without exposing emails', () => {
     }),
   ]);
 
-  expect(screen.getByText('Inez Instructor, Dina Divemaster')).not.toBeNull();
+  expect(screen.getByText('Inez Instructor')).not.toBeNull();
+  expect(screen.getByText('Dina Divemaster')).not.toBeNull();
+  expect(screen.queryByText('Inez Instructor, Dina Divemaster')).toBeNull();
   expect(screen.queryByText('inez@example.test')).toBeNull();
   expect(screen.queryByText('dina@example.test')).toBeNull();
 });
@@ -231,7 +239,7 @@ test('renders staff state for unassigned and unscheduled bookings', () => {
   expect(screen.getAllByText('\u2014').length).toBeGreaterThan(0);
 });
 
-test('renders every customer, safe fallback, date time, hotel, and row actions', () => {
+test('renders every customer, activity, safe fallback, schedule, hotel, and row actions', () => {
   const createdAt = new Date('2026-07-01T08:00:00.000Z');
   const participantCustomer = {
     id: 'customer-2',
@@ -278,6 +286,21 @@ test('renders every customer, safe fallback, date time, hotel, and row actions',
           customer: participantCustomer,
         },
       ],
+      activities: [
+        ...(booking().activities ?? []),
+        {
+          id: 'activity-2',
+          bookingRequestId: 'booking-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: null,
+          requestedDate: new Date('2026-07-15T00:00:00.000Z'),
+          requestedTime: '13:00',
+          notes: null,
+          sortOrder: 1,
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
     }),
     booking({
       id: 'booking-missing-customer',
@@ -311,10 +334,13 @@ test('renders every customer, safe fallback, date time, hotel, and row actions',
   expect(screen.getByText('Maria Santos')).not.toBeNull();
   expect(screen.getByText('Lina Chen')).not.toBeNull();
   expect(screen.queryByText('Maria Santos + 1 more')).toBeNull();
+  expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
+  expect(screen.getByText('Open Water Course')).not.toBeNull();
+  expect(screen.queryByText('Fun Dive + Open Water Course')).toBeNull();
   expect(screen.getByText('Unnamed customer')).not.toBeNull();
-  expect(screen.getByText('15 Jul 2026 13:00')).not.toBeNull();
-  expect(screen.getByText('16 Jul 2026 TBD')).not.toBeNull();
-  expect(screen.getByText('Booking Hotel')).not.toBeNull();
+  expect(screen.getByText('15 Jul 2026 \u00b7 13:00')).not.toBeNull();
+  expect(screen.getByText('16 Jul 2026 \u00b7 TBD')).not.toBeNull();
+  expect(screen.getByText('Hotel: Booking Hotel')).not.toBeNull();
   expect(
     screen.getAllByRole('button', { name: /Open actions for booking/ }).length,
   ).toBeGreaterThan(0);
@@ -334,7 +360,9 @@ test('falls back to customer profile hotel when booking-specific hotel is missin
 
   const table = screen.getByRole('table');
 
-  expect(within(table).getByText('Customer Profile Hotel')).not.toBeNull();
+  expect(
+    within(table).getByText('Hotel: Customer Profile Hotel'),
+  ).not.toBeNull();
 });
 
 test('renders booking count label without pagination for a single page', () => {

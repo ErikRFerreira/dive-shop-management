@@ -1,5 +1,4 @@
 import Link from 'next/link';
-
 import { BookingList } from '@/components/bookings/booking-list';
 import { BookingStatusFilter } from '@/components/bookings/booking-status-filter';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,8 @@ import {
 } from '@/features/bookings/queries';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
+import { Plus } from 'lucide-react';
+import PageHeader from '@/components/common/page-header';
 
 type BookingsPageProps = {
   searchParams: Promise<{
@@ -49,16 +50,17 @@ export default async function BookingsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
-          <p className="text-sm text-muted-foreground">
-            Review and track booking requests.
-          </p>
-        </div>
+        <PageHeader
+          title="Bookings"
+          description="Review and track booking requests."
+        />
 
         {canCreateBookingRequest(currentUser) ? (
-          <Button asChild>
-            <Link href="/bookings/new">Create Booking</Link>
+          <Button asChild className="shadow-sm shadow-primary/20">
+            <Link href="/bookings/new">
+              <Plus className="size-4" />
+              Create Booking
+            </Link>
           </Button>
         ) : null}
       </div>
