@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import type {
   DashboardNeedsAttentionItem,
@@ -165,8 +165,9 @@ test('shows calm missing values in attention and schedule rows', () => {
     </div>,
   );
 
-  expect(screen.getAllByText('No primary customer')).toHaveLength(2);
-  expect(screen.getByText(/No primary customer - Fun Dive/)).not.toBeNull();
+  expect(screen.getAllByText('No primary customer')).toHaveLength(1);
+  expect(screen.getByText('booking updated')).not.toBeNull();
+  expect(screen.getByText(/No primary customer: Fun Dive/)).not.toBeNull();
   expect(screen.getByText('TBD')).not.toBeNull();
   expect(screen.getByText('No hotel')).not.toBeNull();
   expect(screen.getByText('Unassigned')).not.toBeNull();
@@ -220,28 +221,34 @@ test('shows unassigned and assigned staff states on today schedule rows', () => 
   const assignLink = screen.getByRole('link', { name: 'Assign staff' });
 
   expect(screen.getByText('Unassigned')).not.toBeNull();
-  expect(screen.getByText('Inez Instructor, Dina Divemaster')).not.toBeNull();
+  expect(screen.getByText('Inez Instructor')).not.toBeNull();
+  expect(screen.getByText('Dina Divemaster')).not.toBeNull();
   expect(assignLink.getAttribute('href')).toBe('/bookings/booking-unassigned');
 });
 
 test('renders recent activity as read-only status and date information', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-03T12:00:00.000Z'));
+
   render(
     <RecentActivitySection
       items={[
         recentActivityItem({
-          label: 'booking approved and scheduled',
+          label: 'Booking approved and scheduled',
           status: BookingStatus.SCHEDULED,
-          occurredAt: new Date('2026-07-02T08:30:00.000Z'),
+          occurredAt: new Date('2026-07-03T08:30:00.000Z'),
         }),
       ]}
     />,
   );
 
-  expect(screen.getByText('booking approved and scheduled')).not.toBeNull();
-  expect(screen.getByText('Scheduled')).not.toBeNull();
-  expect(screen.getByText(/02 Jul 2026, 04:30 pm/)).not.toBeNull();
+  expect(screen.getByText('Booking approved and scheduled')).not.toBeNull();
+  expect(screen.getByText('3 hours ago')).not.toBeNull();
+  expect(screen.queryByText('Scheduled')).toBeNull();
   expect(screen.queryByRole('link')).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
+
+  vi.useRealTimers();
 });
 
 test('limits recent activity display to the three newest rows', () => {

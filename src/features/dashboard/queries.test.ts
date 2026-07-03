@@ -152,7 +152,8 @@ describe('admin dashboard summary', () => {
     await getAdminDashboardSummary(managerUser);
 
     const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
-    const tomorrowRange = mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
+    const tomorrowRange =
+      mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
 
     expect(todayRange.gte).toEqual(new Date('2026-07-14T00:00:00.000Z'));
     expect(todayRange.lt).toEqual(new Date('2026-07-15T00:00:00.000Z'));
@@ -168,7 +169,8 @@ describe('admin dashboard summary', () => {
     await getAdminDashboardSummary(managerUser);
 
     const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
-    const tomorrowRange = mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
+    const tomorrowRange =
+      mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
 
     expect(todayRange.gte).toEqual(new Date('2026-07-03T00:00:00.000Z'));
     expect(todayRange.lt).toEqual(new Date('2026-07-04T00:00:00.000Z'));
@@ -231,7 +233,9 @@ describe('instructor dashboard summary', () => {
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(3);
 
-    await expect(getInstructorDashboardSummary(instructorUser)).resolves.toEqual({
+    await expect(
+      getInstructorDashboardSummary(instructorUser),
+    ).resolves.toEqual({
       kind: 'instructor',
       todayAssignmentsCount: 1,
       tomorrowAssignmentsCount: 2,
@@ -472,7 +476,7 @@ describe('recent dashboard activity', () => {
     await expect(getRecentDashboardActivity(adminUser)).resolves.toEqual([
       expect.objectContaining({
         bookingId: 'booking-1',
-        label: 'booking approved and scheduled',
+        label: 'Booking approved and scheduled',
         occurredAt: updatedAt,
       }),
     ]);
@@ -557,9 +561,7 @@ test('overview query returns summary plus operational sections', async () => {
     todaysSchedule: [
       expect.objectContaining({ scheduleItemId: 'today-schedule' }),
     ],
-    recentActivity: [
-      expect.objectContaining({ bookingId: 'recent-booking' }),
-    ],
+    recentActivity: [expect.objectContaining({ bookingId: 'recent-booking' })],
   });
 });
 
@@ -572,11 +574,11 @@ test('does not query protected sections for unsupported roles', async () => {
   ).resolves.toEqual({
     kind: 'empty',
   });
-  await expect(getDashboardSummaryForCurrentUser(divemasterUser)).resolves.toEqual(
-    {
-      kind: 'empty',
-    },
-  );
+  await expect(
+    getDashboardSummaryForCurrentUser(divemasterUser),
+  ).resolves.toEqual({
+    kind: 'empty',
+  });
   await expect(getNeedsAttentionItems(divemasterUser)).resolves.toEqual([]);
   await expect(getTodaysScheduleItems(divemasterUser)).resolves.toEqual([]);
   await expect(getRecentDashboardActivity(divemasterUser)).resolves.toEqual([]);
