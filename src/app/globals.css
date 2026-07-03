@@ -227,7 +227,7 @@
   .app-header {
     grid-area: header;
 
-    @apply bg-slate-200;
+    @apply sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6;
   }
 
   .app-main {
