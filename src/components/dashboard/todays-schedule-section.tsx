@@ -36,14 +36,16 @@ export function TodaysScheduleSection({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Today&apos;s schedule</CardTitle>
-        <CardDescription>
+    <Card className="flex h-full flex-col rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
+      <CardHeader className="border-b border-border px-5">
+        <CardTitle className="text-base font-semibold">
+          Today&apos;s schedule
+        </CardTitle>
+        <CardDescription className="mt-0.5 text-sm">
           Official scheduled activities for today.
         </CardDescription>
       </CardHeader>
-      <CardContent className="divide-y">
+      <CardContent className="flex flex-col gap-3 p-2">
         {items.map((item) => (
           <TodaysScheduleItem
             currentUser={currentUser}
