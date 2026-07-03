@@ -154,10 +154,26 @@ describe('admin dashboard summary', () => {
     const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
     const tomorrowRange = mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
 
-    expect(todayRange.gte).toEqual(new Date(2026, 6, 14));
-    expect(todayRange.lt).toEqual(new Date(2026, 6, 15));
-    expect(tomorrowRange.gte).toEqual(new Date(2026, 6, 15));
-    expect(tomorrowRange.lt).toEqual(new Date(2026, 6, 16));
+    expect(todayRange.gte).toEqual(new Date('2026-07-14T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-15T00:00:00.000Z'));
+    expect(tomorrowRange.gte).toEqual(new Date('2026-07-15T00:00:00.000Z'));
+    expect(tomorrowRange.lt).toEqual(new Date('2026-07-16T00:00:00.000Z'));
+  });
+
+  test('uses the shop timezone for dashboard date range predicates', async () => {
+    vi.setSystemTime(new Date('2026-07-02T18:30:00.000Z'));
+    mocks.bookingRequestCount.mockResolvedValue(0);
+    mocks.scheduleItemCount.mockResolvedValue(0);
+
+    await getAdminDashboardSummary(managerUser);
+
+    const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
+    const tomorrowRange = mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
+
+    expect(todayRange.gte).toEqual(new Date('2026-07-03T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-04T00:00:00.000Z'));
+    expect(tomorrowRange.gte).toEqual(new Date('2026-07-04T00:00:00.000Z'));
+    expect(tomorrowRange.lt).toEqual(new Date('2026-07-05T00:00:00.000Z'));
   });
 });
 
@@ -383,6 +399,19 @@ describe("today's dashboard schedule", () => {
         },
       }),
     );
+  });
+
+  test('uses the shop timezone for today schedule rows', async () => {
+    vi.setSystemTime(new Date('2026-07-02T18:30:00.000Z'));
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
+
+    await getTodaysScheduleItems(managerUser);
+
+    const todayRange =
+      mocks.scheduleItemFindMany.mock.calls[0]?.[0]?.where.date;
+
+    expect(todayRange.gte).toEqual(new Date('2026-07-03T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-04T00:00:00.000Z'));
   });
 
   test('scopes customer service schedule rows to owned scheduled bookings', async () => {

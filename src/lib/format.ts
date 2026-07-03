@@ -1,10 +1,12 @@
+import { SHOP_TIME_ZONE } from './operational-date';
+
 const EMPTY_DISPLAY_VALUE = '\u2014';
 
 const singaporeDateFormatter = new Intl.DateTimeFormat('en-SG', {
   day: '2-digit',
   month: 'short',
   year: 'numeric',
-  timeZone: 'Asia/Singapore',
+  timeZone: SHOP_TIME_ZONE,
 });
 
 const singaporeDateTimeFormatter = new Intl.DateTimeFormat('en-SG', {
@@ -13,7 +15,7 @@ const singaporeDateTimeFormatter = new Intl.DateTimeFormat('en-SG', {
   year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
-  timeZone: 'Asia/Singapore',
+  timeZone: SHOP_TIME_ZONE,
 });
 
 /**

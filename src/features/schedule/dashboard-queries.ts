@@ -9,11 +9,13 @@ import 'server-only';
 import { Prisma } from '@/generated/prisma/client';
 import { BookingStatus } from '@/generated/prisma/enums';
 import { db } from '@/lib/db';
+import {
+  addUtcDateOnlyDays,
+  getShopDateOnlyRange,
+  type DateOnlyRange,
+} from '@/lib/operational-date';
 
-export type DashboardDateOnlyRange = {
-  start: Date;
-  end: Date;
-};
+export type DashboardDateOnlyRange = DateOnlyRange;
 
 const dashboardScheduleAttentionArgs = {
   select: {
@@ -130,32 +132,24 @@ export type DashboardTodayScheduleRecord = Prisma.ScheduleItemGetPayload<
 >;
 
 /**
- * Builds a local date-only range matching existing dashboard date behavior.
+ * Builds the shop-timezone date-only range for dashboard schedule queries.
  *
- * @param date - Any date within the desired local day.
+ * @param date - Instant within the desired shop operational day.
  * @returns Inclusive start and exclusive end boundaries for a date-only field.
  */
 export function getDashboardDateOnlyRange(date: Date): DashboardDateOnlyRange {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-
-  return {
-    start,
-    end: addDashboardDays(start, 1),
-  };
+  return getShopDateOnlyRange(date);
 }
 
 /**
- * Returns a copy of a dashboard date moved forward by whole local days.
+ * Returns a copy of a dashboard date moved forward by whole date-only days.
  *
  * @param date - The source date to copy.
- * @param days - Number of local calendar days to add.
+ * @param days - Number of UTC date-only calendar days to add.
  * @returns A new Date offset by the requested number of days.
  */
 export function addDashboardDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
+  return addUtcDateOnlyDays(date, days);
 }
 
 /**
