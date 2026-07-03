@@ -12,7 +12,9 @@ async function DashboardLayout({ children }: { children: React.ReactNode }) {
       <DashboardSidebar currentUser={currentUser} />
       <DashboardHeader currentUser={currentUser} />
 
-      <main className="app-content">{children}</main>
+      <main className="app-main">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5">{children}</div>
+      </main>
     </div>
   );
 }

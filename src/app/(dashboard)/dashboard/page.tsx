@@ -9,6 +9,7 @@ import { getDashboardOverviewForCurrentUser } from '@/features/dashboard/queries
 import type { DashboardSummary } from '@/features/dashboard/types';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 import { requireCurrentUser } from '@/lib/current-user';
+import PageHeader from '@/components/common/page-header';
 
 /**
  * Renders the role-aware operational dashboard for the authenticated user.
@@ -21,12 +22,12 @@ async function Dashboard() {
   const overview = await getDashboardOverviewForCurrentUser(currentUser);
 
   return (
-    <div className="space-y-6">
+    <>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Operational overview for Blue Revival
-        </p>
+        <PageHeader
+          title="Dashboard"
+          description="Operational overview for Blue Revival"
+        />
       </div>
 
       <DashboardSummaryContent summary={overview.summary} />
@@ -43,7 +44,7 @@ async function Dashboard() {
       </div>
 
       <RecentActivitySection items={overview.recentActivity} />
-    </div>
+    </>
   );
 }
 

@@ -33,7 +33,7 @@ const toneStyles: Record<
   ocean: {
     chip: 'bg-ocean/12 text-ocean ring-ocean/25',
     accent: 'from-ocean/60',
-    value: 'text-muted-foreground/80',
+    value: 'text-foreground',
   },
 };
 
@@ -77,6 +77,7 @@ export function StatCard({
   tone = 'ocean',
 }: StatCardProps) {
   const toneStyle = toneStyles[tone];
+  const isZeroValue = value === 0;
 
   return (
     <Link href={href} className="block h-full">
@@ -107,7 +108,7 @@ export function StatCard({
             <span
               className={cn(
                 'text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums',
-                toneStyle.value,
+                isZeroValue ? 'text-muted-foreground/80' : toneStyle.value,
               )}
             >
               {value}

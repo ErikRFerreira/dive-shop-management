@@ -233,6 +233,6 @@
   .app-main {
     grid-area: main;
 
-    @apply bg-slate-50;
+    @apply flex-1 px-2 py-6 sm:px-6 lg:px-8;
   }
 }
