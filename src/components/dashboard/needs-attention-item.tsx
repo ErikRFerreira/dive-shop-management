@@ -30,18 +30,20 @@ export function NeedsAttentionItem({
   const action = getNeedsAttentionAction(item, currentUser);
 
   return (
-    <article className="grid gap-4 py-4 first:pt-0 last:pb-0 md:grid-cols-[1fr_auto]">
+    <article className="grid gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/30 md:grid-cols-[1fr_auto] md:items-center md:px-5">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-sm font-medium">{item.activitySummary}</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {item.activitySummary}
+          </h3>
           {item.status ? <BookingStatusBadge status={item.status} /> : null}
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm font-medium text-foreground/90">
           {formatPrimaryCustomerName(item.primaryCustomerName)}
         </p>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
           {shouldShowAttentionLabel(item) ? <span>{item.label}</span> : null}
           {item.date ? <span>{formatDisplayDate(item.date)}</span> : null}
           {item.detail ? <span>{item.detail}</span> : null}
@@ -50,7 +52,12 @@ export function NeedsAttentionItem({
 
       {action ? (
         <div className="self-start md:justify-self-end">
-          <Button asChild size="sm" variant="outline">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="rounded-full px-4"
+          >
             <Link href={action.href}>{action.label}</Link>
           </Button>
         </div>

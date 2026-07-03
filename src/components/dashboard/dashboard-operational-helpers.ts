@@ -77,9 +77,23 @@ export function getNeedsAttentionAction(
     };
   }
 
+  if (item.kind === 'booking' && item.status === BookingStatus.NEEDS_MORE_INFO) {
+    return {
+      label: 'View details',
+      href: `/bookings/${item.bookingId}`,
+    };
+  }
+
+  if (item.kind === 'schedule') {
+    return {
+      label: 'View booking',
+      href: `/bookings/${item.bookingId}`,
+    };
+  }
+
   if (canAccessBookingDetails(currentUser)) {
     return {
-      label: 'View',
+      label: 'View booking',
       href: `/bookings/${item.bookingId}`,
     };
   }

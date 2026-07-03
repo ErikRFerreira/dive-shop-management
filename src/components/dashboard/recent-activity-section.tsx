@@ -1,12 +1,5 @@
 import type { DashboardRecentActivityItem as DashboardRecentActivityItemData } from '@/features/dashboard/types';
 import { EmptyState } from '@/components/common/empty-state';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 
 import { RecentActivityItem } from './recent-activity-item';
 
@@ -35,18 +28,18 @@ export function RecentActivitySection({ items }: RecentActivitySectionProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent activity</CardTitle>
-        <CardDescription>
-          Latest booking and schedule updates from your workflow.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="divide-y">
+    <section
+      aria-label="Recent activity"
+      className="border-t border-border px-1 pt-4"
+    >
+      <p className="mb-2.5 text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+        Recent activity
+      </p>
+      <ul className="flex flex-col gap-2">
         {recentItems.map((item) => (
           <RecentActivityItem item={item} key={item.id} />
         ))}
-      </CardContent>
-    </Card>
+      </ul>
+    </section>
   );
 }

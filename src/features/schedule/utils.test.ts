@@ -138,6 +138,25 @@ test('groups my schedule assignments into today tomorrow and upcoming buckets', 
   ]);
 });
 
+test('groups my schedule assignments by the shop timezone day', () => {
+  const groups = groupMyScheduleAssignmentsByDay(
+    [
+      myAssignment({
+        scheduleItemId: 'today',
+        date: new Date('2026-07-15T00:00:00.000Z'),
+      }),
+      myAssignment({
+        scheduleItemId: 'tomorrow',
+        bookingId: 'booking-2',
+        date: new Date('2026-07-16T00:00:00.000Z'),
+      }),
+    ],
+    new Date('2026-07-14T18:30:00.000Z'),
+  );
+
+  expect(groups.map((group) => group.key)).toEqual(['today', 'tomorrow']);
+});
+
 test('preserves my assignment order inside each bucket', () => {
   const groups = groupMyScheduleAssignmentsByDay(
     [
