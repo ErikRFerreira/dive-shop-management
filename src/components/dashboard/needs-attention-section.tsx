@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import type { DashboardNeedsAttentionItem as DashboardNeedsAttentionItemData } from '@/features/dashboard/types';
 import { EmptyState } from '@/components/common/empty-state';
 import {
@@ -38,11 +40,19 @@ export function NeedsAttentionSection({
   return (
     <Card className="flex h-full flex-col rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
       <CardHeader className="border-b border-border px-5">
-        <CardTitle className="text-base font-semibold">
-          Needs attention
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-base font-semibold">
+            Needs attention
+          </CardTitle>
+          <Link
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            href="/bookings"
+          >
+            View all
+          </Link>
+        </div>
         <CardDescription className="mt-0.5 text-sm">
-          Bookings to review before scheduling.
+          Bookings and scheduled activities that need admin action.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 p-2">

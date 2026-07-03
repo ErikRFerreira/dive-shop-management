@@ -57,7 +57,7 @@ export function AdminDashboardSummary({ summary }: AdminDashboardSummaryProps) {
         icon={<UserCog />}
         title="Unassigned Activities"
         value={summary.unassignedActivitiesCount}
-        href="/bookings?queue=unassigned"
+        href="/schedule?unassignedOnly=true"
         description="Scheduled activities without staff."
         tone="unassigned"
       />

@@ -13,6 +13,7 @@ import {
   ScheduleAssignmentRole,
   UserRole,
 } from '@/generated/prisma/enums';
+import { AdminDashboardSummary } from './admin-dashboard-summary';
 import { NeedsAttentionSection } from './needs-attention-section';
 import { RecentActivitySection } from './recent-activity-section';
 import { TodaysScheduleSection } from './todays-schedule-section';
@@ -41,6 +42,37 @@ test('renders clear empty states for every operational dashboard section', () =>
   expect(screen.getByText('No recent activity yet')).not.toBeNull();
 });
 
+test('renders admin stat cards as links to existing operational filters', () => {
+  render(
+    <AdminDashboardSummary
+      summary={{
+        kind: 'admin',
+        pendingApprovalCount: 2,
+        needsMoreInfoCount: 3,
+        todayScheduleCount: 4,
+        tomorrowScheduleCount: 5,
+        unassignedActivitiesCount: 6,
+      }}
+    />,
+  );
+
+  expect(screen.getByText('Pending Approval').closest('a')?.getAttribute('href')).toBe(
+    '/bookings?status=PENDING_APPROVAL',
+  );
+  expect(screen.getByText('Needs More Info').closest('a')?.getAttribute('href')).toBe(
+    '/bookings?status=NEEDS_MORE_INFO',
+  );
+  expect(screen.getByText("Today's Schedule").closest('a')?.getAttribute('href')).toBe(
+    '/schedule?range=today',
+  );
+  expect(
+    screen.getByText("Tomorrow's Schedule").closest('a')?.getAttribute('href'),
+  ).toBe('/schedule?range=tomorrow');
+  expect(
+    screen.getByText('Unassigned Activities').closest('a')?.getAttribute('href'),
+  ).toBe('/schedule?unassignedOnly=true');
+});
+
 test('renders admin review action for pending approval attention items', () => {
   render(
     <NeedsAttentionSection
@@ -59,6 +91,31 @@ test('renders admin review action for pending approval attention items', () => {
   expect(reviewLink).not.toBeNull();
   expect(reviewLink.getAttribute('href')).toBe('/bookings/booking-1/review');
   expect(screen.queryByText('booking pending approval')).toBeNull();
+});
+
+test('renders quiet section header links for attention and schedule panels', () => {
+  render(
+    <div>
+      <NeedsAttentionSection
+        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+        items={[attentionItem()]}
+      />
+      <TodaysScheduleSection
+        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+        items={[scheduleItem()]}
+      />
+    </div>,
+  );
+
+  expect(screen.getByRole('link', { name: 'View all' }).getAttribute('href')).toBe(
+    '/bookings',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Open schedule' }).getAttribute('href'),
+  ).toBe('/schedule?range=today');
+  expect(
+    screen.getByText('Bookings and scheduled activities that need admin action.'),
+  ).not.toBeNull();
 });
 
 test('renders customer service fix details action for needs more info items', () => {
@@ -83,6 +140,26 @@ test('renders customer service fix details action for needs more info items', ()
   expect(screen.queryByText('booking needs more information')).toBeNull();
 });
 
+test('renders admin view-details action for needs more info attention items', () => {
+  render(
+    <NeedsAttentionSection
+      currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+      items={[
+        attentionItem({
+          status: BookingStatus.NEEDS_MORE_INFO,
+          label: 'Booking needs more information',
+          detail: 'Please confirm certification.',
+        }),
+      ]}
+    />,
+  );
+
+  const detailsLink = screen.getByRole('link', { name: 'View details' });
+
+  expect(detailsLink).not.toBeNull();
+  expect(detailsLink.getAttribute('href')).toBe('/bookings/booking-1');
+});
+
 test('does not render admin-only attention actions for customer service users', () => {
   render(
     <NeedsAttentionSection
@@ -97,7 +174,7 @@ test('does not render admin-only attention actions for customer service users', 
           kind: 'schedule',
           bookingId: 'booking-schedule-1',
           scheduleItemId: 'schedule-1',
-          label: 'scheduled activity needs staff assignment',
+          label: 'Scheduled activity needs staff assignment',
           status: BookingStatus.SCHEDULED,
         }),
       ]}
@@ -106,7 +183,7 @@ test('does not render admin-only attention actions for customer service users', 
 
   expect(screen.queryByRole('link', { name: 'Review' })).toBeNull();
   expect(screen.queryByRole('link', { name: 'Assign staff' })).toBeNull();
-  expect(screen.getAllByRole('link', { name: 'View' })).toHaveLength(2);
+  expect(screen.getAllByRole('link', { name: 'View booking' })).toHaveLength(2);
 });
 
 test('does not render booking or assignment links for instructors', () => {
@@ -128,9 +205,9 @@ test('does not render booking or assignment links for instructors', () => {
     </div>,
   );
 
-  expect(screen.queryByRole('link')).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'View booking' })).toBeNull();
   expect(screen.queryByText('Assign staff')).toBeNull();
-  expect(screen.queryByText('View booking')).toBeNull();
 });
 
 test('shows calm missing values in attention and schedule rows', () => {
@@ -166,7 +243,7 @@ test('shows calm missing values in attention and schedule rows', () => {
   );
 
   expect(screen.getAllByText('No primary customer')).toHaveLength(1);
-  expect(screen.getByText('booking updated')).not.toBeNull();
+  expect(screen.getByText('Booking updated')).not.toBeNull();
   expect(screen.getByText(/No primary customer: Fun Dive/)).not.toBeNull();
   expect(screen.getByText('TBD')).not.toBeNull();
   expect(screen.getByText('No hotel')).not.toBeNull();
@@ -371,7 +448,7 @@ function recentActivityItem(
   return {
     id: 'activity-booking-1',
     bookingId: 'booking-1',
-    label: 'booking updated',
+    label: 'Booking updated',
     status: BookingStatus.PENDING_APPROVAL,
     occurredAt: new Date('2026-07-01T08:00:00.000Z'),
     activitySummary: 'Fun Dive',

@@ -59,7 +59,7 @@ export function mapScheduleItemToNeedsAttentionItem(
   return {
     id: `schedule-${scheduleItem.id}`,
     kind: 'schedule',
-    label: 'scheduled activity needs staff assignment',
+    label: 'Scheduled activity needs staff assignment',
     bookingId: scheduleItem.bookingRequestId,
     scheduleItemId: scheduleItem.id,
     status: scheduleItem.bookingRequest.status,
@@ -70,7 +70,7 @@ export function mapScheduleItemToNeedsAttentionItem(
     primaryCustomerName: getPrimaryCustomerName(
       scheduleItem.bookingRequest.customers,
     ),
-    detail: scheduleItem.startTime?.trim() || 'TBD',
+    detail: formatDashboardDisplayText(scheduleItem.startTime) ?? 'TBD',
     date: scheduleItem.date,
     updatedAt: scheduleItem.updatedAt,
   };
@@ -332,18 +332,18 @@ function getNeedsAttentionBookingLabel(
   status: DashboardNeedsAttentionBookingRecord['status'],
 ) {
   if (status === 'PENDING_APPROVAL') {
-    return 'booking pending approval';
+    return 'Booking pending approval';
   }
 
   if (status === 'NEEDS_MORE_INFO') {
-    return 'booking needs more information';
+    return 'Booking needs more information';
   }
 
   if (status === 'DRAFT') {
-    return 'draft booking not submitted';
+    return 'Draft booking not submitted';
   }
 
-  return 'booking needs attention';
+  return 'Booking needs attention';
 }
 
 /**
@@ -356,10 +356,10 @@ function getNeedsAttentionBookingDetail(
   booking: DashboardNeedsAttentionBookingRecord,
 ) {
   if (booking.status === 'NEEDS_MORE_INFO') {
-    return booking.needsMoreInfoReason?.trim() || null;
+    return formatDashboardDisplayText(booking.needsMoreInfoReason);
   }
 
-  return booking.requestedTime?.trim() || null;
+  return formatDashboardDisplayText(booking.requestedTime);
 }
 
 /**
@@ -383,5 +383,25 @@ function getRecentActivityLabel(
     return 'Booking approved and scheduled';
   }
 
-  return 'booking updated';
+  return 'Booking updated';
+}
+
+/**
+ * Normalizes raw dashboard detail text without changing stored booking data.
+ *
+ * @param value - Optional raw text from schedule or booking fields.
+ * @returns Trimmed, calm admin-facing text, or null when no text is available.
+ */
+function formatDashboardDisplayText(value: string | null | undefined) {
+  const trimmedValue = value?.trim().replace(/\s+/g, ' ');
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  return trimmedValue
+    .replace(/\bMarks house\b/gi, "Mark's house")
+    .replace(/\s+([.,!?])/g, '$1')
+    .replace(/!{2,}/g, '.')
+    .replace(/\?{2,}/g, '?');
 }

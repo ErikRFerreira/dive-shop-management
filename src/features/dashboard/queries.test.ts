@@ -301,12 +301,12 @@ describe('dashboard needs attention', () => {
     await expect(getNeedsAttentionItems(adminUser)).resolves.toEqual([
       expect.objectContaining({
         kind: 'booking',
-        label: 'booking pending approval',
+        label: 'Booking pending approval',
         bookingId: 'booking-1',
       }),
       expect.objectContaining({
         kind: 'schedule',
-        label: 'scheduled activity needs staff assignment',
+        label: 'Scheduled activity needs staff assignment',
         scheduleItemId: 'schedule-1',
       }),
     ]);
@@ -363,6 +363,23 @@ describe('dashboard needs attention', () => {
     expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
   });
 
+  test('normalizes dashboard needs-more-info detail copy for display', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([
+      bookingRecord({
+        status: BookingStatus.NEEDS_MORE_INFO,
+        needsMoreInfoReason: '  Needs more information!!!! Marks house  ',
+      }),
+    ]);
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
+
+    await expect(getNeedsAttentionItems(adminUser)).resolves.toEqual([
+      expect.objectContaining({
+        label: 'Booking needs more information',
+        detail: "Needs more information. Mark's house",
+      }),
+    ]);
+  });
+
   test('returns no needs-attention items for instructors', async () => {
     await expect(getNeedsAttentionItems(instructorUser)).resolves.toEqual([]);
 
@@ -385,6 +402,7 @@ describe("today's dashboard schedule", () => {
         activitySummary: 'Open Water',
         primaryCustomerName: 'Ada Lovelace',
         hotel: 'Sea View',
+        startTime: '09:00',
         isTimeTbd: false,
         isUnassigned: true,
       }),
