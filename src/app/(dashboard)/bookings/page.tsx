@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { canCreateBookingRequest } from '@/features/bookings/permissions';
 import {
   getBookingRequests,
+  parseBookingPageParam,
+  parseBookingPageSizeParam,
   parseBookingQueueFilter,
   parseBookingStatusFilter,
 } from '@/features/bookings/queries';
@@ -16,6 +18,8 @@ type BookingsPageProps = {
   searchParams: Promise<{
     queue?: string | string[];
     status?: string | string[];
+    page?: string | string[];
+    pageSize?: string | string[];
   }>;
 };
 
@@ -33,7 +37,14 @@ export default async function BookingsPage({
   const params = await searchParams;
   const status = parseBookingStatusFilter(params.status);
   const queue = parseBookingQueueFilter(params.queue);
-  const bookingRequests = await getBookingRequests(currentUser, status, queue);
+  const page = parseBookingPageParam(params.page);
+  const pageSize = parseBookingPageSizeParam(params.pageSize);
+  const { bookings, pagination } = await getBookingRequests(
+    currentUser,
+    status,
+    queue,
+    { page, pageSize },
+  );
 
   return (
     <div className="space-y-6">
@@ -53,7 +64,13 @@ export default async function BookingsPage({
       </div>
 
       <BookingStatusFilter selectedQueue={queue} selectedStatus={status} />
-      <BookingList bookings={bookingRequests} currentUser={currentUser} />
+      <BookingList
+        bookings={bookings}
+        currentUser={currentUser}
+        pagination={pagination}
+        selectedQueue={queue}
+        selectedStatus={status}
+      />
     </div>
   );
 }

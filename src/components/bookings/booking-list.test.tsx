@@ -1,7 +1,12 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 
-import type { BookingListItem } from '@/features/bookings/queries';
+import type {
+  BookingListItem,
+  BookingListPagination,
+  BookingQueueFilter,
+  BookingStatusFilter,
+} from '@/features/bookings/queries';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -116,17 +121,37 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
   } as BookingListItem;
 }
 
+type RenderBookingListOptions = {
+  pagination?: BookingListPagination;
+  selectedQueue?: BookingQueueFilter;
+  selectedStatus?: BookingStatusFilter;
+};
+
 /**
  * Renders the booking list with an admin user so row actions are visible.
  *
  * @param bookings - Booking rows to render.
+ * @param options - Optional pagination metadata and active filters.
  * @returns React Testing Library render result.
  */
-function renderBookingList(bookings: BookingListItem[]) {
+function renderBookingList(
+  bookings: BookingListItem[],
+  options: RenderBookingListOptions = {},
+) {
+  const pagination = options.pagination ?? {
+    totalCount: bookings.length,
+    page: 1,
+    pageSize: 10,
+    totalPages: Math.ceil(bookings.length / 10),
+  };
+
   return render(
     <BookingList
       bookings={bookings}
       currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+      pagination={pagination}
+      selectedQueue={options.selectedQueue}
+      selectedStatus={options.selectedStatus}
     />,
   );
 }
@@ -310,4 +335,80 @@ test('falls back to customer profile hotel when booking-specific hotel is missin
   const table = screen.getByRole('table');
 
   expect(within(table).getByText('Customer Profile Hotel')).not.toBeNull();
+});
+
+test('renders booking count label without pagination for a single page', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 10,
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+    },
+  });
+
+  expect(screen.getByText('Showing 1 of 10 bookings')).not.toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
+});
+
+test('renders pagination links that preserve a status filter', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 11,
+      page: 1,
+      pageSize: 10,
+      totalPages: 2,
+    },
+    selectedStatus: BookingStatus.DRAFT,
+  });
+
+  expect(screen.getByText('Showing 1 of 11 bookings')).not.toBeNull();
+  expect(
+    screen.getByRole('navigation', { name: 'pagination' }),
+  ).not.toBeNull();
+  expect(screen.getByRole('link', { name: '2' }).getAttribute('href')).toBe(
+    '/bookings?status=DRAFT&page=2&pageSize=10',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
+  ).toBe('/bookings?status=DRAFT&page=2&pageSize=10');
+  expect(
+    screen
+      .getByRole('link', { name: 'Go to previous page' })
+      .getAttribute('aria-disabled'),
+  ).toBe('true');
+});
+
+test('renders pagination links that preserve the unassigned queue filter', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 21,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+    },
+    selectedQueue: 'unassigned',
+  });
+
+  expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe(
+    '/bookings?queue=unassigned&page=1&pageSize=10',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
+  ).toBe('/bookings?queue=unassigned&page=3&pageSize=10');
+});
+
+test('renders empty state without count label or pagination', () => {
+  renderBookingList([], {
+    pagination: {
+      totalCount: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    },
+  });
+
+  expect(screen.getByText('No bookings found')).not.toBeNull();
+  expect(screen.queryByText(/Showing \d+ of \d+ bookings/)).toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
 });

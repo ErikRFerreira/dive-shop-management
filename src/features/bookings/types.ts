@@ -25,6 +25,8 @@ export const bookingQueueFilters = ['unassigned'] as const;
 
 export type BookingQueueFilter = (typeof bookingQueueFilters)[number];
 
+export const bookingDefaultPageSize = 10;
+
 export type BookingRequestFilter = Prisma.BookingRequestWhereInput;
 
 /** Browser values for one requested activity. */

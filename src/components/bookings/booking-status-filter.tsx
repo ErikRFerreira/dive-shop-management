@@ -6,6 +6,7 @@ import type {
   BookingQueueFilter,
   BookingStatusFilter as BookingStatusFilterValue,
 } from '@/features/bookings/queries';
+import { bookingDefaultPageSize } from '@/features/bookings/queries';
 
 const filters: {
   href: string;
@@ -13,34 +14,37 @@ const filters: {
   queue?: BookingQueueFilter;
   status?: BookingStatusFilterValue;
 }[] = [
-  { href: '/bookings', label: 'All' },
   {
-    href: '/bookings?status=DRAFT',
+    href: `/bookings?page=1&pageSize=${bookingDefaultPageSize}`,
+    label: 'All',
+  },
+  {
+    href: `/bookings?status=DRAFT&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Draft',
     status: BookingStatus.DRAFT,
   },
   {
-    href: '/bookings?status=PENDING_APPROVAL',
+    href: `/bookings?status=PENDING_APPROVAL&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Pending Approval',
     status: BookingStatus.PENDING_APPROVAL,
   },
   {
-    href: '/bookings?status=NEEDS_MORE_INFO',
+    href: `/bookings?status=NEEDS_MORE_INFO&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Needs More Info',
     status: BookingStatus.NEEDS_MORE_INFO,
   },
   {
-    href: '/bookings?status=APPROVED',
+    href: `/bookings?status=APPROVED&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Approved',
     status: BookingStatus.APPROVED,
   },
   {
-    href: '/bookings?status=CANCELLED',
+    href: `/bookings?status=CANCELLED&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Cancelled',
     status: BookingStatus.CANCELLED,
   },
   {
-    href: '/bookings?queue=unassigned',
+    href: `/bookings?queue=unassigned&page=1&pageSize=${bookingDefaultPageSize}`,
     label: 'Unassigned',
     queue: 'unassigned',
   },

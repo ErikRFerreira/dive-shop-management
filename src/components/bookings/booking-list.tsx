@@ -1,3 +1,4 @@
+import { BookingPagination } from '@/components/bookings/booking-pagination';
 import { BookingRowActions } from '@/components/bookings/booking-row-actions';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import {
@@ -15,7 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { BookingListItem } from '@/features/bookings/queries';
+import type {
+  BookingListPagination,
+  BookingListItem,
+  BookingQueueFilter,
+  BookingStatusFilter,
+} from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDisplayDate, formatDisplayDateTime } from '@/lib/format';
@@ -23,6 +29,9 @@ import { formatDisplayDate, formatDisplayDateTime } from '@/lib/format';
 type BookingListProps = {
   bookings: BookingListItem[];
   currentUser: Pick<CurrentUser, 'id' | 'role'>;
+  pagination: BookingListPagination;
+  selectedQueue?: BookingQueueFilter;
+  selectedStatus?: BookingStatusFilter;
 };
 
 type BookingCustomerListItem = BookingListItem['customers'][number];
@@ -150,10 +159,16 @@ function formatBookingHotel(booking: BookingListItem) {
 /**
  * Renders booking requests in the staff-facing list table.
  *
- * @param props - Booking rows and current user used to resolve row actions.
+ * @param props - Booking rows, pagination metadata, and current user used to resolve row actions.
  * @returns Booking list table or an empty-state card.
  */
-export function BookingList({ bookings, currentUser }: BookingListProps) {
+export function BookingList({
+  bookings,
+  currentUser,
+  pagination,
+  selectedQueue,
+  selectedStatus,
+}: BookingListProps) {
   if (bookings.length === 0) {
     return (
       <Card>
@@ -169,7 +184,17 @@ export function BookingList({ bookings, currentUser }: BookingListProps) {
 
   return (
     <Card>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>
+            Showing {bookings.length} of {pagination.totalCount} bookings
+          </p>
+          <BookingPagination
+            pagination={pagination}
+            selectedQueue={selectedQueue}
+            selectedStatus={selectedStatus}
+          />
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
