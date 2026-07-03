@@ -71,7 +71,7 @@ test('renders the renamed original booking message section first', () => {
   expect(screen.getByText('Original booking message')).not.toBeNull();
   expect(
     screen.getByText(
-      'Paste the original customer, WeChat, WhatsApp, or agent message.',
+      'Paste the original customer, WeChat, WhatsApp, or agent message. This is the source material for admin review.',
     ),
   ).not.toBeNull();
 });
@@ -79,11 +79,26 @@ test('renders the renamed original booking message section first', () => {
 test('renders booking summary and activity labels with operational wording', () => {
   render(<BookingDetailsHarness />);
 
-  expect(screen.getByText('Booking Summary')).not.toBeNull();
+  expect(screen.getByText('Booking summary')).not.toBeNull();
   expect(screen.getByLabelText(/Source \/ referrer/)).not.toBeNull();
   expect(screen.getByLabelText(/Total participants/)).not.toBeNull();
   expect(screen.getByLabelText(/Requested date/)).not.toBeNull();
-  expect(screen.getByLabelText('Requested time / TBD')).not.toBeNull();
+  expect(screen.getByLabelText('Time')).not.toBeNull();
+});
+
+test('renders numbered sections in the requested order', () => {
+  render(
+    <>
+      <RawBookingHarness />
+      <BookingDetailsHarness />
+      <DepositPaymentHarness />
+    </>,
+  );
+
+  expect(screen.getByText('1')).not.toBeNull();
+  expect(screen.getByText('2')).not.toBeNull();
+  expect(screen.getByText('3')).not.toBeNull();
+  expect(screen.getByText('5')).not.toBeNull();
 });
 
 test('renders deposit payment notes as multiline text', () => {

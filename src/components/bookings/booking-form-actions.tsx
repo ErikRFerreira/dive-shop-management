@@ -2,12 +2,14 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { BookingStatus } from '@/generated/prisma/enums';
+import { cn } from '@/lib/utils';
 
 type SubmitIntent = 'draft' | 'submit' | 'edit' | 'resubmit';
 
 type SharedBookingFormActionsProps = {
   errorMessages: string[];
   isSubmitting: boolean;
+  layout?: 'footer' | 'rail';
 };
 
 type CreateBookingFormActionsProps = SharedBookingFormActionsProps & {
@@ -33,11 +35,24 @@ type BookingFormActionsProps =
   | CreateBookingFormActionsProps
   | EditBookingFormActionsProps;
 
+/**
+ * Renders validation feedback and workflow actions for booking intake forms.
+ *
+ * @param props - Form mode, submit state, validation messages, handlers, and layout.
+ * @returns Booking form action controls for either the page footer or readiness rail.
+ */
 export function BookingFormActions({
   errorMessages,
   isSubmitting,
+  layout = 'footer',
   ...props
 }: BookingFormActionsProps) {
+  const isRailLayout = layout === 'rail';
+  const actionsClassName = isRailLayout
+    ? 'flex flex-col gap-2'
+    : 'flex flex-wrap justify-end gap-2';
+  const buttonClassName = isRailLayout ? 'w-full' : undefined;
+
   return (
     <>
       {errorMessages.length > 0 ? (
@@ -54,24 +69,21 @@ export function BookingFormActions({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild type="button" variant="outline">
-          <Link
-            href={props.mode === 'edit' ? props.cancelHref : '/bookings'}
-            onClick={props.clearAutosave}
-          >
-            Cancel
-          </Link>
-        </Button>
+      <div className={actionsClassName}>
         {props.mode === 'edit' ? (
           <>
+            <Button asChild type="button" variant="outline">
+              <Link href={props.cancelHref} onClick={props.clearAutosave}>
+                Cancel
+              </Link>
+            </Button>
             <Button
               disabled={isSubmitting}
               onClick={props.onSaveChanges}
               type="button"
             >
               {isSubmitting && props.submitIntent === 'edit'
-                ? 'Saving…'
+                ? 'Saving...'
                 : 'Save Changes'}
             </Button>
             {props.initialStatus === BookingStatus.DRAFT ? (
@@ -81,7 +93,7 @@ export function BookingFormActions({
                 type="button"
               >
                 {isSubmitting && props.submitIntent === 'submit'
-                  ? 'Submitting…'
+                  ? 'Submitting...'
                   : 'Submit for Approval'}
               </Button>
             ) : null}
@@ -92,7 +104,7 @@ export function BookingFormActions({
                 type="button"
               >
                 {isSubmitting && props.submitIntent === 'resubmit'
-                  ? 'Resubmitting…'
+                  ? 'Resubmitting...'
                   : 'Resubmit for Approval'}
               </Button>
             ) : null}
@@ -100,23 +112,38 @@ export function BookingFormActions({
         ) : (
           <>
             <Button
+              type="submit"
+              disabled={isSubmitting}
+              onClick={props.onSubmitForApproval}
+              className={buttonClassName}
+            >
+              {isSubmitting && props.submitIntent === 'submit'
+                ? 'Submitting...'
+                : 'Submit for Approval'}
+            </Button>
+            <Button
               type="button"
               variant="outline"
               disabled={isSubmitting}
               onClick={props.onSaveDraft}
+              className={buttonClassName}
             >
               {isSubmitting && props.submitIntent === 'draft'
-                ? 'Saving…'
+                ? 'Saving...'
                 : 'Save Draft'}
             </Button>
             <Button
-              type="submit"
-              disabled={isSubmitting}
-              onClick={props.onSubmitForApproval}
+              asChild
+              type="button"
+              variant={isRailLayout ? 'ghost' : 'outline'}
+              className={cn(
+                buttonClassName,
+                isRailLayout && 'text-muted-foreground',
+              )}
             >
-              {isSubmitting && props.submitIntent === 'submit'
-                ? 'Submitting…'
-                : 'Submit for Approval'}
+              <Link href="/bookings" onClick={props.clearAutosave}>
+                Cancel
+              </Link>
             </Button>
           </>
         )}

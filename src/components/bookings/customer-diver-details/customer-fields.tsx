@@ -3,7 +3,6 @@ import {
   Controller,
   type FieldPath,
   type UseFormReturn,
-  useWatch,
 } from 'react-hook-form';
 
 import {
@@ -168,85 +167,88 @@ export function CustomerFields({
   const preferredLanguage = form.getValues(preferredLanguagePath);
 
   return (
-    <>
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="customerName"
-        label="Customer name"
-        required
-        error={getFieldError(customerFieldPath(index, 'customerName'))}
-        inputProps={readOnlyInputProps}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="chineseName"
-        label="Chinese name"
-        inputProps={readOnlyInputProps}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="weChatId"
-        label="WeChat ID"
-        inputProps={contactProps}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="whatsAppNumber"
-        label="WhatsApp number"
-        inputProps={contactProps}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="email"
-        label="Email"
-        inputProps={{ ...contactProps, type: 'email' }}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="phone"
-        label="Phone"
-        inputProps={{ ...contactProps, type: 'tel' }}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="hotelAtBooking"
-        label="Hotel / pickup location"
-      />
-      <BookingFormField
-        id={preferredLanguagePath}
-        label="Preferred language"
-      >
-        {isExistingCustomer ? (
-          <div
-            className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm"
-            id={preferredLanguagePath}
-          >
-            {preferredLanguage ? formatEnumLabel(preferredLanguage) : '-'}
-          </div>
-        ) : (
-          <Controller
-            control={form.control}
-            name={preferredLanguagePath}
-            render={({ field }) => (
-              <EnumSelect
-                id={field.name}
-                value={field.value}
-                onValueChange={field.onChange}
-                values={preferredLanguageOptions}
-                placeholder="Select language"
-              />
-            )}
-          />
-        )}
-      </BookingFormField>
-    </>
+    <div className="space-y-4 md:col-span-2">
+      <h4 className="text-sm font-medium">Contact details</h4>
+      <div className="grid gap-4 md:grid-cols-2">
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="customerName"
+          label="Customer name"
+          required
+          error={getFieldError(customerFieldPath(index, 'customerName'))}
+          inputProps={readOnlyInputProps}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="chineseName"
+          label="Chinese name"
+          inputProps={readOnlyInputProps}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="weChatId"
+          label="WeChat ID"
+          inputProps={contactProps}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="whatsAppNumber"
+          label="WhatsApp number"
+          inputProps={contactProps}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="email"
+          label="Email"
+          inputProps={{ ...contactProps, type: 'email' }}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="phone"
+          label="Phone"
+          inputProps={{ ...contactProps, type: 'tel' }}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="hotelAtBooking"
+          label="Hotel / pickup location"
+        />
+        <BookingFormField
+          id={preferredLanguagePath}
+          label="Preferred language"
+        >
+          {isExistingCustomer ? (
+            <div
+              className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm"
+              id={preferredLanguagePath}
+            >
+              {preferredLanguage ? formatEnumLabel(preferredLanguage) : '-'}
+            </div>
+          ) : (
+            <Controller
+              control={form.control}
+              name={preferredLanguagePath}
+              render={({ field }) => (
+                <EnumSelect
+                  id={field.name}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  values={preferredLanguageOptions}
+                  placeholder="Select language"
+                />
+              )}
+            />
+          )}
+        </BookingFormField>
+      </div>
+    </div>
   );
 }
 
@@ -307,28 +309,27 @@ export function CustomerNotesField({ form, index }: BaseCustomerFieldsProps) {
 }
 
 /**
- * Renders equipment sizing fields only when rental equipment is needed.
+ * Renders booking-specific equipment details for one customer/diver.
  *
- * @param props - Form state and row index for equipment sizing fields.
- * @returns Equipment details fields, or null when equipment is not marked Yes.
+ * @param props - Form state and row index for equipment fields.
+ * @returns Equipment needed, shoe size, height, and weight fields.
  */
 export function EquipmentSizingFields({
   form,
   index,
 }: BaseCustomerFieldsProps) {
-  const equipmentNeeded = useWatch({
-    control: form.control,
-    name: customerFieldPath(index, 'equipmentNeeded'),
-  });
-
-  if (equipmentNeededOptionFromValue(equipmentNeeded as string) !== 'YES') {
-    return null;
-  }
-
   return (
     <div className="space-y-4 md:col-span-2">
       <h4 className="text-sm font-medium">Equipment details</h4>
       <div className="grid gap-4 md:grid-cols-2">
+        <EquipmentFields form={form} index={index} />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="shoeSize"
+          label="Shoe size"
+          inputProps={{ type: 'number', min: '0', step: '0.5' }}
+        />
         <RegisteredInputField
           form={form}
           index={index}
@@ -342,13 +343,6 @@ export function EquipmentSizingFields({
           name="weightKg"
           label="Weight (kg)"
           inputProps={{ type: 'number', min: '0', step: '0.01' }}
-        />
-        <RegisteredInputField
-          form={form}
-          index={index}
-          name="shoeSize"
-          label="Shoe size"
-          inputProps={{ type: 'number', min: '0', step: '0.5' }}
         />
       </div>
     </div>

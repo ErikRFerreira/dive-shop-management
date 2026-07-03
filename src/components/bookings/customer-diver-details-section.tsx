@@ -123,7 +123,11 @@ export function CustomerDiverDetailsSection({
   }
 
   return (
-    <BookingFormSection title="Customers & divers">
+    <BookingFormSection
+      sectionNumber={4}
+      title="Customers & divers"
+      description="Add the primary contact and any other divers or students in the booking."
+    >
       <div className="space-y-4 md:col-span-2">
         {fields.map((customer, index) => {
           const isPrimaryContact =

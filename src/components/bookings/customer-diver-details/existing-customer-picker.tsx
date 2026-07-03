@@ -108,11 +108,14 @@ export function CustomerPicker({
 
   return (
     <div className="space-y-3 rounded-md border bg-muted/20 p-3 md:col-span-2">
+      <label
+        className="text-sm font-medium"
+        htmlFor={`customer-picker-${index}`}
+      >
+        Search existing customers
+      </label>
       <div className="flex flex-wrap gap-2">
         <div className="min-w-64 flex-1">
-          <label className="sr-only" htmlFor={`customer-picker-${index}`}>
-            Search existing customers
-          </label>
           <Input
             id={`customer-picker-${index}`}
             type="search"

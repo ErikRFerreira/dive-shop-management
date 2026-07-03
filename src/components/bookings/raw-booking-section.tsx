@@ -18,8 +18,9 @@ export function RawBookingSection({
 }) {
   return (
     <BookingFormSection
+      sectionNumber={1}
       title="Original booking message"
-      description="Paste the original customer, WeChat, WhatsApp, or agent message."
+      description="Paste the original customer, WeChat, WhatsApp, or agent message. This is the source material for admin review."
     >
       <BookingFormField
         id="rawBookingText"

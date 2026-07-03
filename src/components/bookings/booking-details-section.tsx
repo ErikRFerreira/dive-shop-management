@@ -48,7 +48,7 @@ export function BookingDetailsSection({
 
   return (
     <>
-      <BookingFormSection title="Booking Summary">
+      <BookingFormSection sectionNumber={2} title="Booking summary">
         <BookingFormField
           id="source"
           label="Source / referrer"
@@ -69,6 +69,9 @@ export function BookingDetailsSection({
             )}
           />
         </BookingFormField>
+        <BookingFormField id="referrerName" label="Referrer name">
+          <Input id="referrerName" {...form.register('referrerName')} />
+        </BookingFormField>
         <BookingFormField
           id="numberOfPeople"
           label="Total participants"
@@ -83,9 +86,6 @@ export function BookingDetailsSection({
             {...form.register('numberOfPeople')}
           />
         </BookingFormField>
-        <BookingFormField id="referrerName" label="Referrer name (optional)">
-          <Input id="referrerName" {...form.register('referrerName')} />
-        </BookingFormField>
         <BookingFormField
           id="internalNotes"
           label="Internal notes"
@@ -95,7 +95,11 @@ export function BookingDetailsSection({
         </BookingFormField>
       </BookingFormSection>
 
-      <BookingFormSection title="Activities">
+      <BookingFormSection
+        sectionNumber={3}
+        title="Activities"
+        description="Add one or more activities requested in this booking."
+      >
         <div className="space-y-4 md:col-span-2">
           {fields.map((activity: { id: string }, index: number) => {
             const prefix = `activities.${index}` as const;
@@ -117,7 +121,7 @@ export function BookingDetailsSection({
                     </Button>
                   ) : null}
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,0.65fr)_minmax(7rem,0.35fr)]">
                   <BookingFormField
                     id={`${prefix}.activityType`}
                     label="Activity type"
@@ -138,19 +142,6 @@ export function BookingDetailsSection({
                       )}
                     />
                   </BookingFormField>
-                  {isSpecialtyCourse ? (
-                    <BookingFormField
-                      id={`${prefix}.specialtyCourse`}
-                      label="Specialty course"
-                      required
-                      error={getFieldError(`${prefix}.specialtyCourse`)}
-                    >
-                      <Input
-                        id={`${prefix}.specialtyCourse`}
-                        {...form.register(`${prefix}.specialtyCourse`)}
-                      />
-                    </BookingFormField>
-                  ) : null}
                   <BookingFormField
                     id={`${prefix}.requestedDate`}
                     label="Requested date"
@@ -165,7 +156,7 @@ export function BookingDetailsSection({
                   </BookingFormField>
                   <BookingFormField
                     id={`${prefix}.requestedTime`}
-                    label="Requested time / TBD"
+                    label="Time"
                   >
                     <Input
                       id={`${prefix}.requestedTime`}
@@ -173,10 +164,24 @@ export function BookingDetailsSection({
                       {...form.register(`${prefix}.requestedTime`)}
                     />
                   </BookingFormField>
+                  {isSpecialtyCourse ? (
+                    <BookingFormField
+                      id={`${prefix}.specialtyCourse`}
+                      label="Specialty course"
+                      required
+                      error={getFieldError(`${prefix}.specialtyCourse`)}
+                      className="grid gap-2 md:col-span-3"
+                    >
+                      <Input
+                        id={`${prefix}.specialtyCourse`}
+                        {...form.register(`${prefix}.specialtyCourse`)}
+                      />
+                    </BookingFormField>
+                  ) : null}
                   <BookingFormField
                     id={`${prefix}.notes`}
                     label="Activity notes"
-                    className="grid gap-2 md:col-span-2"
+                    className="grid gap-2 md:col-span-3"
                   >
                     <Textarea
                       id={`${prefix}.notes`}

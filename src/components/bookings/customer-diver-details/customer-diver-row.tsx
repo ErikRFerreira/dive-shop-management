@@ -8,7 +8,6 @@ import {
   CustomerFields,
   CustomerNotesField,
   DivingExperienceFields,
-  EquipmentFields,
   EquipmentSizingFields,
 } from './customer-fields';
 import { PotentialDuplicateCustomerWarning } from './duplicate-customer-warning';
@@ -125,8 +124,6 @@ export function CustomerDiverRow({
           suppressedDuplicateSnapshot={suppressedDuplicateSnapshot}
           onDuplicateIdentityEdited={onDuplicateIdentityEdited}
         />
-        <EquipmentFields form={form} index={index} />
-        <CustomerNotesField form={form} index={index} />
         <DivingExperienceFields
           form={form}
           index={index}
@@ -134,6 +131,7 @@ export function CustomerDiverRow({
           getFieldError={getFieldError}
         />
         <EquipmentSizingFields form={form} index={index} />
+        <CustomerNotesField form={form} index={index} />
       </div>
     </div>
   );

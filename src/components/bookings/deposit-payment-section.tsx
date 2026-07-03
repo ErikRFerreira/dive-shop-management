@@ -35,7 +35,7 @@ export function DepositPaymentSection({
   getFieldError,
 }: DepositPaymentSectionProps) {
   return (
-    <BookingFormSection title="Deposit / payment">
+    <BookingFormSection sectionNumber={5} title="Deposit / payment">
       <BookingFormField id="depositStatus" label="Deposit status">
         <Controller
           control={form.control}
