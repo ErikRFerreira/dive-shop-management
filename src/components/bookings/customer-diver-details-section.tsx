@@ -33,6 +33,12 @@ type SuppressedDuplicateSnapshots = Record<
   DuplicateCustomerIdentitySnapshot
 >;
 
+/**
+ * Renders the repeatable customers and divers intake section.
+ *
+ * @param props - Form state, fun-dive flag, and field error lookup.
+ * @returns Customer/diver rows with search, contact, equipment, and dive details.
+ */
 export function CustomerDiverDetailsSection({
   form,
   includesFunDive,
@@ -117,7 +123,7 @@ export function CustomerDiverDetailsSection({
   }
 
   return (
-    <BookingFormSection title="Customers / Divers">
+    <BookingFormSection title="Customers & divers">
       <div className="space-y-4 md:col-span-2">
         {fields.map((customer, index) => {
           const isPrimaryContact =

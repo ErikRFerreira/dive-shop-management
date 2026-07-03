@@ -5,6 +5,12 @@ import { BookingFormField } from '@/components/bookings/booking-form-controls';
 import { Textarea } from '@/components/ui/textarea';
 import type { BookingFormValues } from '@/features/bookings/types';
 
+/**
+ * Renders the original booking message capture area at the top of intake.
+ *
+ * @param props - React Hook Form instance used to register the raw message.
+ * @returns The optional original booking message form section.
+ */
 export function RawBookingSection({
   form,
 }: {
@@ -12,8 +18,8 @@ export function RawBookingSection({
 }) {
   return (
     <BookingFormSection
-      title="Raw Booking Information"
-      description="Keep the original customer message for review."
+      title="Original booking message"
+      description="Paste the original customer, WeChat, WhatsApp, or agent message."
     >
       <BookingFormField
         id="rawBookingText"

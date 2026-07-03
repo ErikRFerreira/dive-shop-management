@@ -289,7 +289,7 @@ export const submitBookingIntakeSchema =
       context.addIssue({
         code: 'custom',
         path: ['numberOfPeople'],
-        message: 'Number of people must be at least 1 before submitting.',
+        message: 'Total participants must be at least 1 before submitting.',
       });
     }
 
@@ -297,7 +297,7 @@ export const submitBookingIntakeSchema =
       context.addIssue({
         code: 'custom',
         path: ['source'],
-        message: 'Source is required before submitting for approval.',
+        message: 'Source / referrer is required before submitting for approval.',
       });
     }
 
@@ -356,7 +356,7 @@ export const submitBookingIntakeSchema =
           label: string;
         }> = [
           { field: 'certificationLevel', label: 'Certification level' },
-          { field: 'divesLogged', label: 'Dives logged' },
+          { field: 'divesLogged', label: 'Logged dives' },
         ];
 
         requirements.forEach(({ field, label }) => {

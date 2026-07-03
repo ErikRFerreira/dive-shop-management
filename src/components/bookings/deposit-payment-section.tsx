@@ -10,6 +10,7 @@ import {
   EnumSelect,
 } from '@/components/bookings/booking-form-controls';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   currencyOptions,
   depositStatusOptions,
@@ -22,13 +23,19 @@ type DepositPaymentSectionProps = {
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
 };
 
+/**
+ * Renders deposit and payment fields for the booking intake workflow.
+ *
+ * @param props - Form state, paid-status flag, and field error lookup.
+ * @returns The deposit/payment section with conditional required indicators.
+ */
 export function DepositPaymentSection({
   form,
   isPaidDeposit,
   getFieldError,
 }: DepositPaymentSectionProps) {
   return (
-    <BookingFormSection title="Deposit Details">
+    <BookingFormSection title="Deposit / payment">
       <BookingFormField id="depositStatus" label="Deposit status">
         <Controller
           control={form.control}
@@ -90,7 +97,7 @@ export function DepositPaymentSection({
         <Input id="paymentMethod" {...form.register('paymentMethod')} />
       </BookingFormField>
       <BookingFormField id="paymentNotes" label="Payment notes">
-        <Input id="paymentNotes" {...form.register('paymentNotes')} />
+        <Textarea id="paymentNotes" {...form.register('paymentNotes')} />
       </BookingFormField>
     </BookingFormSection>
   );

@@ -30,6 +30,12 @@ type BookingDetailsSectionProps = {
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
 };
 
+/**
+ * Renders booking summary fields and the repeatable activity intake rows.
+ *
+ * @param props - Form state, watched activity rows, and field error lookup.
+ * @returns The booking summary and activities sections for booking intake.
+ */
 export function BookingDetailsSection({
   form,
   activities,
@@ -42,10 +48,10 @@ export function BookingDetailsSection({
 
   return (
     <>
-      <BookingFormSection title="Booking Details">
+      <BookingFormSection title="Booking Summary">
         <BookingFormField
           id="source"
-          label="Source"
+          label="Source / referrer"
           required
           error={getFieldError('source')}
         >
@@ -65,7 +71,7 @@ export function BookingDetailsSection({
         </BookingFormField>
         <BookingFormField
           id="numberOfPeople"
-          label="Number of people"
+          label="Total participants"
           required
           error={getFieldError('numberOfPeople')}
         >
@@ -147,7 +153,7 @@ export function BookingDetailsSection({
                   ) : null}
                   <BookingFormField
                     id={`${prefix}.requestedDate`}
-                    label="Requested start date"
+                    label="Requested date"
                     required
                     error={getFieldError(`${prefix}.requestedDate`)}
                   >
@@ -159,7 +165,7 @@ export function BookingDetailsSection({
                   </BookingFormField>
                   <BookingFormField
                     id={`${prefix}.requestedTime`}
-                    label="Requested time (optional)"
+                    label="Requested time / TBD"
                   >
                     <Input
                       id={`${prefix}.requestedTime`}

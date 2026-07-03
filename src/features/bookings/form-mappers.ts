@@ -29,6 +29,22 @@ function nullableText(value: string) {
 }
 
 /**
+ * Normalizes equipment-needed form values into the current controlled choices.
+ *
+ * The persisted field used to accept free text. Any non-empty legacy value is
+ * treated as `YES` so editing and resaving old bookings does not retain
+ * arbitrary equipment notes in the controlled field.
+ *
+ * @param value - Current browser form value for equipment needed.
+ * @returns `YES`, `NO`, or null for unknown/unset.
+ */
+function normalizedEquipmentNeeded(value: string) {
+  const normalized = nullableText(value);
+  if (normalized === null) return null;
+  return normalized === 'NO' ? 'NO' : 'YES';
+}
+
+/**
  * Normalizes a string value to either a number or null if the string is empty or not a valid number.
  *
  * @param value - The string value to normalize.
@@ -150,7 +166,7 @@ export function normalizeBookingFormValues(
       email: nullableText(customer.email),
       phone: nullableText(customer.phone),
       hotelAtBooking: nullableText(customer.hotelAtBooking),
-      equipmentNeeded: nullableText(customer.equipmentNeeded),
+      equipmentNeeded: normalizedEquipmentNeeded(customer.equipmentNeeded),
       customerNotes: nullableText(customer.customerNotes),
       preferredLanguage: enumValue(
         PreferredLanguage,

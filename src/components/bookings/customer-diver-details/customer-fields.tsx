@@ -1,11 +1,23 @@
 import type { ComponentProps } from 'react';
-import { Controller, type FieldPath, type UseFormReturn } from 'react-hook-form';
+import {
+  Controller,
+  type FieldPath,
+  type UseFormReturn,
+  useWatch,
+} from 'react-hook-form';
 
 import {
   BookingFormField,
   EnumSelect,
 } from '@/components/bookings/booking-form-controls';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   formatEnumLabel,
@@ -42,10 +54,49 @@ type RegisteredTextAreaFieldProps = BaseCustomerFieldsProps & {
   className?: string;
 };
 
+type EquipmentNeededOption = 'UNKNOWN' | 'NO' | 'YES';
+
+/**
+ * Builds a React Hook Form path for one booking customer field.
+ *
+ * @param index - Customer/diver row index.
+ * @param name - Field name within the customer/diver row.
+ * @returns A typed React Hook Form field path.
+ */
 function customerFieldPath(index: number, name: CustomerFieldName) {
   return `customers.${index}.${name}` as FieldPath<BookingFormValues>;
 }
 
+/**
+ * Converts persisted equipment text into the select option shown to staff.
+ *
+ * @param value - Current form value, including possible legacy free text.
+ * @returns The equipment select option that should be displayed.
+ */
+function equipmentNeededOptionFromValue(
+  value: string | undefined,
+): EquipmentNeededOption {
+  if (value === 'NO') return 'NO';
+  if (value === 'YES') return 'YES';
+  return value?.trim() ? 'YES' : 'UNKNOWN';
+}
+
+/**
+ * Converts the equipment select option into the existing string form field.
+ *
+ * @param option - Staff-selected equipment value.
+ * @returns The string stored in form state and later normalized for persistence.
+ */
+function equipmentNeededValueFromOption(option: EquipmentNeededOption) {
+  return option === 'UNKNOWN' ? '' : option;
+}
+
+/**
+ * Renders a text input registered to one customer/diver field.
+ *
+ * @param props - Field registration, label, validation, and input props.
+ * @returns A labeled booking form input.
+ */
 function RegisteredInputField({
   form,
   index,
@@ -71,6 +122,12 @@ function RegisteredInputField({
   );
 }
 
+/**
+ * Renders a textarea registered to one customer/diver field.
+ *
+ * @param props - Field registration, label, and layout class.
+ * @returns A labeled booking form textarea.
+ */
 function RegisteredTextAreaField({
   form,
   index,
@@ -87,6 +144,12 @@ function RegisteredTextAreaField({
   );
 }
 
+/**
+ * Renders customer profile and booking contact fields for one row.
+ *
+ * @param props - Form state, row index, field errors, and readonly flags.
+ * @returns Core customer identity, contact, hotel, and language fields.
+ */
 export function CustomerFields({
   form,
   index,
@@ -154,7 +217,7 @@ export function CustomerFields({
         form={form}
         index={index}
         name="hotelAtBooking"
-        label="Hotel for this booking"
+        label="Hotel / pickup location"
       />
       <BookingFormField
         id={preferredLanguagePath}
@@ -187,101 +250,162 @@ export function CustomerFields({
   );
 }
 
+/**
+ * Renders the controlled equipment-needed selector.
+ *
+ * @param props - Form state and row index for the equipment field.
+ * @returns An Unknown/No/Yes selector backed by the existing string field.
+ */
 export function EquipmentFields({ form, index }: BaseCustomerFieldsProps) {
+  const path = customerFieldPath(index, 'equipmentNeeded');
+
   return (
-    <RegisteredTextAreaField
-      form={form}
-      index={index}
-      name="equipmentNeeded"
-      label="Equipment needed"
-      className="grid gap-2 md:col-span-2"
-    />
+    <BookingFormField id={path} label="Equipment needed?">
+      <Controller
+        control={form.control}
+        name={path}
+        render={({ field }) => (
+          <Select
+            value={equipmentNeededOptionFromValue(field.value as string)}
+            onValueChange={(value) =>
+              field.onChange(
+                equipmentNeededValueFromOption(value as EquipmentNeededOption),
+              )
+            }
+          >
+            <SelectTrigger id={field.name}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="UNKNOWN">Unknown</SelectItem>
+              <SelectItem value="NO">No</SelectItem>
+              <SelectItem value="YES">Yes</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      />
+    </BookingFormField>
   );
 }
 
+/**
+ * Renders booking-specific notes for one customer/diver.
+ *
+ * @param props - Form state and row index for the notes field.
+ * @returns A labeled customer notes textarea.
+ */
 export function CustomerNotesField({ form, index }: BaseCustomerFieldsProps) {
   return (
     <RegisteredTextAreaField
       form={form}
       index={index}
       name="customerNotes"
-      label="Customer/diver notes"
+      label="Customer notes"
       className="grid gap-2 md:col-span-2"
     />
   );
 }
 
+/**
+ * Renders equipment sizing fields only when rental equipment is needed.
+ *
+ * @param props - Form state and row index for equipment sizing fields.
+ * @returns Equipment details fields, or null when equipment is not marked Yes.
+ */
 export function EquipmentSizingFields({
   form,
   index,
 }: BaseCustomerFieldsProps) {
+  const equipmentNeeded = useWatch({
+    control: form.control,
+    name: customerFieldPath(index, 'equipmentNeeded'),
+  });
+
+  if (equipmentNeededOptionFromValue(equipmentNeeded as string) !== 'YES') {
+    return null;
+  }
+
   return (
-    <>
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="heightCm"
-        label="Height (cm)"
-        inputProps={{ type: 'number', min: '0' }}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="weightKg"
-        label="Weight (kg)"
-        inputProps={{ type: 'number', min: '0', step: '0.01' }}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="shoeSize"
-        label="Shoe size"
-        inputProps={{ type: 'number', min: '0', step: '0.5' }}
-      />
-    </>
+    <div className="space-y-4 md:col-span-2">
+      <h4 className="text-sm font-medium">Equipment details</h4>
+      <div className="grid gap-4 md:grid-cols-2">
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="heightCm"
+          label="Height (cm)"
+          inputProps={{ type: 'number', min: '0' }}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="weightKg"
+          label="Weight (kg)"
+          inputProps={{ type: 'number', min: '0', step: '0.01' }}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="shoeSize"
+          label="Shoe size"
+          inputProps={{ type: 'number', min: '0', step: '0.5' }}
+        />
+      </div>
+    </div>
   );
 }
 
-export function FunDiverFields({
+/**
+ * Renders diving experience fields for one customer/diver.
+ *
+ * @param props - Form state, row index, fun-dive requirement flag, and error lookup.
+ * @returns Certification, last-dive, and logged-dive fields.
+ */
+export function DivingExperienceFields({
   form,
   index,
+  requiresDivingExperience,
   getFieldError,
 }: BaseCustomerFieldsProps & {
+  requiresDivingExperience: boolean;
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
 }) {
   return (
-    <>
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="certificationLevel"
-        label="Certification level"
-        required
-        error={getFieldError(customerFieldPath(index, 'certificationLevel'))}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="certificationAgency"
-        label="Certification agency"
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="lastDiveDate"
-        label="Last dive date"
-        error={getFieldError(customerFieldPath(index, 'lastDiveDate'))}
-        inputProps={{ type: 'date' }}
-      />
-      <RegisteredInputField
-        form={form}
-        index={index}
-        name="divesLogged"
-        label="Dives logged"
-        required
-        error={getFieldError(customerFieldPath(index, 'divesLogged'))}
-        inputProps={{ type: 'number', min: '0', step: '1' }}
-      />
-    </>
+    <div className="space-y-4 md:col-span-2">
+      <h4 className="text-sm font-medium">Diving experience</h4>
+      <div className="grid gap-4 md:grid-cols-2">
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="certificationLevel"
+          label="Certification level"
+          required={requiresDivingExperience}
+          error={getFieldError(customerFieldPath(index, 'certificationLevel'))}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="certificationAgency"
+          label="Certification agency"
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="lastDiveDate"
+          label="Last dive date"
+          error={getFieldError(customerFieldPath(index, 'lastDiveDate'))}
+          inputProps={{ type: 'date' }}
+        />
+        <RegisteredInputField
+          form={form}
+          index={index}
+          name="divesLogged"
+          label="Logged dives"
+          required={requiresDivingExperience}
+          error={getFieldError(customerFieldPath(index, 'divesLogged'))}
+          inputProps={{ type: 'number', min: '0', step: '1' }}
+        />
+      </div>
+    </div>
   );
 }

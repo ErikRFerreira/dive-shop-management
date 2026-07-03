@@ -7,9 +7,9 @@ import type { DuplicateCustomerIdentitySnapshot } from '@/features/customers/dup
 import {
   CustomerFields,
   CustomerNotesField,
+  DivingExperienceFields,
   EquipmentFields,
   EquipmentSizingFields,
-  FunDiverFields,
 } from './customer-fields';
 import { PotentialDuplicateCustomerWarning } from './duplicate-customer-warning';
 import {
@@ -37,6 +37,12 @@ type CustomerDiverRowProps = {
   onDuplicateIdentityEdited: (rowId: string) => void;
 };
 
+/**
+ * Renders one booking customer/diver intake card.
+ *
+ * @param props - Row state, duplicate handling callbacks, and form helpers.
+ * @returns A customer/diver row with contact, equipment, and dive details.
+ */
 export function CustomerDiverRow({
   form,
   index,
@@ -121,13 +127,12 @@ export function CustomerDiverRow({
         />
         <EquipmentFields form={form} index={index} />
         <CustomerNotesField form={form} index={index} />
-        {includesFunDive ? (
-          <FunDiverFields
-            form={form}
-            index={index}
-            getFieldError={getFieldError}
-          />
-        ) : null}
+        <DivingExperienceFields
+          form={form}
+          index={index}
+          requiresDivingExperience={includesFunDive}
+          getFieldError={getFieldError}
+        />
         <EquipmentSizingFields form={form} index={index} />
       </div>
     </div>
