@@ -36,14 +36,16 @@ export function NeedsAttentionSection({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Needs attention</CardTitle>
-        <CardDescription>
-          Booking requests and scheduled activities that need follow-up.
+    <Card className="flex h-full flex-col rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
+      <CardHeader className="border-b border-border px-5">
+        <CardTitle className="text-base font-semibold">
+          Needs attention
+        </CardTitle>
+        <CardDescription className="mt-0.5 text-sm">
+          Bookings to review before scheduling.
         </CardDescription>
       </CardHeader>
-      <CardContent className="divide-y">
+      <CardContent className="flex flex-col gap-3 p-2">
         {items.map((item) => (
           <NeedsAttentionItem
             currentUser={currentUser}
