@@ -1,5 +1,6 @@
 import type { InstructorDashboardSummary as InstructorDashboardSummaryData } from '@/features/dashboard/types';
 import { StatCard } from '@/components/common/stat-card';
+import { Calendar1, CalendarCheck, ClipboardCheck } from 'lucide-react';
 
 type InstructorDashboardSummaryProps = {
   summary: InstructorDashboardSummaryData;
@@ -21,18 +22,24 @@ export function InstructorDashboardSummary({
         value={summary.todayAssignmentsCount}
         href="/assignments"
         description="Assigned scheduled activities today."
+        tone="scheduled"
+        icon={<CalendarCheck />}
       />
       <StatCard
         title="Tomorrow's Assignments"
         value={summary.tomorrowAssignmentsCount}
         href="/assignments"
         description="Assigned scheduled activities tomorrow."
+        tone="scheduled"
+        icon={<Calendar1 />}
       />
       <StatCard
         title="My Assignments"
         value={summary.myAssignmentsCount}
         href="/assignments"
         description="All scheduled activities assigned to you."
+        tone="ocean"
+        icon={<ClipboardCheck />}
       />
     </div>
   );

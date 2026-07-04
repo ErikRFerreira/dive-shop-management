@@ -24,7 +24,7 @@ import type {
 } from '@/features/bookings/types';
 import { ActivityType } from '@/generated/prisma/enums';
 import { inputClassName } from '@/lib/consts';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 type BookingDetailsSectionProps = {
   form: UseFormReturn<BookingFormValues>;
@@ -215,6 +215,7 @@ export function BookingDetailsSection({
             variant="outline"
             onClick={() => append({ ...bookingActivityDefaultValues })}
           >
+            <Plus className="h-4 w-4" />
             Add activity
           </Button>
         </div>

@@ -19,6 +19,7 @@ import {
   type DuplicateCustomerIdentitySnapshot,
 } from '@/features/customers/duplicate-lookup-rules';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
+import { Plus } from 'lucide-react';
 
 type CustomerDiverDetailsSectionProps = {
   form: UseFormReturn<BookingFormValues>;
@@ -183,6 +184,7 @@ export function CustomerDiverDetailsSection({
           variant="outline"
           onClick={() => append({ ...bookingCustomerDefaultValues })}
         >
+          <Plus className="h-4 w-4" />
           Add customer / diver
         </Button>
       </div>
