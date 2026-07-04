@@ -13,6 +13,7 @@ import { CustomerDiverDetailsSection } from '@/components/bookings/form/sections
 import { DepositPaymentSection } from '@/components/bookings/form/sections/deposit-payment-section';
 import { RawBookingSection } from '@/components/bookings/form/sections/raw-booking-section';
 import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   createBookingDraft,
   resubmitEditedBookingForApproval,
@@ -57,7 +58,7 @@ type BookingFormProps = CreateBookingFormProps | EditBookingFormProps;
  * Renders the create/edit booking intake form and handles workflow submissions.
  *
  * @param props - Create mode options or edit mode booking identity and initial values.
- * @returns The booking intake form with create-mode readiness rail or edit-mode footer actions.
+ * @returns The booking intake form with a sticky rail containing readiness items (create mode) or workflow actions (edit mode).
  */
 export function BookingForm(props: BookingFormProps) {
   const editProps = props.mode === 'edit' ? props : null;
@@ -223,7 +224,6 @@ export function BookingForm(props: BookingFormProps) {
 
   return (
     <form
-      className={isEdit ? 'space-y-6' : undefined}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -231,21 +231,37 @@ export function BookingForm(props: BookingFormProps) {
       }}
     >
       {isEdit ? (
-        <>
+        <StickyRailLayout
+          rail={
+            <Card className="rounded-2xl border border-border bg-card shadow-sm">
+              <CardHeader className="border-b border-border">
+                <CardTitle className="font-heading text-base font-semibold">
+                  Booking actions
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Review and save your changes
+                </p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <BookingFormActions
+                  mode="edit"
+                  layout="rail"
+                  errorMessages={errorMessages}
+                  isSubmitting={isSubmitting}
+                  initialStatus={editProps!.initialStatus}
+                  submitIntent={submitIntent}
+                  cancelHref={`/bookings/${editProps!.bookingId}`}
+                  onSaveChanges={() => submitCurrentForm('edit')}
+                  onSubmitForApproval={() => submitCurrentForm('submit')}
+                  onResubmitForApproval={() => submitCurrentForm('resubmit')}
+                  clearAutosave={clearAutosave}
+                />
+              </CardContent>
+            </Card>
+          }
+        >
           {formSections}
-          <BookingFormActions
-            mode="edit"
-            errorMessages={errorMessages}
-            isSubmitting={isSubmitting}
-            initialStatus={editProps!.initialStatus}
-            submitIntent={submitIntent}
-            cancelHref={`/bookings/${editProps!.bookingId}`}
-            onSaveChanges={() => submitCurrentForm('edit')}
-            onSubmitForApproval={() => submitCurrentForm('submit')}
-            onResubmitForApproval={() => submitCurrentForm('resubmit')}
-            clearAutosave={clearAutosave}
-          />
-        </>
+        </StickyRailLayout>
       ) : (
         <StickyRailLayout
           rail={
