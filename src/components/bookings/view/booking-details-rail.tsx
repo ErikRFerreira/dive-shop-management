@@ -3,20 +3,12 @@ import Link from 'next/link';
 import { ResubmitBookingForApprovalForm } from '@/components/bookings/booking-workflow-forms';
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import { formatDisplayDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import {
-  BookingStatus,
-  DepositStatus,
-} from '@/generated/prisma/enums';
+import { BookingStatus, DepositStatus } from '@/generated/prisma/enums';
 import {
   ArrowLeft,
   CalendarDays,
@@ -354,6 +346,8 @@ export function BookingDetailsRail({
 }: BookingDetailsRailProps) {
   const reviewReadinessItems = buildReviewReadinessItems(booking, activities);
 
+  console.log(booking);
+
   return (
     <>
       <BookingStatusRailCard
@@ -361,7 +355,9 @@ export function BookingDetailsRail({
         booking={booking}
         canResubmit={canResubmit}
       />
-      <ReviewReadinessCard items={reviewReadinessItems} />
+      {booking.status !== BookingStatus.CANCELLED && (
+        <ReviewReadinessCard items={reviewReadinessItems} />
+      )}
     </>
   );
 }

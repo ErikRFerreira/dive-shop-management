@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { RotateCw } from 'lucide-react';
 
 import {
   approveBooking,
@@ -152,10 +153,7 @@ export function CancelBookingForm({
       <input name="bookingId" type="hidden" value={bookingId} />
       {isScheduled ? (
         <div className="grid gap-2">
-          <label
-            className="text-sm font-medium"
-            htmlFor="cancel-admin-notes"
-          >
+          <label className="text-sm font-medium" htmlFor="cancel-admin-notes">
             Admin notes
           </label>
           <Textarea
@@ -190,14 +188,17 @@ export function ResubmitBookingForApprovalForm({ bookingId }: BookingIdProps) {
   );
 
   return (
-    <form action={formAction} className="mt-4">
+    <form action={formAction}>
       <input name="bookingId" type="hidden" value={bookingId} />
       <ActionError message={state.formError} />
       <Button
-        className={state.formError ? 'mt-3' : undefined}
         disabled={pending}
-        type="submit"
+        size="lg"
+        type="reset"
+        className="w-full"
+        variant="ghost"
       >
+        <RotateCw className="mr-2 h-4 w-4" />
         {pending ? 'Resubmitting…' : 'Resubmit for Approval'}
       </Button>
     </form>

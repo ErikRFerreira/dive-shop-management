@@ -51,14 +51,15 @@ function BookingDetails({
   const includesFunDive = includesFunDiveActivity(activities);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <>
       <header className="space-y-4">
-        <Button asChild variant="ghost" className="-ml-3 w-fit">
-          <Link href="/bookings">
-            <ArrowLeft className="size-4" />
-            Back to booking requests
-          </Link>
-        </Button>
+        <Link
+          className="inline-flex w-fit items-center gap-1.5 mb-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          href="/bookings"
+        >
+          <ArrowLeft className="size-4" />
+          Back to booking rquests
+        </Link>
         <PageHeader
           title="Booking details"
           description="Review the full booking request, customer details, and operational
@@ -98,7 +99,7 @@ function BookingDetails({
         <DepositPaymentSection booking={booking} />
         <NotesSection booking={booking} />
       </StickyRailLayout>
-    </div>
+    </>
   );
 }
 

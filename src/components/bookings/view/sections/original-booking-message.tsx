@@ -14,7 +14,7 @@ export function OriginalBookingMessage({ notes }: { notes: string | null }) {
       </CardHeader>
       <CardContent>
         <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center">
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+          <p className="whitespace-pre-wrap text-sm italic text-muted-foreground/70">
             {notes?.trim() || 'No original message saved.'}
           </p>
         </div>

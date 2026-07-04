@@ -39,7 +39,7 @@ export function BookingReferenceCard({
   const bookingCustomer = getPrimaryBookingCustomer(booking);
 
   return (
-    <Card className="rounded-2xl shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm">
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
