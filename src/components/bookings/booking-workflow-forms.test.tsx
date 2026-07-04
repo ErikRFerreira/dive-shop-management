@@ -21,6 +21,7 @@ import {
   ApproveBookingForm,
   CancelBookingForm,
   MarkNeedsMoreInfoForm,
+  ResubmitBookingForApprovalForm,
 } from './booking-workflow-forms';
 
 beforeEach(() => {
@@ -130,6 +131,21 @@ test('submits approval through the workflow action', () => {
   fireEvent.submit(form!);
 
   expect(mocks.approveBooking).toHaveBeenCalled();
+});
+
+test('renders and submits resubmission through the workflow action', () => {
+  render(<ResubmitBookingForApprovalForm bookingId="booking-1" />);
+
+  const button = screen.getByRole('button', {
+    name: 'Resubmit for Approval',
+  });
+  const form = button.closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  expect(mocks.resubmitBookingForApproval).toHaveBeenCalled();
 });
 
 test('shows approval in the review sidebar only for approvers on pending bookings', () => {

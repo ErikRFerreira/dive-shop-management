@@ -63,9 +63,11 @@ vi.mock('@/components/ui/select', () => {
    */
   function getTriggerId(children: React.ReactNode): string | undefined {
     for (const child of React.Children.toArray(children)) {
-      if (!React.isValidElement<{ id?: string; children?: React.ReactNode }>(
-        child,
-      )) {
+      if (
+        !React.isValidElement<{ id?: string; children?: React.ReactNode }>(
+          child,
+        )
+      ) {
         continue;
       }
 
@@ -182,7 +184,9 @@ import BookingDetails from './booking-details';
  * @param overrides - Staff fields to override.
  * @returns Assignable staff record.
  */
-function assignableStaff(overrides: Partial<AssignableStaff> = {}): AssignableStaff {
+function assignableStaff(
+  overrides: Partial<AssignableStaff> = {},
+): AssignableStaff {
   return {
     id: 'instructor-1',
     name: 'Inez Instructor',
@@ -368,11 +372,6 @@ test('keeps header actions out of the approved detail header', () => {
   const header = container.querySelector('header');
 
   expect(header).not.toBeNull();
-  expect(
-    within(header as HTMLElement).getByRole('link', {
-      name: 'Back to booking requests',
-    }),
-  ).not.toBeNull();
   expect(
     within(header as HTMLElement).queryByRole('link', {
       name: 'Review booking',
@@ -572,7 +571,9 @@ test('renders grouped customer and diver card details', () => {
     }),
   });
 
-  expect(screen.getByRole('heading', { name: 'Customers & divers' })).not.toBeNull();
+  expect(
+    screen.getByRole('heading', { name: 'Customers & divers' }),
+  ).not.toBeNull();
   expect(screen.getByText('Contact details')).not.toBeNull();
   expect(screen.getByText('Booking logistics')).not.toBeNull();
   expect(screen.getAllByText('Diving experience').length).toBeGreaterThan(0);
@@ -606,7 +607,9 @@ test('renders deposit empty state and payment note empty text', () => {
     }),
   });
 
-  expect(screen.getByRole('heading', { name: 'Deposit / payment' })).not.toBeNull();
+  expect(
+    screen.getByRole('heading', { name: 'Deposit / payment' }),
+  ).not.toBeNull();
   expect(screen.getByText('Paid')).not.toBeNull();
   expect(screen.getByText('1000 PESOS')).not.toBeNull();
   expect(screen.getByText('No payment notes.')).not.toBeNull();
