@@ -1,7 +1,9 @@
 import { BookingForm } from '@/components/bookings/booking-form';
+import PageHeader from '@/components/common/page-header';
 import { canCreateBookingRequest } from '@/features/bookings/permissions';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -18,15 +20,16 @@ async function NewBooking() {
     <>
       <div>
         <Link
-          className="mb-3 inline-flex text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex w-fit items-center gap-1.5 mb-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           href="/bookings"
         >
+          <ArrowLeft className="size-4" />
           Back to bookings
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">New Booking</h1>
-        <p className="text-sm text-muted-foreground">
-          Capture the request before submitting it for administrative review.
-        </p>
+        <PageHeader
+          title="New Booking"
+          description="Capture the request before submitting it for administrative review."
+        />
       </div>
       <BookingForm mode="create" />
     </>

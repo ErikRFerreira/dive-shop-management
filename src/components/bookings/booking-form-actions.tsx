@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BookingStatus } from '@/generated/prisma/enums';
 import { cn } from '@/lib/utils';
+import { Send } from 'lucide-react';
 
 type SubmitIntent = 'draft' | 'submit' | 'edit' | 'resubmit';
 
@@ -92,6 +93,7 @@ export function BookingFormActions({
                 onClick={props.onSubmitForApproval}
                 type="button"
               >
+                <Send />
                 {isSubmitting && props.submitIntent === 'submit'
                   ? 'Submitting...'
                   : 'Submit for Approval'}
@@ -103,6 +105,7 @@ export function BookingFormActions({
                 onClick={props.onResubmitForApproval}
                 type="button"
               >
+                <Send />
                 {isSubmitting && props.submitIntent === 'resubmit'
                   ? 'Resubmitting...'
                   : 'Resubmit for Approval'}
@@ -117,6 +120,7 @@ export function BookingFormActions({
               onClick={props.onSubmitForApproval}
               className={buttonClassName}
             >
+              <Send />
               {isSubmitting && props.submitIntent === 'submit'
                 ? 'Submitting...'
                 : 'Submit for Approval'}
