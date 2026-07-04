@@ -15,7 +15,7 @@ async function NewBooking() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <>
       <div>
         <Link
           className="mb-3 inline-flex text-sm text-muted-foreground hover:text-foreground"
@@ -29,7 +29,7 @@ async function NewBooking() {
         </p>
       </div>
       <BookingForm mode="create" />
-    </div>
+    </>
   );
 }
 
