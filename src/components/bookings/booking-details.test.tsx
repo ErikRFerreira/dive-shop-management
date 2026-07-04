@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
 
@@ -7,7 +7,10 @@ import type { AssignableStaff } from '@/features/schedule/types';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingSource,
   BookingStatus,
+  DepositStatus,
+  PreferredLanguage,
   ScheduleAssignmentRole,
   UserRole,
 } from '@/generated/prisma/enums';
@@ -325,6 +328,149 @@ test('does not render the schedule section when the booking has no schedule item
   ).not.toBeNull();
 });
 
+test('renders the top-level booking overview with operational labels', () => {
+  renderBookingDetails({
+    booking: booking({
+      source: BookingSource.WHATSAPP,
+      referrerName: 'Reef Club',
+      scheduleItem: {
+        id: 'schedule-1',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        startTime: '08:00',
+        scheduleNotes: null,
+        assignments: [
+          {
+            id: 'assignment-1',
+            userId: 'instructor-1',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+            notes: null,
+            user: assignableStaff(),
+          },
+        ],
+      },
+    }),
+  });
+
+  expect(screen.getByText('Booking reference')).not.toBeNull();
+  expect(screen.getByText('Activity')).not.toBeNull();
+  expect(screen.getAllByText('Total participants').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Source / referrer').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Whatsapp / Reef Club').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Inez Instructor').length).toBeGreaterThan(0);
+});
+
+test('keeps header actions out of the approved detail header', () => {
+  const { container } = renderBookingDetails({
+    booking: booking({ status: BookingStatus.PENDING_APPROVAL }),
+    canEdit: true,
+    canReview: true,
+  });
+  const header = container.querySelector('header');
+
+  expect(header).not.toBeNull();
+  expect(
+    within(header as HTMLElement).getByRole('link', {
+      name: 'Back to booking requests',
+    }),
+  ).not.toBeNull();
+  expect(
+    within(header as HTMLElement).queryByRole('link', {
+      name: 'Review booking',
+    }),
+  ).toBeNull();
+  expect(
+    within(header as HTMLElement).queryByRole('link', { name: 'Edit booking' }),
+  ).toBeNull();
+});
+
+test('renders the sticky rail status and readiness cards without quick summary', () => {
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.PENDING_APPROVAL }),
+    canEdit: true,
+    canReview: true,
+  });
+
+  expect(screen.getByText('Booking status')).not.toBeNull();
+  expect(screen.getByText('Review readiness')).not.toBeNull();
+  expect(screen.queryByText('Quick summary')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Review booking' })).not.toBeNull();
+  expect(screen.getByRole('link', { name: 'Edit booking' })).not.toBeNull();
+});
+
+test('renders status-aware actions for draft bookings', () => {
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.DRAFT }),
+    canEdit: true,
+    canReview: true,
+  });
+
+  expect(screen.getByRole('link', { name: 'Edit booking' })).not.toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+  expect(
+    screen.getAllByRole('link', { name: 'Back to booking requests' }).length,
+  ).toBeGreaterThan(0);
+});
+
+test('renders status-aware actions for pending approval bookings', () => {
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.PENDING_APPROVAL }),
+    canEdit: true,
+    canReview: true,
+  });
+
+  expect(screen.getByRole('link', { name: 'Review booking' })).not.toBeNull();
+  expect(screen.getByRole('link', { name: 'Edit booking' })).not.toBeNull();
+});
+
+test('renders fix details instead of review for needs-more-info bookings', () => {
+  renderBookingDetails({
+    booking: booking({
+      status: BookingStatus.NEEDS_MORE_INFO,
+      needsMoreInfoReason: 'Please confirm diver certification.',
+    }),
+    canEdit: true,
+    canReview: true,
+  });
+
+  expect(screen.getByRole('link', { name: 'Fix details' })).not.toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+  expect(
+    screen.getAllByText('Please confirm diver certification.').length,
+  ).toBeGreaterThan(0);
+});
+
+test('renders schedule action for scheduled bookings with schedule items', () => {
+  renderBookingDetails({
+    booking: booking({
+      status: BookingStatus.SCHEDULED,
+      scheduleItem: {
+        id: 'schedule-1',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        startTime: '08:00',
+        scheduleNotes: null,
+        assignments: [],
+      },
+    }),
+  });
+
+  expect(screen.getByRole('link', { name: 'View schedule' })).not.toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+});
+
+test('renders read-only navigation for cancelled bookings', () => {
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.CANCELLED }),
+    canEdit: true,
+    canReview: true,
+  });
+
+  expect(
+    screen.getAllByRole('link', { name: 'Back to booking requests' }).length,
+  ).toBeGreaterThan(0);
+  expect(screen.queryByRole('link', { name: 'Edit booking' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+});
+
 test('renders scheduled date and TBD time for a scheduled booking detail', () => {
   renderBookingDetails({
     booking: booking({
@@ -342,6 +488,133 @@ test('renders scheduled date and TBD time for a scheduled booking detail', () =>
   expect(screen.getAllByText('14 Jul 2026').length).toBeGreaterThan(0);
   expect(screen.getByText('TBD')).not.toBeNull();
   expect(screen.getByText('Boat leaves after equipment check.')).not.toBeNull();
+});
+
+test('renders TBD and activity empty text for missing requested time and notes', () => {
+  renderBookingDetails({
+    booking: booking({
+      activities: [
+        {
+          id: 'activity-1',
+          bookingRequestId: 'booking-1',
+          activityType: ActivityType.SPECIALTY_COURSE,
+          specialtyCourse: 'Nitrox',
+          requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+          requestedTime: null,
+          notes: null,
+          sortOrder: 0,
+          createdAt: new Date('2026-07-01T08:00:00.000Z'),
+          updatedAt: new Date('2026-07-01T08:00:00.000Z'),
+        },
+      ],
+    }),
+  });
+
+  expect(screen.getByText('Specialty course')).not.toBeNull();
+  expect(screen.getByText('Nitrox')).not.toBeNull();
+  expect(screen.getAllByText('TBD').length).toBeGreaterThan(0);
+  expect(screen.getByText('No activity notes.')).not.toBeNull();
+});
+
+test('renders original message and note empty states', () => {
+  renderBookingDetails({
+    booking: booking({
+      notes: null,
+      internalNotes: null,
+      adminNotes: null,
+    }),
+  });
+
+  expect(screen.getByText('Original booking message')).not.toBeNull();
+  expect(screen.getByText('No original message saved.')).not.toBeNull();
+  expect(screen.getByText('No internal notes.')).not.toBeNull();
+  expect(screen.getByText('No admin notes yet.')).not.toBeNull();
+});
+
+test('renders grouped customer and diver card details', () => {
+  renderBookingDetails({
+    booking: booking({
+      customers: [
+        {
+          bookingRequestId: 'booking-1',
+          customerId: 'customer-1',
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          hotelAtBooking: 'Blue Hotel',
+          equipmentNeeded: 'BCD and regulator',
+          notes: 'Vegetarian lunch.',
+          certificationAgency: 'PADI',
+          certificationLevel: 'Advanced Open Water',
+          lastDiveAt: new Date('2026-06-01T00:00:00.000Z'),
+          heightCm: 170,
+          weightKg: { toString: () => '65.5' } as never,
+          shoeSize: { toString: () => '39' } as never,
+          divesLogged: 42,
+          createdAt: new Date('2026-07-01T08:00:00.000Z'),
+          updatedAt: new Date('2026-07-01T08:00:00.000Z'),
+          customer: {
+            id: 'customer-1',
+            fullName: 'Maria Santos',
+            firstName: null,
+            lastName: null,
+            chineseName: 'Ma Li',
+            weChatId: 'maria-wechat',
+            whatsAppNumber: '+63900111222',
+            email: 'maria@example.test',
+            phone: '+63900333444',
+            hotel: 'Customer profile hotel',
+            preferredLanguage: PreferredLanguage.ENGLISH,
+            notes: null,
+            createdAt: new Date('2026-07-01T08:00:00.000Z'),
+            updatedAt: new Date('2026-07-01T08:00:00.000Z'),
+          },
+        },
+      ],
+    }),
+  });
+
+  expect(screen.getByRole('heading', { name: 'Customers & divers' })).not.toBeNull();
+  expect(screen.getByText('Contact details')).not.toBeNull();
+  expect(screen.getByText('Booking logistics')).not.toBeNull();
+  expect(screen.getAllByText('Diving experience').length).toBeGreaterThan(0);
+  expect(screen.getByText('Equipment details')).not.toBeNull();
+  expect(screen.getAllByText('Notes').length).toBeGreaterThan(0);
+  expect(screen.getByText('Blue Hotel')).not.toBeNull();
+  expect(screen.getByText('Advanced Open Water')).not.toBeNull();
+  expect(screen.getByText('BCD and regulator')).not.toBeNull();
+  expect(screen.getByText('Vegetarian lunch.')).not.toBeNull();
+});
+
+test('renders deposit empty state and payment note empty text', () => {
+  renderBookingDetails({
+    booking: booking({
+      deposits: [
+        {
+          id: 'deposit-1',
+          bookingRequestId: 'booking-1',
+          amount: { toString: () => '1000' } as never,
+          status: DepositStatus.PAID,
+          currency: 'PESOS',
+          paidTo: 'Front desk',
+          paymentMethod: 'Cash',
+          dueAt: null,
+          paidAt: null,
+          notes: null,
+          createdAt: new Date('2026-07-01T08:00:00.000Z'),
+          updatedAt: new Date('2026-07-01T08:00:00.000Z'),
+        },
+      ],
+    }),
+  });
+
+  expect(screen.getByRole('heading', { name: 'Deposit / payment' })).not.toBeNull();
+  expect(screen.getByText('Paid')).not.toBeNull();
+  expect(screen.getByText('1000 PESOS')).not.toBeNull();
+  expect(screen.getByText('No payment notes.')).not.toBeNull();
+
+  cleanup();
+
+  renderBookingDetails({ booking: booking({ deposits: [] }) });
+  expect(screen.getByText('No deposit recorded.')).not.toBeNull();
 });
 
 test('renders multiple assigned staff with assignment roles', () => {
@@ -377,7 +650,7 @@ test('renders multiple assigned staff with assignment roles', () => {
     }),
   });
 
-  expect(screen.getByText('Assigned staff')).not.toBeNull();
+  expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
   expect(screen.getByText('Inez Instructor')).not.toBeNull();
   expect(screen.getByText('Dina Divemaster')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
@@ -397,8 +670,8 @@ test('renders the unassigned state when the schedule item has no assignments', (
     }),
   });
 
-  expect(screen.getByText('Assigned staff')).not.toBeNull();
-  expect(screen.getByText('Unassigned')).not.toBeNull();
+  expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
   expect(
     screen.getByText('No instructor or divemaster has been assigned yet.'),
   ).not.toBeNull();

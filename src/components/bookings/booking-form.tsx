@@ -14,6 +14,7 @@ import { BookingDetailsSection } from '@/components/bookings/booking-details-sec
 import { CustomerDiverDetailsSection } from '@/components/bookings/customer-diver-details-section';
 import { DepositPaymentSection } from '@/components/bookings/deposit-payment-section';
 import { RawBookingSection } from '@/components/bookings/raw-booking-section';
+import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
 import {
   createBookingDraft,
   resubmitEditedBookingForApproval,
@@ -311,56 +312,62 @@ export function BookingForm(props: BookingFormProps) {
     />
   );
 
+  const formSections = (
+    <div className="space-y-6">
+      <RawBookingSection form={form} />
+      <BookingDetailsSection
+        form={form}
+        activities={activities}
+        getFieldError={getFieldError}
+      />
+      <CustomerDiverDetailsSection
+        form={form}
+        includesFunDive={includesFunDive}
+        getFieldError={getFieldError}
+      />
+      <DepositPaymentSection
+        form={form}
+        isPaidDeposit={isPaidDeposit}
+        getFieldError={getFieldError}
+      />
+    </div>
+  );
+
   return (
     <form
-      className={
-        isEdit
-          ? 'space-y-6'
-          : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start'
-      }
+      className={isEdit ? 'space-y-6' : undefined}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         submitCurrentForm(isEdit ? 'edit' : 'submit');
       }}
     >
-      <div className="space-y-6">
-        <RawBookingSection form={form} />
-        <BookingDetailsSection
-          form={form}
-          activities={activities}
-          getFieldError={getFieldError}
-        />
-        <CustomerDiverDetailsSection
-          form={form}
-          includesFunDive={includesFunDive}
-          getFieldError={getFieldError}
-        />
-        <DepositPaymentSection
-          form={form}
-          isPaidDeposit={isPaidDeposit}
-          getFieldError={getFieldError}
-        />
-      </div>
       {isEdit ? (
-        <BookingFormActions
-          mode="edit"
-          errorMessages={errorMessages}
-          isSubmitting={isSubmitting}
-          initialStatus={editProps!.initialStatus}
-          submitIntent={submitIntent}
-          cancelHref={`/bookings/${editProps!.bookingId}`}
-          onSaveChanges={() => submitCurrentForm('edit')}
-          onSubmitForApproval={() => submitCurrentForm('submit')}
-          onResubmitForApproval={() => submitCurrentForm('resubmit')}
-          clearAutosave={clearAutosave}
-        />
+        <>
+          {formSections}
+          <BookingFormActions
+            mode="edit"
+            errorMessages={errorMessages}
+            isSubmitting={isSubmitting}
+            initialStatus={editProps!.initialStatus}
+            submitIntent={submitIntent}
+            cancelHref={`/bookings/${editProps!.bookingId}`}
+            onSaveChanges={() => submitCurrentForm('edit')}
+            onSubmitForApproval={() => submitCurrentForm('submit')}
+            onResubmitForApproval={() => submitCurrentForm('resubmit')}
+            clearAutosave={clearAutosave}
+          />
+        </>
       ) : (
-        <aside className="lg:sticky lg:top-6">
-          <BookingReadinessCard items={createReadinessItems}>
-            {createActions}
-          </BookingReadinessCard>
-        </aside>
+        <StickyRailLayout
+          rail={
+            <BookingReadinessCard items={createReadinessItems}>
+              {createActions}
+            </BookingReadinessCard>
+          }
+        >
+          {formSections}
+        </StickyRailLayout>
       )}
     </form>
   );

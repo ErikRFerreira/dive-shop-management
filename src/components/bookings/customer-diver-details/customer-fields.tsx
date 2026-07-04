@@ -178,7 +178,9 @@ export function CustomerFields({
 
   return (
     <div className="space-y-4 md:col-span-2">
-      <h4 className="text-sm font-medium">Contact details</h4>
+      <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        Contact details
+      </h4>
       <div className="grid gap-4 md:grid-cols-2">
         <RegisteredInputField
           form={form}
@@ -306,13 +308,18 @@ export function EquipmentFields({ form, index }: BaseCustomerFieldsProps) {
  */
 export function CustomerNotesField({ form, index }: BaseCustomerFieldsProps) {
   return (
-    <RegisteredTextAreaField
-      form={form}
-      index={index}
-      name="customerNotes"
-      label="Customer notes"
-      className="grid gap-2 md:col-span-2"
-    />
+    <div className="space-y-4 md:col-span-2 border-t border-border pt-5 mt-1">
+      <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        Notes
+      </h4>
+      <RegisteredTextAreaField
+        form={form}
+        index={index}
+        name="customerNotes"
+        label="Customer notes"
+        className="grid gap-2 md:col-span-2"
+      />
+    </div>
   );
 }
 
@@ -327,8 +334,10 @@ export function EquipmentSizingFields({
   index,
 }: BaseCustomerFieldsProps) {
   return (
-    <div className="space-y-4 md:col-span-2">
-      <h4 className="text-sm font-medium">Equipment details</h4>
+    <div className="space-y-4 md:col-span-2 border-t border-border pt-5 mt-1">
+      <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        Equipment details
+      </h4>
       <div className="grid gap-4 md:grid-cols-2">
         <EquipmentFields form={form} index={index} />
         <RegisteredInputField
@@ -373,8 +382,10 @@ export function DivingExperienceFields({
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
 }) {
   return (
-    <div className="space-y-4 md:col-span-2">
-      <h4 className="text-sm font-medium">Diving experience</h4>
+    <div className="space-y-4 md:col-span-2 border-t border-border pt-5 mt-1">
+      <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        Diving experience
+      </h4>
       <div className="grid gap-4 md:grid-cols-2">
         <RegisteredInputField
           form={form}

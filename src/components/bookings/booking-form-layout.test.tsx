@@ -74,7 +74,6 @@ test('renders create actions inside the booking readiness card', () => {
   });
   const cancel = within(readiness).getByRole('link', { name: 'Cancel' });
 
-  expect(within(readiness).getByText('Draft')).not.toBeNull();
   expect(within(readiness).getByText('Booking readiness')).not.toBeNull();
   expectElementBefore(submit, saveDraft);
   expectElementBefore(saveDraft, cancel);
