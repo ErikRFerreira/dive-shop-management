@@ -29,6 +29,7 @@ export function RawBookingSection({
       >
         <Textarea
           id="rawBookingText"
+          className="min-h-36 bg-muted/20 text-[0.95rem] resize-none"
           rows={6}
           {...form.register('rawBookingText')}
         />

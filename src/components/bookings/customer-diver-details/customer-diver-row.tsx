@@ -15,6 +15,7 @@ import {
   CustomerPicker,
   SelectedBookingCustomer,
 } from './existing-customer-picker';
+import { Trash2, UserRound } from 'lucide-react';
 
 type ContactInputProps = { 'aria-invalid'?: boolean; className?: string };
 
@@ -62,27 +63,35 @@ export function CustomerDiverRow({
   const prefix = `customers.${index}` as const;
 
   return (
-    <div className="rounded-lg border p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="font-medium">Customer / diver {index + 1}</h3>
-          <p className="text-sm text-muted-foreground">
-            {isPrimaryContact ? 'Primary contact' : 'Participant'}
-          </p>
+    <div className="rounded-xl border border-border bg-muted/30">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 p-4 border-b border-border">
+        <div className="">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-full bg-ocean/10 text-ocean ring-1 ring-inset ring-ocean/20">
+              <UserRound className="size-4" />
+            </span>
+            <h3 className="font-medium">Customer / diver {index + 1}</h3>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <label
-            className="flex items-center gap-2 text-sm"
             htmlFor={`${prefix}.primaryContact`}
+            className={
+              isPrimaryContact
+                ? 'cursor-pointer rounded-full bg-primary/10 px-2 py-0.5 text-[0.68rem] font-semibold text-primary ring-1 ring-inset ring-primary/20'
+                : 'text-muted-foreground rounded-full hover:text-foreground cursor-pointer px-2 py-0.5 text-[0.68rem] font-semibold'
+            }
           >
             <input
               id={`${prefix}.primaryContact`}
               type="checkbox"
               checked={isPrimaryContact}
               onChange={() => onSetPrimary(index)}
+              className="sr-only"
             />
-            Primary contact
+            {isPrimaryContact ? 'Primary contact' : 'Set as primary contact'}
           </label>
+
           {rowCount > 1 ? (
             <Button
               type="button"
@@ -90,12 +99,13 @@ export function CustomerDiverRow({
               size="sm"
               onClick={() => onRemove(index)}
             >
-              Remove customer
+              <Trash2 className="size-4" />
+              Remove
             </Button>
           ) : null}
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 p-4">
         {isExistingCustomer ? (
           <SelectedBookingCustomer
             form={form}

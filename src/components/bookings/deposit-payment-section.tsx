@@ -16,6 +16,7 @@ import {
   depositStatusOptions,
 } from '@/features/bookings/form-options';
 import type { BookingFormValues } from '@/features/bookings/types';
+import { inputClassName } from '@/lib/consts';
 
 type DepositPaymentSectionProps = {
   form: UseFormReturn<BookingFormValues>;
@@ -63,6 +64,7 @@ export function DepositPaymentSection({
           min="0.01"
           step="0.01"
           {...form.register('amount')}
+          className={inputClassName}
         />
       </BookingFormField>
       <BookingFormField
@@ -91,13 +93,25 @@ export function DepositPaymentSection({
         required={isPaidDeposit}
         error={getFieldError('paidTo')}
       >
-        <Input id="paidTo" {...form.register('paidTo')} />
+        <Input
+          id="paidTo"
+          {...form.register('paidTo')}
+          className={inputClassName}
+        />
       </BookingFormField>
       <BookingFormField id="paymentMethod" label="Payment method">
-        <Input id="paymentMethod" {...form.register('paymentMethod')} />
+        <Input
+          id="paymentMethod"
+          {...form.register('paymentMethod')}
+          className={inputClassName}
+        />
       </BookingFormField>
       <BookingFormField id="paymentNotes" label="Payment notes">
-        <Textarea id="paymentNotes" {...form.register('paymentNotes')} />
+        <Textarea
+          id="paymentNotes"
+          {...form.register('paymentNotes')}
+          className={`${inputClassName} h-24 resize-none`}
+        />
       </BookingFormField>
     </BookingFormSection>
   );

@@ -23,6 +23,7 @@ import {
   preferredLanguageOptions,
 } from '@/features/bookings/form-options';
 import type { BookingFormValues } from '@/features/bookings/types';
+import { inputClassName } from '@/lib/consts';
 
 type CustomerFieldName = keyof BookingFormValues['customers'][number];
 type ContactInputProps = { 'aria-invalid'?: boolean; className?: string };
@@ -116,7 +117,12 @@ function RegisteredInputField({
       error={error}
       className={className}
     >
-      <Input id={path} {...inputProps} {...form.register(path)} />
+      <Input
+        id={path}
+        {...inputProps}
+        {...form.register(path)}
+        className={inputClassName}
+      />
     </BookingFormField>
   );
 }
@@ -138,7 +144,11 @@ function RegisteredTextAreaField({
 
   return (
     <BookingFormField id={path} label={label} className={className}>
-      <Textarea id={path} {...form.register(path)} />
+      <Textarea
+        id={path}
+        {...form.register(path)}
+        className={`${inputClassName} h-24 resize-none`}
+      />
     </BookingFormField>
   );
 }
@@ -220,10 +230,7 @@ export function CustomerFields({
           name="hotelAtBooking"
           label="Hotel / pickup location"
         />
-        <BookingFormField
-          id={preferredLanguagePath}
-          label="Preferred language"
-        >
+        <BookingFormField id={preferredLanguagePath} label="Preferred language">
           {isExistingCustomer ? (
             <div
               className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm"
@@ -242,6 +249,7 @@ export function CustomerFields({
                   onValueChange={field.onChange}
                   values={preferredLanguageOptions}
                   placeholder="Select language"
+                  className={inputClassName}
                 />
               )}
             />
@@ -275,7 +283,7 @@ export function EquipmentFields({ form, index }: BaseCustomerFieldsProps) {
               )
             }
           >
-            <SelectTrigger id={field.name}>
+            <SelectTrigger id={field.name} className={inputClassName}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

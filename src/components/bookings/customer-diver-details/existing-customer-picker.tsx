@@ -8,6 +8,8 @@ import { searchBookingCustomers } from '@/features/customers/booking-actions';
 import type { BookingCustomerPickerResult } from '@/features/customers/types';
 
 import { applyExistingCustomer } from './customer-form-actions';
+import { inputClassName } from '@/lib/consts';
+import { Search } from 'lucide-react';
 
 /**
  * Formats nullable picker values for compact customer result summaries.
@@ -107,19 +109,20 @@ export function CustomerPicker({
   }
 
   return (
-    <div className="space-y-3 rounded-md border bg-muted/20 p-3 md:col-span-2">
+    <div className="space-y-3 md:col-span-2 border-b border-border pb-6">
       <label
         className="text-sm font-medium"
         htmlFor={`customer-picker-${index}`}
       >
         Search existing customers
       </label>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 mt-2">
         <div className="min-w-64 flex-1">
           <Input
             id={`customer-picker-${index}`}
             type="search"
             value={query}
+            className={inputClassName}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -136,6 +139,7 @@ export function CustomerPicker({
           onClick={() => void searchExistingCustomers()}
           disabled={isSearching}
         >
+          <Search />
           {isSearching ? 'Searching...' : 'Search'}
         </Button>
       </div>

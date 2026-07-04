@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { formatEnumLabel } from '@/features/bookings/form-options';
 import type { BookingFormValues } from '@/features/bookings/types';
+import { inputClassName } from '@/lib/consts';
 
 type BookingFormFieldProps = {
   id: string;
@@ -18,6 +19,15 @@ type BookingFormFieldProps = {
   required?: boolean;
   error?: string;
   children: React.ReactNode;
+};
+
+type EnumSelectProps<T extends string> = {
+  id: string;
+  value: T | '';
+  onValueChange: (value: T) => void;
+  values: T[];
+  placeholder: string;
+  className?: string;
 };
 
 export function BookingFormField({
@@ -50,16 +60,11 @@ export function EnumSelect<T extends string>({
   onValueChange,
   values,
   placeholder,
-}: {
-  id: string;
-  value: T | '';
-  onValueChange: (value: T) => void;
-  values: T[];
-  placeholder: string;
-}) {
+  className,
+}: EnumSelectProps<T>) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger id={id}>
+      <SelectTrigger id={id} className={inputClassName}>
         <SelectValue placeholder={placeholder}>
           {value ? formatEnumLabel(value) : undefined}
         </SelectValue>
