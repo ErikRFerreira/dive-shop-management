@@ -8,7 +8,7 @@ import {
 import {
   BookingFormField,
   EnumSelect,
-} from '@/components/bookings/booking-form-controls';
+} from '@/components/bookings/form/booking-form-controls';
 import { Input } from '@/components/ui/input';
 import {
   Select,
