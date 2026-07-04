@@ -97,6 +97,7 @@ export function CustomerDiverRow({
               type="button"
               variant="outline"
               size="sm"
+              aria-label="Remove customer"
               onClick={() => onRemove(index)}
             >
               <Trash2 className="size-4" />

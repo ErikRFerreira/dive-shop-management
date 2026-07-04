@@ -578,7 +578,7 @@ test('renders grouped customer and diver card details', () => {
   expect(screen.getAllByText('Diving experience').length).toBeGreaterThan(0);
   expect(screen.getByText('Equipment details')).not.toBeNull();
   expect(screen.getAllByText('Notes').length).toBeGreaterThan(0);
-  expect(screen.getByText('Blue Hotel')).not.toBeNull();
+  expect(screen.getAllByText('Blue Hotel').length).toBeGreaterThan(0);
   expect(screen.getByText('Advanced Open Water')).not.toBeNull();
   expect(screen.getByText('BCD and regulator')).not.toBeNull();
   expect(screen.getByText('Vegetarian lunch.')).not.toBeNull();
