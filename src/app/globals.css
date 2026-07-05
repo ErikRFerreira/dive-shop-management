@@ -211,12 +211,21 @@
     min-height: 100dvh;
 
     display: grid;
-    grid-template-columns: var(--sidebar-width, 15.625rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 64px minmax(0, 1fr);
     grid-template-areas:
-      'sidebar header'
-      'sidebar main';
-    transition: grid-template-columns 240ms ease-in-out;
+      'header'
+      'main';
+  }
+
+  @media (min-width: 1024px) {
+    .app-layout {
+      grid-template-columns: var(--sidebar-width, 15.625rem) minmax(0, 1fr);
+      grid-template-areas:
+        'sidebar header'
+        'sidebar main';
+      transition: grid-template-columns 240ms ease-in-out;
+    }
   }
 
   .app-sidebar {

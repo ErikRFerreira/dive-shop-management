@@ -1,153 +1,172 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, X } from 'lucide-react';
 
+import DashboardNavigationItems from '@/components/layout/dashboard-navigation-items';
+import { useMobileMenu } from '@/components/layout/mobile-menu-provider';
 import { useSidebarCollapse } from '@/components/layout/sidebar-collapse-provider';
-import { getDashboardNavigation } from '@/lib/dashboard-navigation';
 import type { CurrentUser } from '@/lib/current-user';
 import { cn } from '@/lib/utils';
 
-/** Returns true when a nav item should appear active for the current pathname. */
-function isNavItemActive(pathname: string, href: string) {
-  if (href === '/dashboard') {
-    return pathname === href;
-  }
+type DashboardSidebarProps = {
+  currentUser: CurrentUser;
+  variant?: 'desktop' | 'mobile';
+};
 
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/** Renders one route row in the dashboard sidebar navigation. */
-function SidebarNavItem({
-  href,
-  label,
-  icon: Icon,
-  pathname,
-}: {
-  href: string;
-  label: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  pathname: string;
-}) {
-  const { isCollapsed } = useSidebarCollapse();
-  const isActive = isNavItemActive(pathname, href);
-
-  return (
-    <Link
-      href={href}
-      title={isCollapsed ? label : undefined}
-      aria-current={isActive ? 'page' : undefined}
-      aria-label={label}
-      className={cn(
-        'group relative flex items-center rounded-lg text-sm font-medium transition-colors',
-        isCollapsed ? 'justify-center gap-0 px-2 py-2.5' : 'gap-3 px-3 py-2',
-        isActive
-          ? 'bg-sidebar-accent/70 text-sidebar-foreground'
-          : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground',
-      )}
-    >
-      {isActive ? (
-        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
-      ) : null}
-      <Icon
-        className={cn(
-          'size-[1.15rem] shrink-0',
-          isActive
-            ? 'text-sidebar-primary'
-            : 'text-sidebar-foreground/55 group-hover:text-sidebar-foreground',
-        )}
-      />
-      <span className={cn('flex-1', isCollapsed && 'sr-only')}>{label}</span>
-    </Link>
-  );
-}
-
-/** Renders the role-aware dashboard sidebar with v0-inspired visual styling. */
-function DashboardSidebar({ currentUser }: { currentUser: CurrentUser }) {
+/**
+ * Renders the role-aware dashboard navigation for both the desktop sidebar and
+ * mobile drawer while keeping desktop collapse behavior isolated to large
+ * screens.
+ */
+function DashboardSidebar({
+  currentUser,
+  variant = 'desktop',
+}: DashboardSidebarProps) {
   const { isCollapsed, toggleCollapsed } = useSidebarCollapse();
-  const navItems = getDashboardNavigation(currentUser);
+  const { isOpen, close } = useMobileMenu();
   const pathname = usePathname();
+  const isMobile = variant === 'mobile';
+  const isVisuallyCollapsed = !isMobile && isCollapsed;
+  const previousPathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    if (!isMobile) {
+      previousPathnameRef.current = pathname;
+      return;
+    }
+
+    if (previousPathnameRef.current !== pathname && isOpen) {
+      close();
+    }
+
+    previousPathnameRef.current = pathname;
+  }, [pathname, isMobile, isOpen, close]);
 
   return (
-    <aside
-      className={cn('app-sidebar', isCollapsed && 'app-sidebar-collapsed')}
-    >
-      <div
-        className={cn(
-          'flex items-center',
-          isCollapsed ? 'flex-col gap-3 px-3 py-5' : 'gap-3 px-5 py-6',
-        )}
-      >
-        <div className="flex size-8 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary/15 ring-1 ring-sidebar-primary/25">
-          <Image
-            src="/icon.svg"
-            alt="Blue Revival logo"
-            width={32}
-            height={32}
-            className="size-8 object-contain"
-            priority
-          />
-        </div>
-        <div className={cn('min-w-0 leading-tight', isCollapsed && 'sr-only')}>
-          <p className="text-sm font-semibold tracking-tight">Blue Revival</p>
-          <p className="text-xs text-sidebar-foreground/55">Dive Ops</p>
-        </div>
+    <>
+      {isMobile && isOpen ? (
         <button
           type="button"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onClick={toggleCollapsed}
-          className={cn(
-            'ml-auto inline-flex size-8 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-foreground',
-            isCollapsed && 'ml-0',
-          )}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="size-4" />
-          ) : (
-            <ChevronLeft className="size-4" />
-          )}
-        </button>
-      </div>
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[1px] lg:hidden"
+          onClick={close}
+        />
+      ) : null}
 
-      <nav
+      <aside
+        aria-hidden={isMobile && !isOpen}
+        aria-label={isMobile ? 'Mobile navigation menu' : 'Dashboard navigation'}
         className={cn(
-          'flex flex-1 flex-col gap-1 px-3 py-2',
-          isCollapsed && 'px-2',
+          isMobile
+            ? 'fixed inset-y-0 left-0 z-50 flex h-dvh w-[85vw] max-w-sm flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden'
+            : 'app-sidebar',
+          isMobile && (isOpen ? 'translate-x-0' : '-translate-x-full'),
+          isVisuallyCollapsed && 'app-sidebar-collapsed',
         )}
       >
-        {navItems.map((item) => (
-          <SidebarNavItem
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            pathname={pathname}
-          />
-        ))}
-      </nav>
-
-      <div className={cn('mt-auto px-5 py-5', isCollapsed && 'px-3 py-4')}>
         <div
           className={cn(
-            'flex items-center rounded-lg bg-sidebar-accent/40 px-3 py-2.5 ring-1 ring-sidebar-border',
-            isCollapsed ? 'justify-center gap-0 px-2.5' : 'gap-2',
+            'flex items-center',
+            isVisuallyCollapsed
+              ? 'flex-col gap-3 px-3 py-5'
+              : 'gap-3 px-5 py-6',
+            isMobile && 'border-b border-sidebar-border py-4',
           )}
         >
-          <MapPin className="size-4 text-sidebar-primary" />
-          <p
+          <div className="flex size-8 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary/15 ring-1 ring-sidebar-primary/25">
+            <Image
+              src="/icon.svg"
+              alt="Blue Revival logo"
+              width={32}
+              height={32}
+              className="size-8 object-contain"
+              priority
+            />
+          </div>
+
+          <div
             className={cn(
-              'text-xs text-sidebar-foreground/70',
-              isCollapsed && 'sr-only',
+              'min-w-0 leading-tight',
+              isVisuallyCollapsed && 'sr-only',
             )}
           >
-            Panglao Island <span className="text-sidebar-foreground/40">·</span>{' '}
-            Bohol
-          </p>
+            <p className="text-sm font-semibold tracking-tight">Blue Revival</p>
+            <p className="text-xs text-sidebar-foreground/55">Dive Ops</p>
+          </div>
+
+          {isMobile ? (
+            <button
+              type="button"
+              aria-label="Close navigation menu"
+              onClick={close}
+              className="ml-auto inline-flex size-8 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={toggleCollapsed}
+              className={cn(
+                'ml-auto inline-flex size-8 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/30 text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-foreground',
+                isVisuallyCollapsed && 'ml-0',
+              )}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="size-4" />
+              ) : (
+                <ChevronLeft className="size-4" />
+              )}
+            </button>
+          )}
         </div>
-      </div>
-    </aside>
+
+        <nav
+          className={cn(
+            'flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2',
+            isVisuallyCollapsed && 'px-2',
+            isMobile && 'py-4',
+          )}
+        >
+          <DashboardNavigationItems
+            currentUser={currentUser}
+            isCollapsed={isVisuallyCollapsed}
+            onItemClick={isMobile ? close : undefined}
+            variant={isMobile ? 'mobile' : 'desktop'}
+          />
+        </nav>
+
+        <div
+          className={cn(
+            'mt-auto px-5 py-5',
+            isVisuallyCollapsed && 'px-3 py-4',
+            isMobile && 'border-t border-sidebar-border py-4',
+          )}
+        >
+          <div
+            className={cn(
+              'flex items-center rounded-lg bg-sidebar-accent/40 px-3 py-2.5 ring-1 ring-sidebar-border',
+              isVisuallyCollapsed ? 'justify-center gap-0 px-2.5' : 'gap-2',
+            )}
+          >
+            <MapPin className="size-4 text-sidebar-primary" />
+            <p
+              className={cn(
+                'text-xs text-sidebar-foreground/70',
+                isVisuallyCollapsed && 'sr-only',
+              )}
+            >
+              Panglao Island <span className="text-sidebar-foreground/40">/</span>{' '}
+              Bohol
+            </p>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
 
