@@ -131,7 +131,6 @@ test('renders the details summary and internal notes variants', () => {
       includesFunDive
       internalNotesVariant="details"
       summaryTitle="Booking reference"
-      summaryVariant="details"
     />,
   );
 
@@ -155,13 +154,16 @@ test('renders the review summary and customer-service internal notes variant', (
       includesFunDive
       internalNotesVariant="review"
       summaryTitle="Booking summary"
-      summaryVariant="review"
     />,
   );
 
   expect(screen.getByText('Booking summary')).not.toBeNull();
-  expect(screen.getByText('Activity summary')).not.toBeNull();
-  expect(screen.queryByText('Assigned staff')).toBeNull();
+  expect(screen.getByText('booking-1')).not.toBeNull();
+  expect(screen.getByText('Activity')).not.toBeNull();
+  expect(screen.getAllByText('Hotel / pickup location').length).toBeGreaterThan(
+    0,
+  );
+  expect(screen.getByText('Assigned staff')).not.toBeNull();
   expect(screen.getByText('Internal notes from customer service')).not.toBeNull();
   expect(screen.getByText('Customer service note for admin.')).not.toBeNull();
 });

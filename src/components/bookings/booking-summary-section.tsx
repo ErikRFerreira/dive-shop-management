@@ -16,7 +16,6 @@ import {
   EMPTY_BOOKING_VALUE,
   formatAssignedStaffSummary,
   formatBookingCustomerName,
-  formatBookingDate,
   formatBookingDateTime,
   formatBookingSourceReferrer,
   formatRequestedDateTime,
@@ -24,24 +23,20 @@ import {
 } from './booking-display-utils';
 import { BookingReferenceMetaItem } from './booking-info-layout';
 
-type BookingSummaryVariant = 'details' | 'review';
-
 /**
  * Renders the high-level booking summary card for operational scanning.
  *
- * @param props - Booking, normalized activities, title, and page variant.
+ * @param props - Booking, normalized activities, and section title.
  * @returns Top left-column booking summary/reference card.
  */
 export function BookingSummarySection({
   activities,
   booking,
   title,
-  variant,
 }: {
   activities: BookingActivityDisplayItem[];
   booking: BookingDetailsItem;
   title: string;
-  variant: BookingSummaryVariant;
 }) {
   const bookingCustomer = getPrimaryBookingCustomer(booking);
   const activitySummary = summarizeBookingActivities(
@@ -57,11 +52,9 @@ export function BookingSummarySection({
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {title}
             </p>
-            {variant === 'details' ? (
-              <p className="mt-1 font-mono text-sm font-semibold">
-                {booking.id}
-              </p>
-            ) : null}
+            <p className="mt-1 font-mono text-sm font-semibold">
+              Booking ID: {booking.id}
+            </p>
           </div>
         </div>
       </CardHeader>
@@ -73,7 +66,7 @@ export function BookingSummarySection({
         />
         <BookingReferenceMetaItem
           icon={Waves}
-          label={variant === 'review' ? 'Activity summary' : 'Activity'}
+          label="Activity"
           value={activitySummary}
         />
         <BookingReferenceMetaItem
@@ -91,17 +84,15 @@ export function BookingSummarySection({
           label="Source / referrer"
           value={formatBookingSourceReferrer(booking)}
         />
-        {variant === 'details' ? (
-          <BookingReferenceMetaItem
-            icon={Hotel}
-            label="Hotel / pickup location"
-            value={
-              bookingCustomer?.hotelAtBooking ??
-              bookingCustomer?.customer.hotel ??
-              EMPTY_BOOKING_VALUE
-            }
-          />
-        ) : null}
+        <BookingReferenceMetaItem
+          icon={Hotel}
+          label="Hotel / pickup location"
+          value={
+            bookingCustomer?.hotelAtBooking ??
+            bookingCustomer?.customer.hotel ??
+            EMPTY_BOOKING_VALUE
+          }
+        />
         <BookingReferenceMetaItem
           icon={UserRound}
           label="Customer service owner"
@@ -110,19 +101,13 @@ export function BookingSummarySection({
         <BookingReferenceMetaItem
           icon={Clock3}
           label="Last updated"
-          value={
-            variant === 'review'
-              ? formatBookingDate(booking.updatedAt)
-              : formatBookingDateTime(booking.updatedAt)
-          }
+          value={formatBookingDateTime(booking.updatedAt)}
         />
-        {variant === 'details' ? (
-          <BookingReferenceMetaItem
-            icon={Users}
-            label="Assigned staff"
-            value={formatAssignedStaffSummary(booking)}
-          />
-        ) : null}
+        <BookingReferenceMetaItem
+          icon={Users}
+          label="Assigned staff"
+          value={formatAssignedStaffSummary(booking)}
+        />
       </CardContent>
     </Card>
   );

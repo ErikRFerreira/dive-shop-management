@@ -15,7 +15,6 @@ type BookingMainSectionsProps = {
   includesFunDive: boolean;
   internalNotesVariant: 'details' | 'review';
   summaryTitle: string;
-  summaryVariant: 'details' | 'review';
 };
 
 /**
@@ -32,7 +31,6 @@ export function BookingMainSections({
   includesFunDive,
   internalNotesVariant,
   summaryTitle,
-  summaryVariant,
 }: BookingMainSectionsProps) {
   return (
     <main className="space-y-6">
@@ -40,7 +38,6 @@ export function BookingMainSections({
         activities={activities}
         booking={booking}
         title={summaryTitle}
-        variant={summaryVariant}
       />
       {afterSummary}
       <OriginalBookingMessageSection notes={booking.notes} />

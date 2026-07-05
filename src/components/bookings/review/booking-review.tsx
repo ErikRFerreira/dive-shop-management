@@ -13,6 +13,7 @@ import {
 } from './booking-review-activities';
 import { BookingReviewSidebar } from './booking-review-sidebar';
 import { ArrowLeft } from 'lucide-react';
+import PageHeader from '@/components/common/page-header';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
@@ -47,26 +48,13 @@ export function BookingReview({ booking, canApprove }: BookingReviewProps) {
         />
       }
     >
-      <header className="space-y-4">
-        <Link
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          href={`/bookings/${booking.id}`}
-        >
-          <ArrowLeft className="size-4" />
-          Back to booking details
-        </Link>
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
-              Admin review
-            </h1>
-            <BookingStatusBadge status={booking.status} />
-          </div>
-          <p className="font-mono text-sm text-muted-foreground">
-            Booking ID: {booking.id}
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Booking review"
+        description="Review the booking details and approve or reject the request."
+        linkLabel="Back to booking details"
+        linkHref={`/bookings/${booking.id}`}
+        badge={<BookingStatusBadge status={booking.status} />}
+      />
 
       <BookingMainSections
         activities={activities}
@@ -74,7 +62,6 @@ export function BookingReview({ booking, canApprove }: BookingReviewProps) {
         includesFunDive={includesFunDive}
         internalNotesVariant="review"
         summaryTitle="Booking summary"
-        summaryVariant="review"
       />
     </StickyRailLayout>
   );

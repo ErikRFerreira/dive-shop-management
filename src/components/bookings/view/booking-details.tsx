@@ -45,20 +45,13 @@ function BookingDetails({
 
   return (
     <>
-      <header className="space-y-4">
-        <Link
-          className="inline-flex w-fit items-center gap-1.5 mb-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          href="/bookings"
-        >
-          <ArrowLeft className="size-4" />
-          Back to booking rquests
-        </Link>
-        <PageHeader
-          title="Booking details"
-          description="Review the full booking request, customer details, and operational
+      <PageHeader
+        title="Booking details"
+        description="Review the full booking request, customer details, and operational
             notes"
-        />
-      </header>
+        linkLabel="Back to booking requests"
+        linkHref="/bookings"
+      />
 
       <StickyRailLayout
         className="lg:grid-cols-[minmax(0,1fr)_20rem]"
@@ -90,8 +83,7 @@ function BookingDetails({
           booking={booking}
           includesFunDive={includesFunDive}
           internalNotesVariant="details"
-          summaryTitle="Booking reference"
-          summaryVariant="details"
+          summaryTitle="Booking summary"
         />
       </StickyRailLayout>
     </>
