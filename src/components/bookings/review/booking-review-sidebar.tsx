@@ -148,17 +148,14 @@ export function BookingReviewSidebar({
     status === BookingStatus.SCHEDULED;
   const hasDecisionActions =
     canApprovePendingBooking || canRequestMoreInfo || canCancel;
-  const {
-    completedRequiredCount,
-    missingRequiredCount,
-    totalRequiredCount,
-  } = getRequiredReadinessSummary(reviewReadiness);
+  const { completedRequiredCount, missingRequiredCount, totalRequiredCount } =
+    getRequiredReadinessSummary(reviewReadiness);
   const hasMissingRequiredInformation = missingRequiredCount > 0;
 
   return (
     <div className="space-y-6" data-testid="booking-review-sidebar">
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border">
           <div className="flex items-center justify-between gap-3">
             <CardTitle>Review readiness</CardTitle>
             <span className="text-xs font-medium tabular-nums text-muted-foreground">
@@ -189,7 +186,7 @@ export function BookingReviewSidebar({
                 : 'Required information is complete. Optional details can still be added.'}
             </p>
           </div>
-          <ul className="divide-y">
+          <ul>
             {reviewReadiness.map((item) => (
               <ReviewReadinessRow item={item} key={item.label} />
             ))}

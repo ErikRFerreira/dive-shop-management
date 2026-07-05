@@ -68,7 +68,7 @@ test('shows an inline error and blocks whitespace-only reasons', () => {
   expect(mocks.markBookingNeedsMoreInfo).not.toHaveBeenCalled();
 });
 
-test('shows cancellation preservation helper text', () => {
+test('shows optional cancellation reason capture', () => {
   render(
     <CancelBookingForm
       bookingId="booking-1"
@@ -76,9 +76,17 @@ test('shows cancellation preservation helper text', () => {
     />,
   );
 
+  const reason = screen.getByLabelText('Reason for cancelling');
+
+  expect(reason.tagName).toBe('TEXTAREA');
+  expect(reason.getAttribute('required')).toBeNull();
+  expect(reason.getAttribute('name')).toBe('adminNotes');
+  expect(reason.getAttribute('placeholder')).toBe(
+    'e.g. Customer withdrew, duplicate request, unable to accommodate...',
+  );
   expect(
     screen.getByText(
-      'Cancelling does not delete the booking, customer, diver, or deposit data.',
+      'Cancelling is a final decision. Add a short reason so the team has a record.',
     ),
   ).not.toBeNull();
 });
@@ -111,7 +119,8 @@ test('submits scheduled cancellation with optional admin notes', () => {
   );
 
   expect(
-    (screen.getByLabelText('Admin notes') as HTMLTextAreaElement).value,
+    (screen.getByLabelText('Reason for cancelling') as HTMLTextAreaElement)
+      .value,
   ).toBe('Approved for morning schedule.');
   const button = screen.getByRole('button', {
     name: 'Cancel Scheduled Booking',
@@ -130,6 +139,7 @@ test('submits approval through the workflow action', () => {
     <ApproveBookingForm
       bookingId="booking-1"
       defaultAdminNotes="Approved for morning schedule."
+      noteDescription="Optional notes for admin review or the internal schedule."
     />,
   );
 
@@ -352,9 +362,10 @@ test('switches the admin decision panel to cancellation only', () => {
   expect(screen.getByRole('button', { name: 'Cancel / Reject' })).not.toBeNull();
   expect(
     screen.getByText(
-      'Cancelling does not delete the booking, customer, diver, or deposit data.',
+      'This removes the request from the review queue. It will not be scheduled.',
     ),
   ).not.toBeNull();
+  expect(screen.getByLabelText('Reason for cancelling')).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
   expect(
     screen.queryByRole('button', { name: 'Mark as Needs More Info' }),

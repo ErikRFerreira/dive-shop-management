@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, type ReactNode } from 'react';
 
-const STORAGE_KEY = 'blue-revival-sidebar-collapsed';
+const STORAGE_KEY = 'dive-shop:sidebar-collapsed';
 
 const sidebarCollapseListeners = new Set<() => void>();
 

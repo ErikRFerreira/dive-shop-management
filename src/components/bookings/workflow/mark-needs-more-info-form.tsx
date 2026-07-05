@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 
+import { MessageCircleQuestion } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { markBookingNeedsMoreInfo } from '@/features/bookings/actions';
@@ -64,6 +66,7 @@ export function MarkNeedsMoreInfoForm({
             reasonError ? 'needs-more-info-reason-error' : undefined
           }
           aria-invalid={Boolean(reasonError)}
+          className="min-h-20 resize-none rounded-lg bg-background px-3 py-2 leading-relaxed text-foreground shadow-sm placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30"
           id="needs-more-info-reason"
           name="needsMoreInfoReason"
           onChange={(event) => {
@@ -86,8 +89,14 @@ export function MarkNeedsMoreInfoForm({
         ) : null}
       </div>
       <ActionError message={state.formError} />
-      <Button disabled={pending} type="submit" variant="outline">
-        {pending ? 'Markingâ€¦' : 'Mark as Needs More Info'}
+      <Button
+        className="border-orange-500 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
+        disabled={pending}
+        type="submit"
+        variant="outline"
+      >
+        <MessageCircleQuestion className="h-4 w-4" />
+        {pending ? 'Marking…' : 'Mark as Needs More Info'}
       </Button>
     </form>
   );

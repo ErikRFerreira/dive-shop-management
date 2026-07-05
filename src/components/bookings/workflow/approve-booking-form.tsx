@@ -10,6 +10,7 @@ import {
   ActionError,
   getInitialBookingWorkflowActionState,
 } from './workflow-action-state';
+import { CalendarCheck } from 'lucide-react';
 
 type ApproveBookingFormProps = {
   bookingId: string;
@@ -27,8 +28,8 @@ type ApproveBookingFormProps = {
 export function ApproveBookingForm({
   bookingId,
   defaultAdminNotes,
-  noteDescription = 'Optional notes for admin review or the internal schedule.',
   noteLabel = 'Admin/schedule notes',
+  noteDescription,
 }: ApproveBookingFormProps) {
   const [state, formAction, pending] = useActionState(
     approveBooking,
@@ -42,8 +43,11 @@ export function ApproveBookingForm({
         <label className="text-sm font-medium" htmlFor="admin-notes">
           {noteLabel}
         </label>
-        <p className="text-sm text-muted-foreground">{noteDescription}</p>
+        {noteDescription && (
+          <p className="text-sm text-muted-foreground">{noteDescription}</p>
+        )}
         <Textarea
+          className="min-h-20 resize-none rounded-lg bg-background px-3 py-2 leading-relaxed text-foreground shadow-sm placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30"
           defaultValue={defaultAdminNotes ?? ''}
           id="admin-notes"
           name="adminNotes"
@@ -52,6 +56,7 @@ export function ApproveBookingForm({
       </div>
       <ActionError message={state.formError} />
       <Button disabled={pending} type="submit">
+        <CalendarCheck />
         {pending ? 'Approving...' : 'Approve & Schedule'}
       </Button>
     </form>
