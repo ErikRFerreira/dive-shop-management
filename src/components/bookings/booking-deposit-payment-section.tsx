@@ -1,6 +1,6 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { formatDate, formatEnum } from '../booking-detail-display';
-import { Field, Section } from '../booking-detail-layout';
+import { formatBookingDate, formatBookingEnum } from './booking-display-utils';
+import { BookingInfoField, BookingInfoSection } from './booking-info-layout';
 
 /**
  * Renders one deposit/payment record.
@@ -15,8 +15,11 @@ function DepositPaymentCard({
 }) {
   return (
     <div className="grid gap-4 rounded-lg border p-4 sm:col-span-2 sm:grid-cols-2">
-      <Field label="Deposit status" value={formatEnum(deposit.status)} />
-      <Field
+      <BookingInfoField
+        label="Deposit status"
+        value={formatBookingEnum(deposit.status)}
+      />
+      <BookingInfoField
         label="Amount"
         value={
           deposit.amount === null
@@ -24,13 +27,16 @@ function DepositPaymentCard({
             : `${deposit.amount.toString()} ${deposit.currency ?? ''}`.trim()
         }
       />
-      <Field label="Currency" value={deposit.currency} />
-      <Field label="Paid to" value={deposit.paidTo} />
-      <Field label="Payment method" value={deposit.paymentMethod} />
-      <Field label="Due date" value={formatDate(deposit.dueAt)} />
-      <Field label="Paid date" value={formatDate(deposit.paidAt)} />
+      <BookingInfoField label="Currency" value={deposit.currency} />
+      <BookingInfoField label="Paid to" value={deposit.paidTo} />
+      <BookingInfoField label="Payment method" value={deposit.paymentMethod} />
+      <BookingInfoField label="Due date" value={formatBookingDate(deposit.dueAt)} />
+      <BookingInfoField
+        label="Paid date"
+        value={formatBookingDate(deposit.paidAt)}
+      />
       <div className="sm:col-span-2">
-        <Field
+        <BookingInfoField
           label="Payment notes"
           value={deposit.notes?.trim() || 'No payment notes.'}
         />
@@ -45,20 +51,22 @@ function DepositPaymentCard({
  * @param props - Booking detail payload with deposit records.
  * @returns Deposit/payment section.
  */
-export function DepositPaymentSection({
+export function BookingDepositPaymentSection({
   booking,
 }: {
   booking: BookingDetailsItem;
 }) {
   return (
-    <Section title="Deposit / payment">
+    <BookingInfoSection title="Deposit / payment">
       {booking.deposits.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No deposit recorded.</p>
+        <p className="text-sm text-muted-foreground sm:col-span-2">
+          No deposit recorded.
+        </p>
       ) : (
         booking.deposits.map((deposit) => (
           <DepositPaymentCard deposit={deposit} key={deposit.id} />
         ))
       )}
-    </Section>
+    </BookingInfoSection>
   );
 }

@@ -346,8 +346,6 @@ export function BookingDetailsRail({
 }: BookingDetailsRailProps) {
   const reviewReadinessItems = buildReviewReadinessItems(booking, activities);
 
-  console.log(booking);
-
   return (
     <>
       <BookingStatusRailCard

@@ -1,37 +1,16 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
-import {
-  formatCustomerName,
-  formatDate,
-  formatEnum,
-} from '../booking-detail-display';
-import { Field, Section } from '../booking-detail-layout';
 import { UserRound } from 'lucide-react';
-
-/**
- * Renders a small titled field group inside a customer card.
- *
- * @param props - Group title and fields.
- * @returns Customer card subgroup.
- */
-function CustomerFieldGroup({
-  children,
-  title,
-  divider = false,
-}: {
-  children: React.ReactNode;
-  title: string;
-  divider?: boolean;
-}) {
-  return (
-    <div className={divider ? 'border-t border-muted-foreground/20 pt-4' : ''}>
-      <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h4>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
-    </div>
-  );
-}
+import {
+  formatBookingCustomerName,
+  formatBookingDate,
+  formatBookingEnum,
+} from './booking-display-utils';
+import {
+  BookingInfoField,
+  BookingInfoFieldGroup,
+  BookingInfoSection,
+} from './booking-info-layout';
 
 /**
  * Renders one customer or diver in grouped read-only sections.
@@ -47,42 +26,47 @@ function CustomerDiverCard({
   includesFunDive: boolean;
 }) {
   const customer = customerBooking.customer;
-  console.log(customerBooking);
 
   return (
-    <div className="space-y-6 rounded-xl border p-4 sm:col-span-2 bg-muted/30">
+    <div className="space-y-6 rounded-xl border bg-muted/30 p-4 sm:col-span-2">
       <div className="flex items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
           <UserRound className="size-4" />
         </span>
-        <h3 className="font-semibold">{formatCustomerName(customer)}</h3>
-        {customerBooking.role === 'PRIMARY_CONTACT' ? (
-          <p className="bg-ocean/10 text-ocean ring-ocean/20 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset">
+        <h3 className="font-semibold">{formatBookingCustomerName(customer)}</h3>
+        {customerBooking.role === BookingCustomerRole.PRIMARY_CONTACT ? (
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-ocean/10 px-2.5 py-1 text-xs font-medium text-ocean ring-1 ring-inset ring-ocean/20">
             <span className="size-1.5 rounded-full bg-current" aria-hidden />{' '}
             Primary contact
           </p>
         ) : null}
       </div>
 
-      <CustomerFieldGroup title="Contact details">
-        <Field label="Customer name" value={formatCustomerName(customer)} />
-        <Field label="Chinese name" value={customer.chineseName} />
-        <Field label="WeChat ID" value={customer.weChatId} />
-        <Field label="WhatsApp number" value={customer.whatsAppNumber} />
-        <Field label="Email" value={customer.email} />
-        <Field label="Phone" value={customer.phone} />
-        <Field
-          label="Preferred language"
-          value={formatEnum(customer.preferredLanguage)}
+      <BookingInfoFieldGroup title="Contact details">
+        <BookingInfoField
+          label="Customer name"
+          value={formatBookingCustomerName(customer)}
         />
-      </CustomerFieldGroup>
+        <BookingInfoField label="Chinese name" value={customer.chineseName} />
+        <BookingInfoField label="WeChat ID" value={customer.weChatId} />
+        <BookingInfoField
+          label="WhatsApp number"
+          value={customer.whatsAppNumber}
+        />
+        <BookingInfoField label="Email" value={customer.email} />
+        <BookingInfoField label="Phone" value={customer.phone} />
+        <BookingInfoField
+          label="Preferred language"
+          value={formatBookingEnum(customer.preferredLanguage)}
+        />
+      </BookingInfoFieldGroup>
 
-      <CustomerFieldGroup title="Booking logistics" divider={true}>
-        <Field
+      <BookingInfoFieldGroup title="Booking logistics" divider={true}>
+        <BookingInfoField
           label="Hotel / pickup location"
           value={customerBooking.hotelAtBooking ?? customer.hotel}
         />
-        <Field
+        <BookingInfoField
           label="Primary contact"
           value={
             customerBooking.role === BookingCustomerRole.PRIMARY_CONTACT
@@ -90,36 +74,39 @@ function CustomerDiverCard({
               : 'No'
           }
         />
-        <Field
+        <BookingInfoField
           label="Role in booking"
-          value={formatEnum(customerBooking.role)}
+          value={formatBookingEnum(customerBooking.role)}
         />
-      </CustomerFieldGroup>
+      </BookingInfoFieldGroup>
 
       {includesFunDive ? (
-        <CustomerFieldGroup title="Diving experience" divider={true}>
-          <Field
+        <BookingInfoFieldGroup title="Diving experience" divider={true}>
+          <BookingInfoField
             label="Certification level"
             value={customerBooking.certificationLevel}
           />
-          <Field
+          <BookingInfoField
             label="Certification agency"
             value={customerBooking.certificationAgency}
           />
-          <Field
+          <BookingInfoField
             label="Last dive date"
-            value={formatDate(customerBooking.lastDiveAt)}
+            value={formatBookingDate(customerBooking.lastDiveAt)}
           />
-          <Field label="Logged dives" value={customerBooking.divesLogged} />
-        </CustomerFieldGroup>
+          <BookingInfoField
+            label="Logged dives"
+            value={customerBooking.divesLogged}
+          />
+        </BookingInfoFieldGroup>
       ) : null}
 
-      <CustomerFieldGroup title="Equipment details" divider={true}>
-        <Field
+      <BookingInfoFieldGroup title="Equipment details" divider={true}>
+        <BookingInfoField
           label="Equipment needed?"
           value={customerBooking.equipmentNeeded}
         />
-        <Field
+        <BookingInfoField
           label="Height"
           value={
             customerBooking.heightCm === null
@@ -127,7 +114,7 @@ function CustomerDiverCard({
               : `${customerBooking.heightCm} cm`
           }
         />
-        <Field
+        <BookingInfoField
           label="Weight"
           value={
             customerBooking.weightKg === null
@@ -135,17 +122,20 @@ function CustomerDiverCard({
               : `${customerBooking.weightKg.toString()} kg`
           }
         />
-        <Field label="Shoe size" value={customerBooking.shoeSize?.toString()} />
-      </CustomerFieldGroup>
+        <BookingInfoField
+          label="Shoe size"
+          value={customerBooking.shoeSize?.toString()}
+        />
+      </BookingInfoFieldGroup>
 
-      <CustomerFieldGroup title="Notes" divider={true}>
+      <BookingInfoFieldGroup title="Notes" divider={true}>
         <div className="sm:col-span-2">
-          <Field
+          <BookingInfoField
             label="Customer notes"
             value={customerBooking.notes?.trim() || 'No customer notes.'}
           />
         </div>
-      </CustomerFieldGroup>
+      </BookingInfoFieldGroup>
     </div>
   );
 }
@@ -164,9 +154,9 @@ export function CustomersDiversSection({
   includesFunDive: boolean;
 }) {
   return (
-    <Section title="Customers & divers">
+    <BookingInfoSection title="Customers & divers">
       {booking.customers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground sm:col-span-2">
           No customer or diver details.
         </p>
       ) : (
@@ -178,6 +168,6 @@ export function CustomersDiversSection({
           />
         ))
       )}
-    </Section>
+    </BookingInfoSection>
   );
 }

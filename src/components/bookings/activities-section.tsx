@@ -1,23 +1,23 @@
-import type { BookingActivityDisplay } from '../booking-detail-display';
-import {
-  formatDate,
-  formatEnum,
-  formatTimeOrTbd,
-} from '../booking-detail-display';
-import { Field, Section } from '../booking-detail-layout';
 import { Waves } from 'lucide-react';
+import type { BookingActivityDisplayItem } from './booking-display-utils';
+import {
+  formatBookingDate,
+  formatBookingEnum,
+  formatBookingTimeOrTbd,
+} from './booking-display-utils';
+import { BookingInfoField, BookingInfoSection } from './booking-info-layout';
 
 /**
- * Renders one requested activity card.
+ * Renders one requested booking activity card.
  *
- * @param props - Activity row and its one-based display index.
+ * @param props - Activity row and its zero-based display index.
  * @returns Read-only activity detail card.
  */
 function ActivityCard({
   activity,
   index,
 }: {
-  activity: BookingActivityDisplay;
+  activity: BookingActivityDisplayItem;
   index: number;
 }) {
   return (
@@ -29,23 +29,26 @@ function ActivityCard({
         <h3 className="font-semibold">Activity {index + 1}</h3>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
+        <BookingInfoField
           label="Activity type"
-          value={formatEnum(activity.activityType)}
+          value={formatBookingEnum(activity.activityType)}
         />
         {activity.specialtyCourse ? (
-          <Field label="Specialty course" value={activity.specialtyCourse} />
+          <BookingInfoField
+            label="Specialty course"
+            value={activity.specialtyCourse}
+          />
         ) : null}
-        <Field
+        <BookingInfoField
           label="Requested date"
-          value={formatDate(activity.requestedDate)}
+          value={formatBookingDate(activity.requestedDate)}
         />
-        <Field
+        <BookingInfoField
           label="Requested time"
-          value={formatTimeOrTbd(activity.requestedTime)}
+          value={formatBookingTimeOrTbd(activity.requestedTime)}
         />
-        <div className="sm:col-span-2 border-t border-muted-foreground/20 pt-4">
-          <Field
+        <div className="border-t border-muted-foreground/20 pt-4 sm:col-span-2">
+          <BookingInfoField
             label="Activity notes"
             value={activity.notes?.trim() || 'No activity notes.'}
           />
@@ -56,21 +59,21 @@ function ActivityCard({
 }
 
 /**
- * Renders all requested booking activities as cards.
+ * Renders all requested booking activities as shared read-only cards.
  *
- * @param props - Normalized activity rows for the detail page.
+ * @param props - Normalized activity rows for booking detail or review pages.
  * @returns Activities section.
  */
 export function ActivitiesSection({
   activities,
 }: {
-  activities: BookingActivityDisplay[];
+  activities: BookingActivityDisplayItem[];
 }) {
   return (
-    <Section title="Activities">
+    <BookingInfoSection title="Activities">
       {activities.map((activity, index) => (
         <ActivityCard activity={activity} index={index} key={activity.id} />
       ))}
-    </Section>
+    </BookingInfoSection>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   ApproveBookingForm,
@@ -114,14 +114,9 @@ export function BookingReviewDecisionPanel({
       canCancel,
     }),
   );
-
-  useEffect(() => {
-    if (availableModes.length === 0 || availableModes.includes(selectedMode)) {
-      return;
-    }
-
-    setSelectedMode(availableModes[0]);
-  }, [availableModes, selectedMode]);
+  const activeMode = availableModes.includes(selectedMode)
+    ? selectedMode
+    : availableModes[0];
 
   return (
     <div className="space-y-4">
@@ -129,15 +124,15 @@ export function BookingReviewDecisionPanel({
         <div className="grid gap-2" role="group" aria-label="Decision mode">
           {availableModes.map((mode) => (
             <Button
-              aria-pressed={selectedMode === mode}
+              aria-pressed={activeMode === mode}
               className={cn(
                 'justify-start',
-                selectedMode === mode && 'ring-2 ring-ring/30',
+                activeMode === mode && 'ring-2 ring-ring/30',
               )}
               key={mode}
               onClick={() => setSelectedMode(mode)}
               type="button"
-              variant={selectedMode === mode ? 'secondary' : 'outline'}
+              variant={activeMode === mode ? 'secondary' : 'outline'}
             >
               {decisionModeLabels[mode]}
             </Button>
@@ -145,7 +140,7 @@ export function BookingReviewDecisionPanel({
         </div>
       ) : null}
 
-      {selectedMode === 'approve' && canApprovePendingBooking ? (
+      {activeMode === 'approve' && canApprovePendingBooking ? (
         <section className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold">Approve &amp; schedule</h3>
@@ -160,7 +155,7 @@ export function BookingReviewDecisionPanel({
         </section>
       ) : null}
 
-      {selectedMode === 'needs-more-info' && canRequestMoreInfo ? (
+      {activeMode === 'needs-more-info' && canRequestMoreInfo ? (
         <section className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold">
@@ -174,7 +169,7 @@ export function BookingReviewDecisionPanel({
         </section>
       ) : null}
 
-      {selectedMode === 'cancel' && canCancel ? (
+      {activeMode === 'cancel' && canCancel ? (
         <section className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold">Cancel / reject</h3>

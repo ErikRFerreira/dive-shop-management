@@ -1,9 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
@@ -103,17 +99,28 @@ export function formatSourceReferrer(
 export function Field({
   label,
   value,
+  icon,
 }: {
   label: string;
   value: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   const displayValue =
     value === null || value === undefined || value === '' ? EMPTY_VALUE : value;
 
   return (
-    <div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="mt-1 text-sm">{displayValue}</div>
+    <div className="flex items-start gap-3">
+      {icon && (
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          {icon}
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold text-foreground text-pretty">
+          {displayValue}
+        </p>
+      </div>
     </div>
   );
 }

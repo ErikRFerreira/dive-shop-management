@@ -63,6 +63,35 @@ const readinessStatusDetails: Record<
 };
 
 /**
+ * Checks whether a readiness item should count toward required approval checks.
+ *
+ * @param item - Review readiness item shown in the sidebar checklist.
+ * @returns True when the item is either complete or missing required information.
+ */
+function isRequiredReadinessItem(item: ReviewReadinessItem) {
+  return item.status === 'complete' || item.status === 'missing';
+}
+
+/**
+ * Builds the required-check summary shown above the full readiness checklist.
+ *
+ * @param items - Readiness items, including optional and not-required rows.
+ * @returns Completed required count, total required count, and missing required count.
+ */
+function getRequiredReadinessSummary(items: ReviewReadinessItem[]) {
+  const requiredItems = items.filter(isRequiredReadinessItem);
+  const completedRequiredCount = requiredItems.filter(
+    (item) => item.status === 'complete',
+  ).length;
+
+  return {
+    completedRequiredCount,
+    missingRequiredCount: requiredItems.length - completedRequiredCount,
+    totalRequiredCount: requiredItems.length,
+  };
+}
+
+/**
  * Renders one read-only review readiness checklist row.
  *
  * @param props - Readiness item with label, status, and explanatory text.
@@ -100,7 +129,7 @@ function ReviewReadinessRow({ item }: { item: ReviewReadinessItem }) {
  * Renders admin review supporting information and workflow decision forms.
  *
  * @param props - Booking workflow state, notes, readiness items, missing information, and permission flags.
- * @returns The admin review sidebar.
+ * @returns The admin review rail content rendered inside the shared sticky layout.
  */
 export function BookingReviewSidebar({
   bookingId,
@@ -119,18 +148,47 @@ export function BookingReviewSidebar({
     status === BookingStatus.SCHEDULED;
   const hasDecisionActions =
     canApprovePendingBooking || canRequestMoreInfo || canCancel;
+  const {
+    completedRequiredCount,
+    missingRequiredCount,
+    totalRequiredCount,
+  } = getRequiredReadinessSummary(reviewReadiness);
+  const hasMissingRequiredInformation = missingRequiredCount > 0;
 
   return (
-    <aside className="space-y-6">
+    <div className="space-y-6" data-testid="booking-review-sidebar">
       <Card>
         <CardHeader>
-          <CardTitle>Review readiness</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>Review readiness</CardTitle>
+            <span className="text-xs font-medium tabular-nums text-muted-foreground">
+              Required checks {completedRequiredCount}/{totalRequiredCount}
+            </span>
+          </div>
           <CardDescription>
             Use this checklist to spot missing or recommended details before
             choosing a decision.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              Required checks only
+            </p>
+            <p
+              className={`mt-1 text-sm ${
+                hasMissingRequiredInformation
+                  ? 'text-muted-foreground'
+                  : 'text-scheduled'
+              }`}
+            >
+              {hasMissingRequiredInformation
+                ? `${missingRequiredCount} required item${
+                    missingRequiredCount === 1 ? '' : 's'
+                  } still missing.`
+                : 'Required information is complete. Optional details can still be added.'}
+            </p>
+          </div>
           <ul className="divide-y">
             {reviewReadiness.map((item) => (
               <ReviewReadinessRow item={item} key={item.label} />
@@ -185,6 +243,6 @@ export function BookingReviewSidebar({
           </CardContent>
         ) : null}
       </Card>
-    </aside>
+    </div>
   );
 }

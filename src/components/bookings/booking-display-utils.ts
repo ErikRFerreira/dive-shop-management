@@ -1,0 +1,167 @@
+import type { BookingDetailsItem } from '@/features/bookings/queries';
+import {
+  formatDisplayDate,
+  formatDisplayDateTime,
+  formatEnumLabel,
+} from '@/lib/format';
+
+export type BookingActivityDisplayItem = {
+  id: string;
+  activityType: string | null | undefined;
+  specialtyCourse: string | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  notes: string | null;
+};
+
+export const EMPTY_BOOKING_VALUE = '\u2014';
+
+/**
+ * Formats a nullable date for shared booking display sections.
+ *
+ * @param value - Date value from a booking payload.
+ * @returns Staff-facing date text, or the booking empty-value placeholder.
+ */
+export function formatBookingDate(value: Date | null | undefined) {
+  return formatDisplayDate(value);
+}
+
+/**
+ * Formats a date-time for shared booking display sections.
+ *
+ * @param value - Date-time value from a booking payload.
+ * @returns Staff-facing date-time text, or the booking empty-value placeholder.
+ */
+export function formatBookingDateTime(value: Date | null | undefined) {
+  return formatDisplayDateTime(value);
+}
+
+/**
+ * Formats enum-like values for shared booking display sections.
+ *
+ * @param value - Raw enum text from the booking payload.
+ * @returns Staff-facing enum label, or the booking empty-value placeholder.
+ */
+export function formatBookingEnum(value: string | null | undefined) {
+  return formatEnumLabel(value);
+}
+
+/**
+ * Formats a time field where missing values should stay operationally explicit.
+ *
+ * @param value - Stored time text from a booking activity or schedule item.
+ * @returns The stored time, or `TBD` when no time has been captured.
+ */
+export function formatBookingTimeOrTbd(value: string | null | undefined) {
+  return value?.trim() || 'TBD';
+}
+
+/**
+ * Formats the preferred customer name for shared booking display sections.
+ *
+ * @param customer - Customer selected for display.
+ * @returns Full name, first/last fallback, or the booking empty-value placeholder.
+ */
+export function formatBookingCustomerName(
+  customer: BookingDetailsItem['displayCustomer'],
+) {
+  const fullName = customer?.fullName?.trim();
+  if (fullName) return fullName;
+
+  return (
+    [customer?.firstName, customer?.lastName]
+      .filter((part): part is string => Boolean(part))
+      .join(' ') || EMPTY_BOOKING_VALUE
+  );
+}
+
+/**
+ * Finds the booking customer staff should treat as the primary operational contact.
+ *
+ * @param booking - Booking detail payload with customer join rows.
+ * @returns The explicit primary contact, first customer fallback, or null.
+ */
+export function getPrimaryBookingCustomer(booking: BookingDetailsItem) {
+  return (
+    booking.customers.find(
+      (customer) => customer.role === 'PRIMARY_CONTACT',
+    ) ??
+    booking.customers[0] ??
+    null
+  );
+}
+
+/**
+ * Formats a source and optional referrer into the standard staff-facing label.
+ *
+ * @param booking - Booking fields used for source and referrer display.
+ * @returns Source, referrer, both joined with a slash, or the empty placeholder.
+ */
+export function formatBookingSourceReferrer(
+  booking: Pick<BookingDetailsItem, 'source' | 'referrerName'>,
+) {
+  const source = booking.source ? formatBookingEnum(booking.source) : null;
+  const referrer = booking.referrerName?.trim();
+
+  if (source && referrer) {
+    return `${source} / ${referrer}`;
+  }
+
+  return source ?? referrer ?? EMPTY_BOOKING_VALUE;
+}
+
+/**
+ * Formats assigned staff names for compact booking summary display.
+ *
+ * @param booking - Booking detail payload with optional schedule assignments.
+ * @returns Comma-separated staff names, unassigned text, or the empty placeholder.
+ */
+export function formatAssignedStaffSummary(booking: BookingDetailsItem) {
+  if (!booking.scheduleItem) {
+    return EMPTY_BOOKING_VALUE;
+  }
+
+  const names = booking.scheduleItem.assignments.map(
+    (assignment) => assignment.user.name,
+  );
+
+  return names.length > 0 ? names.join(', ') : 'Unassigned';
+}
+
+/**
+ * Resolves the first requested date/time visible in the booking overview.
+ *
+ * @param booking - Booking detail payload.
+ * @param activities - Activity rows already normalized for display.
+ * @returns Requested date and time using activity data before legacy fields.
+ */
+export function getOverviewRequestedDateTime(
+  booking: BookingDetailsItem,
+  activities: BookingActivityDisplayItem[],
+) {
+  const firstActivityWithDate =
+    activities.find((activity) => activity.requestedDate) ?? activities[0];
+
+  return {
+    requestedDate:
+      firstActivityWithDate?.requestedDate ?? booking.requestedDate,
+    requestedTime:
+      firstActivityWithDate?.requestedTime ?? booking.requestedTime ?? null,
+  };
+}
+
+/**
+ * Formats the requested date/time pair for compact booking summary display.
+ *
+ * @param booking - Booking detail payload.
+ * @param activities - Normalized activity rows visible on the page.
+ * @returns A joined requested date/time label.
+ */
+export function formatRequestedDateTime(
+  booking: BookingDetailsItem,
+  activities: BookingActivityDisplayItem[],
+) {
+  const requested = getOverviewRequestedDateTime(booking, activities);
+
+  return `${formatBookingDate(requested.requestedDate)} / ${formatBookingTimeOrTbd(requested.requestedTime)}`;
+}

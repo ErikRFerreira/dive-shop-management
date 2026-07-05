@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
 import PageHeader from '@/components/common/page-header';
-import { Button } from '@/components/ui/button';
+import { BookingMainSections } from '@/components/bookings/booking-main-sections';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import type { AssignableStaff } from '@/features/schedule/types';
 import { BookingStatus } from '@/generated/prisma/enums';
@@ -13,14 +13,7 @@ import {
   includesFunDiveActivity,
 } from './booking-detail-display';
 import { BookingDetailsRail } from './booking-details-rail';
-import { ActivitiesSection } from './sections/activities-section';
-import { BookingReferenceCard } from './sections/booking-reference-card';
-import { BookingSummarySection } from './sections/booking-summary-section';
-import { CustomersDiversSection } from './sections/customers-divers-section';
-import { DepositPaymentSection } from './sections/deposit-payment-section';
 import { NeedsMoreInfoWorkflow } from './sections/needs-more-info-workflow';
-import { NotesSection } from './sections/notes-section';
-import { OriginalBookingMessage } from './sections/original-booking-message';
 import { ScheduleSection } from './sections/schedule-section';
 
 type Props = {
@@ -80,24 +73,26 @@ function BookingDetails({
           />
         }
       >
-        <BookingReferenceCard activities={activities} booking={booking} />
-        {booking.status === BookingStatus.NEEDS_MORE_INFO ? (
-          <NeedsMoreInfoWorkflow reason={booking.needsMoreInfoReason} />
-        ) : null}
-        <OriginalBookingMessage notes={booking.notes} />
-        <BookingSummarySection booking={booking} />
-        <ScheduleSection
-          assignableStaff={assignableStaff}
-          booking={booking}
-          canManageAssignments={canManageAssignments}
-        />
-        <ActivitiesSection activities={activities} />
-        <CustomersDiversSection
+        <BookingMainSections
+          activities={activities}
+          afterOriginalMessage={
+            <ScheduleSection
+              assignableStaff={assignableStaff}
+              booking={booking}
+              canManageAssignments={canManageAssignments}
+            />
+          }
+          afterSummary={
+            booking.status === BookingStatus.NEEDS_MORE_INFO ? (
+              <NeedsMoreInfoWorkflow reason={booking.needsMoreInfoReason} />
+            ) : null
+          }
           booking={booking}
           includesFunDive={includesFunDive}
+          internalNotesVariant="details"
+          summaryTitle="Booking reference"
+          summaryVariant="details"
         />
-        <DepositPaymentSection booking={booking} />
-        <NotesSection booking={booking} />
       </StickyRailLayout>
     </>
   );

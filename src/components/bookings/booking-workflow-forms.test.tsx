@@ -219,10 +219,56 @@ test('shows compact review readiness in the review sidebar', () => {
   );
 
   expect(screen.getByText('Review readiness')).not.toBeNull();
+  expect(screen.getByText('Required checks 1/2')).not.toBeNull();
+  expect(screen.getByText('Required checks only')).not.toBeNull();
+  expect(screen.getByText('1 required item still missing.')).not.toBeNull();
   expect(screen.getByText('Activity selected')).not.toBeNull();
   expect(screen.getByText('Complete')).not.toBeNull();
   expect(screen.getByText('Requested date set')).not.toBeNull();
   expect(screen.getByText('Missing')).not.toBeNull();
+});
+
+test('shows complete required readiness copy without counting optional rows', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove
+      missingInformation={[]}
+      reviewReadiness={[
+        {
+          label: 'Activity selected',
+          status: 'complete' as const,
+          description: 'At least one activity is selected.',
+        },
+        {
+          label: 'Requested date set',
+          status: 'complete' as const,
+          description: 'All activities have requested dates.',
+        },
+        {
+          label: 'Deposit info',
+          status: 'not required' as const,
+          description: 'No paid deposit details are required.',
+        },
+        {
+          label: 'Equipment sizing',
+          status: 'recommended/optional' as const,
+          description: 'Confirm whether rental equipment is needed when possible.',
+        },
+      ]}
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  expect(screen.getByText('Required checks 2/2')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Required information is complete. Optional details can still be added.',
+    ),
+  ).not.toBeNull();
+  expect(screen.getByText('Not required')).not.toBeNull();
+  expect(screen.getByText('Recommended/optional')).not.toBeNull();
 });
 
 test('shows approval as the default progressive admin decision', () => {
