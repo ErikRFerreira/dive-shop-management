@@ -47,7 +47,7 @@ export function BookingInfoSection({
   return (
     <Card className="rounded-2xl shadow-sm">
       <CardHeader className="border-b">
-        <h2 className="font-heading text-base font-medium leading-snug">
+        <h2 className="font-heading text-base font-semibold leading-snug">
           {title}
         </h2>
       </CardHeader>

@@ -70,7 +70,10 @@ export function ActivitiesSection({
   activities: BookingActivityDisplayItem[];
 }) {
   return (
-    <BookingInfoSection title="Activities">
+    <BookingInfoSection
+      title="Activities"
+      contentClassName="block sm:grid-cols-1"
+    >
       {activities.map((activity, index) => (
         <ActivityCard activity={activity} index={index} key={activity.id} />
       ))}
