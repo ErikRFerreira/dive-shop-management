@@ -1,6 +1,12 @@
 import { ActivityType } from '@/generated/prisma/enums';
 import type { ReviewActivity } from '../booking-review-activities';
-import { Field, ReviewDetailsCard, formatDate, formatEnum } from '../booking-review-display';
+import {
+  Field,
+  ReviewDetailsCard,
+  formatDate,
+  formatEnum,
+  formatTimeOrTbd,
+} from '../booking-review-display';
 
 /**
  * Renders the admin review activity cards.
@@ -27,8 +33,14 @@ export function ActivitiesSection({
               <Field label="Specialty course" value={activity.specialtyCourse} />
             ) : null}
             <Field label="Requested date" value={formatDate(activity.requestedDate)} />
-            <Field label="Requested time" value={activity.requestedTime} />
-            <Field label="Activity notes" value={activity.notes} />
+            <Field
+              label="Requested time"
+              value={formatTimeOrTbd(activity.requestedTime)}
+            />
+            <Field
+              label="Activity notes"
+              value={activity.notes?.trim() || 'No activity notes.'}
+            />
           </div>
         </div>
       ))}

@@ -38,3 +38,25 @@ export function reviewActivitiesIncludeFunDive(activities: ReviewActivity[]) {
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
   );
 }
+
+/**
+ * Resolves the requested date/time shown in the review overview.
+ *
+ * @param booking - Booking detail payload with legacy requested fields.
+ * @param activities - Normalized review activity rows.
+ * @returns Requested date and time, preferring the first activity with a requested date.
+ */
+export function getReviewOverviewRequestedDateTime(
+  booking: BookingDetailsItem,
+  activities: ReviewActivity[],
+) {
+  const firstActivityWithDate =
+    activities.find((activity) => activity.requestedDate) ?? activities[0];
+
+  return {
+    requestedDate:
+      firstActivityWithDate?.requestedDate ?? booking.requestedDate,
+    requestedTime:
+      firstActivityWithDate?.requestedTime ?? booking.requestedTime ?? null,
+  };
+}

@@ -24,6 +24,19 @@ import {
   ResubmitBookingForApprovalForm,
 } from './booking-workflow-forms';
 
+const reviewReadiness = [
+  {
+    label: 'Activity selected',
+    status: 'complete' as const,
+    description: 'At least one activity is selected.',
+  },
+  {
+    label: 'Requested date set',
+    status: 'missing' as const,
+    description: 'Every activity needs a requested date before approval.',
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.approveBooking.mockResolvedValue({});
@@ -97,9 +110,9 @@ test('submits scheduled cancellation with optional admin notes', () => {
     />,
   );
 
-  expect((screen.getByLabelText('Admin notes') as HTMLTextAreaElement).value).toBe(
-    'Approved for morning schedule.',
-  );
+  expect(
+    (screen.getByLabelText('Admin notes') as HTMLTextAreaElement).value,
+  ).toBe('Approved for morning schedule.');
   const button = screen.getByRole('button', {
     name: 'Cancel Scheduled Booking',
   });
@@ -120,9 +133,13 @@ test('submits approval through the workflow action', () => {
     />,
   );
 
-  expect((screen.getByLabelText('Admin notes') as HTMLTextAreaElement).value).toBe(
-    'Approved for morning schedule.',
-  );
+  expect(
+    (screen.getByLabelText('Admin/schedule notes') as HTMLTextAreaElement)
+      .value,
+  ).toBe('Approved for morning schedule.');
+  expect(
+    screen.getByText('Optional notes for admin review or the internal schedule.'),
+  ).not.toBeNull();
   const button = screen.getByRole('button', { name: 'Approve & Schedule' });
   const form = button.closest('form');
 
@@ -152,8 +169,8 @@ test('shows approval in the review sidebar only for approvers on pending booking
   const baseProps = {
     bookingId: 'booking-1',
     adminNotes: null,
-    rawBookingText: null,
     missingInformation: [],
+    reviewReadiness,
   };
 
   const { rerender } = render(
@@ -189,6 +206,115 @@ test('shows approval in the review sidebar only for approvers on pending booking
   expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
 });
 
+test('shows compact review readiness in the review sidebar', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove
+      missingInformation={[]}
+      reviewReadiness={reviewReadiness}
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  expect(screen.getByText('Review readiness')).not.toBeNull();
+  expect(screen.getByText('Activity selected')).not.toBeNull();
+  expect(screen.getByText('Complete')).not.toBeNull();
+  expect(screen.getByText('Requested date set')).not.toBeNull();
+  expect(screen.getByText('Missing')).not.toBeNull();
+});
+
+test('shows approval as the default progressive admin decision', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove
+      missingInformation={[]}
+      reviewReadiness={reviewReadiness}
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  expect(screen.getByText('Admin decision')).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Approve & schedule' }),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Request more information' }),
+  ).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Cancel / reject' })).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Approve & Schedule' }),
+  ).not.toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Mark as Needs More Info' }),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Cancel / Reject' })).toBeNull();
+});
+
+test('switches the admin decision panel to needs-more-info only', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove
+      missingInformation={[]}
+      reviewReadiness={reviewReadiness}
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Request more information' }),
+  );
+
+  const reason = screen.getByLabelText('Reason');
+  const form = reason.closest('form');
+
+  expect(form).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Mark as Needs More Info' }),
+  ).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Cancel / Reject' })).toBeNull();
+
+  fireEvent.change(reason, { target: { value: '   ' } });
+  fireEvent.submit(form!);
+
+  expect(
+    screen.getByText('Enter a reason before requesting more information.'),
+  ).not.toBeNull();
+  expect(mocks.markBookingNeedsMoreInfo).not.toHaveBeenCalled();
+});
+
+test('switches the admin decision panel to cancellation only', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove
+      missingInformation={[]}
+      reviewReadiness={reviewReadiness}
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel / reject' }));
+
+  expect(screen.getByRole('button', { name: 'Cancel / Reject' })).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Cancelling does not delete the booking, customer, diver, or deposit data.',
+    ),
+  ).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Mark as Needs More Info' }),
+  ).toBeNull();
+});
+
 test('shows cancellation in the review sidebar for scheduled bookings', () => {
   render(
     <BookingReviewSidebar
@@ -196,7 +322,7 @@ test('shows cancellation in the review sidebar for scheduled bookings', () => {
       adminNotes="Approved for morning schedule."
       canApprove
       missingInformation={[]}
-      rawBookingText={null}
+      reviewReadiness={reviewReadiness}
       status={BookingStatus.SCHEDULED}
     />,
   );

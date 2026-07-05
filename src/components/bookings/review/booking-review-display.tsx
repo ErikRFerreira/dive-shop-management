@@ -5,6 +5,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { BookingCustomerRole } from '@/generated/prisma/enums';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 export const EMPTY_VALUE = '\u2014';
@@ -30,6 +31,16 @@ export function formatEnum(value: string | null | undefined) {
 }
 
 /**
+ * Formats a requested time where missing values should remain operationally explicit.
+ *
+ * @param value - Stored requested time from a booking or activity.
+ * @returns The stored time text, or `TBD` when no time has been captured.
+ */
+export function formatTimeOrTbd(value: string | null | undefined) {
+  return value?.trim() || 'TBD';
+}
+
+/**
  * Formats the customer name shown in booking review sections.
  *
  * @param customer - Customer fields selected for the booking detail payload.
@@ -46,6 +57,41 @@ export function formatCustomerName(
       .filter((part): part is string => Boolean(part))
       .join(' ') || EMPTY_VALUE
   );
+}
+
+/**
+ * Finds the booking customer staff should treat as the primary operational contact.
+ *
+ * @param booking - Booking detail payload with customer join rows.
+ * @returns The explicit primary contact, first customer fallback, or null.
+ */
+export function getPrimaryBookingCustomer(booking: BookingDetailsItem) {
+  return (
+    booking.customers.find(
+      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
+    ) ??
+    booking.customers[0] ??
+    null
+  );
+}
+
+/**
+ * Formats a source and optional referrer into the standard staff-facing label.
+ *
+ * @param booking - Booking fields used for source and referrer display.
+ * @returns Source, referrer, both joined with a slash, or the empty placeholder.
+ */
+export function formatSourceReferrer(
+  booking: Pick<BookingDetailsItem, 'source' | 'referrerName'>,
+) {
+  const source = booking.source ? formatEnum(booking.source) : null;
+  const referrer = booking.referrerName?.trim();
+
+  if (source && referrer) {
+    return `${source} / ${referrer}`;
+  }
+
+  return source ?? referrer ?? EMPTY_VALUE;
 }
 
 /**

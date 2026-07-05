@@ -1,8 +1,4 @@
-import {
-  ApproveBookingForm,
-  CancelBookingForm,
-  MarkNeedsMoreInfoForm,
-} from '@/components/bookings/booking-workflow-forms';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -10,30 +6,108 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import type { ReviewReadinessItem } from '@/features/bookings/review-requirements';
 import { BookingStatus } from '@/generated/prisma/enums';
+import {
+  AlertCircle,
+  CheckCircle2,
+  CircleDashed,
+  Info,
+  type LucideIcon,
+} from 'lucide-react';
+import { BookingReviewDecisionPanel } from './booking-review-decision-panel';
 import { EMPTY_VALUE } from './booking-review-display';
 
 type BookingReviewSidebarProps = {
   bookingId: string;
   canApprove: boolean;
   adminNotes: string | null;
-  rawBookingText: string | null;
   missingInformation: string[];
+  reviewReadiness: ReviewReadinessItem[];
   status: BookingStatus;
 };
+
+const readinessStatusDetails: Record<
+  ReviewReadinessItem['status'],
+  {
+    label: string;
+    className: string;
+    icon: LucideIcon;
+    iconClassName: string;
+  }
+> = {
+  complete: {
+    label: 'Complete',
+    className: 'bg-scheduled/10 text-scheduled ring-scheduled/20',
+    icon: CheckCircle2,
+    iconClassName: 'text-scheduled',
+  },
+  missing: {
+    label: 'Missing',
+    className: 'bg-destructive/10 text-destructive ring-destructive/20',
+    icon: AlertCircle,
+    iconClassName: 'text-destructive',
+  },
+  'recommended/optional': {
+    label: 'Recommended/optional',
+    className: 'bg-info-alert/10 text-info-alert ring-info-alert/20',
+    icon: Info,
+    iconClassName: 'text-info-alert',
+  },
+  'not required': {
+    label: 'Not required',
+    className: 'bg-muted text-muted-foreground ring-border',
+    icon: CircleDashed,
+    iconClassName: 'text-muted-foreground',
+  },
+};
+
+/**
+ * Renders one read-only review readiness checklist row.
+ *
+ * @param props - Readiness item with label, status, and explanatory text.
+ * @returns A checklist row for the review readiness card.
+ */
+function ReviewReadinessRow({ item }: { item: ReviewReadinessItem }) {
+  const statusDetails = readinessStatusDetails[item.status];
+  const StatusIcon = statusDetails.icon;
+
+  return (
+    <li className="flex items-start gap-2.5 py-2">
+      <StatusIcon
+        aria-hidden="true"
+        className={`mt-0.5 size-4 shrink-0 ${statusDetails.iconClassName}`}
+      />
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium leading-5">{item.label}</p>
+          <Badge
+            className={`shrink-0 rounded-full border-transparent px-2 py-0 text-[0.68rem] leading-5 ring-1 ring-inset ${statusDetails.className}`}
+            variant="outline"
+          >
+            {statusDetails.label}
+          </Badge>
+        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          {item.description}
+        </p>
+      </div>
+    </li>
+  );
+}
 
 /**
  * Renders admin review supporting information and workflow decision forms.
  *
- * @param props - Booking workflow state, notes, missing information, and permission flags.
+ * @param props - Booking workflow state, notes, readiness items, missing information, and permission flags.
  * @returns The admin review sidebar.
  */
 export function BookingReviewSidebar({
   bookingId,
   canApprove,
   adminNotes,
-  rawBookingText,
   missingInformation,
+  reviewReadiness,
   status,
 }: BookingReviewSidebarProps) {
   const canApprovePendingBooking =
@@ -50,12 +124,18 @@ export function BookingReviewSidebar({
     <aside className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Raw booking text</CardTitle>
+          <CardTitle>Review readiness</CardTitle>
+          <CardDescription>
+            Use this checklist to spot missing or recommended details before
+            choosing a decision.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm">
-            {rawBookingText || EMPTY_VALUE}
-          </p>
+          <ul className="divide-y">
+            {reviewReadiness.map((item) => (
+              <ReviewReadinessRow item={item} key={item.label} />
+            ))}
+          </ul>
         </CardContent>
       </Card>
 
@@ -79,29 +159,6 @@ export function BookingReviewSidebar({
 
       <Card>
         <CardHeader>
-          <CardTitle>Admin notes</CardTitle>
-          {canApprovePendingBooking ? (
-            <CardDescription>
-              These notes are saved when the booking is approved.
-            </CardDescription>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {canApprovePendingBooking ? (
-            <ApproveBookingForm
-              bookingId={bookingId}
-              defaultAdminNotes={adminNotes}
-            />
-          ) : (
-            <p className="whitespace-pre-wrap text-sm">
-              {adminNotes || EMPTY_VALUE}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Admin decision</CardTitle>
           <CardDescription>
             {hasDecisionActions
@@ -110,17 +167,21 @@ export function BookingReviewSidebar({
           </CardDescription>
         </CardHeader>
         {hasDecisionActions ? (
-          <CardContent className="grid gap-2">
-            {canRequestMoreInfo ? (
-              <MarkNeedsMoreInfoForm bookingId={bookingId} />
-            ) : null}
-            {canCancel ? (
-              <CancelBookingForm
-                bookingId={bookingId}
-                defaultAdminNotes={adminNotes}
-                status={status}
-              />
-            ) : null}
+          <CardContent>
+            <BookingReviewDecisionPanel
+              bookingId={bookingId}
+              canApprovePendingBooking={canApprovePendingBooking}
+              canRequestMoreInfo={canRequestMoreInfo}
+              canCancel={canCancel}
+              adminNotes={adminNotes}
+              status={status}
+            />
+          </CardContent>
+        ) : adminNotes ? (
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm">
+              {adminNotes || EMPTY_VALUE}
+            </p>
           </CardContent>
         ) : null}
       </Card>

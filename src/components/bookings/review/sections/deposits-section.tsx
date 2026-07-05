@@ -1,5 +1,10 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { Field, ReviewDetailsCard, formatDate, formatEnum } from '../booking-review-display';
+import {
+  Field,
+  ReviewDetailsCard,
+  formatDate,
+  formatEnum,
+} from '../booking-review-display';
 
 /**
  * Renders deposit and payment details for admin review.
@@ -9,10 +14,10 @@ import { Field, ReviewDetailsCard, formatDate, formatEnum } from '../booking-rev
  */
 export function DepositsSection({ booking }: { booking: BookingDetailsItem }) {
   return (
-    <ReviewDetailsCard title="Deposit/payment details">
+    <ReviewDetailsCard title="Deposit / payment">
       {booking.deposits.length === 0 ? (
         <p className="text-sm text-muted-foreground sm:col-span-2">
-          No deposit records.
+          No deposit recorded.
         </p>
       ) : (
         booking.deposits.map((deposit) => (
@@ -34,7 +39,10 @@ export function DepositsSection({ booking }: { booking: BookingDetailsItem }) {
             <Field label="Payment method" value={deposit.paymentMethod} />
             <Field label="Due date" value={formatDate(deposit.dueAt)} />
             <Field label="Paid date" value={formatDate(deposit.paidAt)} />
-            <Field label="Payment notes" value={deposit.notes} />
+            <Field
+              label="Payment notes"
+              value={deposit.notes?.trim() || 'No payment notes.'}
+            />
           </div>
         ))
       )}

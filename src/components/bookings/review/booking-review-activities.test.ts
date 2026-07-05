@@ -4,6 +4,7 @@ import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { ActivityType } from '@/generated/prisma/enums';
 import {
   getReviewActivities,
+  getReviewOverviewRequestedDateTime,
   reviewActivitiesIncludeFunDive,
 } from './booking-review-activities';
 
@@ -81,4 +82,38 @@ test('detects fun dives from normalized review activities', () => {
       },
     ]),
   ).toBe(false);
+});
+
+test('uses the first dated activity for the review overview requested date and time', () => {
+  const firstDate = new Date('2026-07-14T00:00:00.000Z');
+
+  expect(
+    getReviewOverviewRequestedDateTime(
+      booking({
+        requestedDate: new Date('2026-07-10T00:00:00.000Z'),
+        requestedTime: '07:00',
+      }),
+      [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: null,
+          requestedDate: null,
+          requestedTime: null,
+          notes: null,
+        },
+        {
+          id: 'activity-2',
+          activityType: ActivityType.FUN_DIVE,
+          specialtyCourse: null,
+          requestedDate: firstDate,
+          requestedTime: '10:30',
+          notes: null,
+        },
+      ],
+    ),
+  ).toEqual({
+    requestedDate: firstDate,
+    requestedTime: '10:30',
+  });
 });
