@@ -58,14 +58,24 @@ function DashboardSidebar({
 
       <aside
         aria-hidden={isMobile && !isOpen}
-        aria-label={isMobile ? 'Mobile navigation menu' : 'Dashboard navigation'}
+        aria-label={
+          isMobile ? 'Mobile navigation menu' : 'Dashboard navigation'
+        }
         className={cn(
           isMobile
-            ? 'fixed inset-y-0 left-0 z-50 flex h-dvh w-[85vw] max-w-sm flex-col bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden'
+            ? 'fixed inset-y-0 left-0 z-50 flex h-dvh w-[85vw] max-w-sm flex-col text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden'
             : 'app-sidebar',
           isMobile && (isOpen ? 'translate-x-0' : '-translate-x-full'),
           isVisuallyCollapsed && 'app-sidebar-collapsed',
         )}
+        style={
+          isMobile
+            ? {
+                background:
+                  'linear-gradient(to bottom, color-mix(in oklch, var(--sidebar) 100%, oklch(0.35 0.045 220) 12%), var(--sidebar) 45%, color-mix(in oklch, var(--sidebar) 100%, oklch(0.25 0.03 248) 8%))',
+              }
+            : undefined
+        }
       >
         <div
           className={cn(
@@ -160,8 +170,8 @@ function DashboardSidebar({
                 isVisuallyCollapsed && 'sr-only',
               )}
             >
-              Panglao Island <span className="text-sidebar-foreground/40">/</span>{' '}
-              Bohol
+              Panglao Island{' '}
+              <span className="text-sidebar-foreground/40">/</span> Bohol
             </p>
           </div>
         </div>

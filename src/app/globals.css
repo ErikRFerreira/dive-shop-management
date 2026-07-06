@@ -231,7 +231,15 @@
   .app-sidebar {
     grid-area: sidebar;
 
-    @apply hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex;
+    @apply hidden shrink-0 flex-col text-sidebar-foreground lg:flex;
+
+    /* Subtle ocean-inspired gradient for dive shop theme */
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--sidebar) 100%, oklch(0.35 0.045 220) 12%),
+      var(--sidebar) 45%,
+      color-mix(in oklch, var(--sidebar) 100%, oklch(0.25 0.03 248) 8%)
+    );
   }
 
   .app-sidebar-collapsed {
@@ -373,7 +381,9 @@
 .schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
 .schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:hover,
 .schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:focus,
-.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:active {
+.schedule-calendar
+  .fc
+  .fc-button-primary:not(:disabled).fc-button-active:active {
   background-color: var(--sidebar);
   border-color: var(--sidebar);
   color: var(--sidebar-foreground);
@@ -415,7 +425,10 @@
 .schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true'],
 .schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:hover,
 .schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:focus,
-.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:active {
+.schedule-calendar
+  .fc
+  .fc-button-group
+  > .fc-button[aria-pressed='true']:active {
   background-color: var(--sidebar);
   color: var(--sidebar-foreground);
   font-weight: 600;
