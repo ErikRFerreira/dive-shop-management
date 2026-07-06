@@ -1,17 +1,20 @@
+import { CustomerList } from '@/components/customers/customer-list';
 import { CustomerSearch } from '@/components/customers/customer-search';
-import { CustomerSummaryCard } from '@/components/customers/customer-summary-card';
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { searchCustomers } from '@/features/customers/queries';
+  getCustomerLookupPage,
+  parseCustomerPageParam,
+  parseCustomerPageSizeParam,
+} from '@/features/customers/queries';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 import { requireCurrentUser } from '@/lib/current-user';
+import PageHeader from '@/components/common/page-header';
 
 type CustomersPageProps = {
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{
+    q?: string | string[];
+    page?: string | string[];
+    pageSize?: string | string[];
+  }>;
 };
 
 /**
@@ -34,54 +37,42 @@ async function Customers({ searchParams }: CustomersPageProps) {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'customers');
 
-  const query = parseCustomerSearchQuery((await searchParams).q);
-  const customers = await searchCustomers(query);
+  const params = await searchParams;
+  const query = parseCustomerSearchQuery(params.q);
   const hasSearch = query.length > 0;
+  const page = parseCustomerPageParam(params.page);
+  const pageSize = parseCustomerPageSizeParam(params.pageSize);
+  const { customers, pagination } = await getCustomerLookupPage(query, {
+    page,
+    pageSize,
+  });
+  const resultSummary = hasSearch
+    ? `${pagination.totalCount} ${
+        pagination.totalCount === 1 ? 'result' : 'results'
+      } for "${query}"`
+    : undefined;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-        <p className="text-sm text-muted-foreground">
-          Find existing customers before creating duplicate booking records.
-        </p>
-      </div>
+      <PageHeader
+        title="Customers"
+        description="Find existing customers before creating duplicate booking records."
+      />
 
       <CustomerSearch query={query} />
 
-      {!hasSearch ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Search for a customer</CardTitle>
-            <CardDescription>
-              Use a name, Chinese name, WeChat ID, WhatsApp number, email, or
-              phone number.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : customers.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No customers found</CardTitle>
-            <CardDescription>
-              Try searching by name, Chinese name, WeChat, WhatsApp, email, or
-              phone.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <section className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {customers.length} {customers.length === 1 ? 'result' : 'results'}{' '}
-            for &quot;{query}&quot;
-          </p>
-          <div className="space-y-3">
-            {customers.map((customer) => (
-              <CustomerSummaryCard customer={customer} key={customer.id} />
-            ))}
-          </div>
-        </section>
-      )}
+      <CustomerList
+        customers={customers}
+        emptyTitle={hasSearch ? 'No customers found.' : 'No customers yet.'}
+        emptyDescription={
+          hasSearch
+            ? 'Try another name, WeChat ID, WhatsApp number, email, or phone.'
+            : 'Customers will appear here after bookings are created.'
+        }
+        pagination={pagination}
+        query={query}
+        resultSummary={resultSummary}
+      />
     </div>
   );
 }

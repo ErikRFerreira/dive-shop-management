@@ -17,6 +17,8 @@ import type {
   CustomerSearchResult,
 } from './types';
 
+export const customerDefaultPageSize = 10;
+
 export const customerSearchArgs = {
   select: {
     id: true,
@@ -30,6 +32,11 @@ export const customerSearchArgs = {
     phone: true,
     hotel: true,
     preferredLanguage: true,
+    _count: {
+      select: {
+        bookings: true,
+      },
+    },
     bookings: {
       orderBy: {
         createdAt: 'desc',
@@ -42,9 +49,18 @@ export const customerSearchArgs = {
         divesLogged: true,
         bookingRequest: {
           select: {
+            activityType: true,
             requestedDate: true,
             startAt: true,
             createdAt: true,
+            activities: {
+              orderBy: {
+                sortOrder: 'asc',
+              },
+              select: {
+                activityType: true,
+              },
+            },
           },
         },
       },
@@ -94,17 +110,27 @@ const customerDetailArgs = {
             status: true,
             activityType: true,
             requestedDate: true,
+            requestedTime: true,
             startAt: true,
             numberOfPeople: true,
             source: true,
             referrerName: true,
             createdAt: true,
+            updatedAt: true,
+            scheduleItem: {
+              select: {
+                date: true,
+                startTime: true,
+              },
+            },
             activities: {
               orderBy: {
                 sortOrder: 'asc',
               },
               select: {
                 activityType: true,
+                requestedDate: true,
+                requestedTime: true,
               },
             },
           },
@@ -119,6 +145,24 @@ export type CustomerDetailRecord = Prisma.CustomerGetPayload<
 >;
 
 type CustomerBookingRecord = CustomerDetailRecord['bookings'][number];
+type CustomerSearchBookingRecord = CustomerSearchRecord['bookings'][number];
+
+export type CustomerListPagination = {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type CustomerListPaginationInput = {
+  page: number;
+  pageSize: number;
+};
+
+export type PaginatedCustomerList = {
+  customers: CustomerSearchResult[];
+  pagination: CustomerListPagination;
+};
 
 /**
  * Builds the staff-facing display name for a customer search result.
@@ -138,6 +182,58 @@ function displayCustomerName(
       .filter((part): part is string => Boolean(part))
       .join(' ') || 'Unnamed customer'
   );
+}
+
+/**
+ * Resolves the most useful activity label source for a customer list row.
+ *
+ * @param booking - Latest booking-customer row selected for a customer result.
+ * @returns The booking's primary activity, first activity row, or null when unknown.
+ */
+function getLatestCustomerActivity(
+  booking: CustomerSearchBookingRecord | undefined,
+) {
+  return (
+    booking?.bookingRequest.activityType ??
+    booking?.bookingRequest.activities[0]?.activityType ??
+    null
+  );
+}
+
+/**
+ * Parses a customer list page number from the URL.
+ *
+ * @param value - Raw `page` search parameter from the request URL.
+ * @returns A positive integer page number, or page 1 for missing or invalid input.
+ */
+export function parseCustomerPageParam(value: string | string[] | undefined) {
+  if (typeof value !== 'string') {
+    return 1;
+  }
+
+  const page = Number(value);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return 1;
+  }
+
+  return page;
+}
+
+/**
+ * Resolves the fixed customer page size from the URL.
+ *
+ * @param value - Raw `pageSize` search parameter from the request URL.
+ * @returns The supported customer page size of 10.
+ */
+export function parseCustomerPageSizeParam(
+  value: string | string[] | undefined,
+) {
+  if (value !== String(customerDefaultPageSize)) {
+    return customerDefaultPageSize;
+  }
+
+  return customerDefaultPageSize;
 }
 
 /**
@@ -259,6 +355,10 @@ export function getCustomerBookingHistory(
         bookingId: booking.id,
         status: booking.status,
         date: getBookingHistoryDate(booking),
+        requestedDate: booking.requestedDate,
+        requestedTime: booking.requestedTime,
+        scheduledDate: booking.scheduleItem?.date ?? null,
+        scheduledTime: booking.scheduleItem?.startTime ?? null,
         activityType: booking.activityType,
         activities: booking.activities,
         role: bookingCustomer.role,
@@ -269,6 +369,7 @@ export function getCustomerBookingHistory(
         referrerName: booking.referrerName,
         hotelAtBooking: bookingCustomer.hotelAtBooking,
         createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
       };
     },
   );
@@ -307,6 +408,106 @@ export function mapCustomerSearchResult(
       latestBooking?.bookingRequest.requestedDate ??
       latestBooking?.bookingRequest.createdAt ??
       null,
+    lastActivity: getLatestCustomerActivity(latestBooking),
+    bookingCount: customer._count.bookings,
+  };
+}
+
+/**
+ * Returns the newest customer records for the default lookup page state.
+ *
+ * @param limit - Maximum number of customers to return for the initial list.
+ * @returns Recent customer records ordered by newest update first.
+ */
+export async function getRecentCustomers(
+  limit = 20,
+): Promise<CustomerSearchResult[]> {
+  const customers = await db.customer.findMany({
+    ...customerSearchArgs,
+    orderBy: {
+      updatedAt: 'desc',
+    },
+    take: limit,
+  });
+
+  return customers.map(mapCustomerSearchResult);
+}
+
+/**
+ * Builds the customer lookup search filter for duplicate-prevention fields.
+ *
+ * @param query - Trimmed search text from the customers page.
+ * @returns Prisma where input matching customer identity fields, or undefined for default list.
+ */
+function buildCustomerLookupWhere(query: string) {
+  if (!query) {
+    return undefined;
+  }
+
+  return {
+    OR: [
+      { fullName: { contains: query, mode: 'insensitive' } },
+      { firstName: { contains: query, mode: 'insensitive' } },
+      { lastName: { contains: query, mode: 'insensitive' } },
+      { chineseName: { contains: query, mode: 'insensitive' } },
+      { weChatId: { contains: query, mode: 'insensitive' } },
+      { whatsAppNumber: { contains: query, mode: 'insensitive' } },
+      { email: { contains: query, mode: 'insensitive' } },
+      { phone: { contains: query, mode: 'insensitive' } },
+    ],
+  } satisfies Prisma.CustomerWhereInput;
+}
+
+/**
+ * Returns one paginated customers-page result set for default or searched lookup.
+ *
+ * @param query - Raw search text from the `/customers?q=` URL parameter.
+ * @param paginationInput - Requested page and fixed page size parsed from the URL.
+ * @returns Customer rows plus total-count metadata for list pagination.
+ */
+export async function getCustomerLookupPage(
+  query: string,
+  paginationInput: CustomerListPaginationInput = {
+    page: 1,
+    pageSize: customerDefaultPageSize,
+  },
+): Promise<PaginatedCustomerList> {
+  const normalizedQuery = query.trim();
+  const where = buildCustomerLookupWhere(normalizedQuery);
+  const totalCount = await db.customer.count({ where });
+  const totalPages = Math.ceil(totalCount / paginationInput.pageSize);
+  const page = totalPages > 0 ? Math.min(paginationInput.page, totalPages) : 1;
+
+  if (totalCount === 0) {
+    return {
+      customers: [],
+      pagination: {
+        totalCount,
+        page,
+        pageSize: paginationInput.pageSize,
+        totalPages,
+      },
+    };
+  }
+
+  const customers = await db.customer.findMany({
+    ...customerSearchArgs,
+    where,
+    orderBy: {
+      updatedAt: 'desc',
+    },
+    skip: (page - 1) * paginationInput.pageSize,
+    take: paginationInput.pageSize,
+  });
+
+  return {
+    customers: customers.map(mapCustomerSearchResult),
+    pagination: {
+      totalCount,
+      page,
+      pageSize: paginationInput.pageSize,
+      totalPages,
+    },
   };
 }
 

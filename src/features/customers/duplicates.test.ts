@@ -30,6 +30,9 @@ function customerRecord(overrides = {}) {
     hotel: null,
     preferredLanguage: null,
     bookings: [],
+    _count: {
+      bookings: 0,
+    },
     ...overrides,
   };
 }
