@@ -9,6 +9,7 @@ import type {
 } from '@/features/schedule/types';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { getShopDateOnlyRange } from '@/lib/operational-date';
 
 /**
  * Groups already-sorted schedule rows by calendar date for the simple schedule page.
@@ -51,8 +52,10 @@ export function groupMyScheduleAssignmentsByDay(
   items: MyScheduleAssignment[],
   baseDate = new Date(),
 ): MyScheduleAssignmentGroup[] {
-  const todayKey = getScheduleDateKey(baseDate);
-  const tomorrowKey = getScheduleDateKey(addUtcDays(baseDate, 1));
+  const todayKey = getScheduleDateKey(getShopDateOnlyRange(baseDate).start);
+  const tomorrowKey = getScheduleDateKey(
+    getShopDateOnlyRange(baseDate, 1).start,
+  );
   const groups = createMyScheduleAssignmentGroups();
 
   items.forEach((item) => {
@@ -132,19 +135,6 @@ function getMyScheduleAssignmentGroupKey(
   }
 
   return 'upcoming';
-}
-
-/**
- * Adds whole UTC days without mutating the source date.
- *
- * @param date - Date to offset.
- * @param days - Number of UTC days to add.
- * @returns A new Date offset by the requested number of days.
- */
-function addUtcDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setUTCDate(nextDate.getUTCDate() + days);
-  return nextDate;
 }
 
 /**

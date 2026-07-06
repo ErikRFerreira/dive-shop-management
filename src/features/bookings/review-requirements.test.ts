@@ -1,7 +1,10 @@
 import { expect, test } from 'vitest';
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { getMissingBookingReviewInformation } from '@/features/bookings/review-requirements';
+import {
+  getBookingReviewReadiness,
+  getMissingBookingReviewInformation,
+} from '@/features/bookings/review-requirements';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -53,6 +56,19 @@ function makeBooking(
   } as BookingDetailsItem;
 }
 
+/**
+ * Creates the small decimal mock needed by review requirement tests.
+ *
+ * @returns Decimal-like value with comparison and display methods used by helpers.
+ */
+function makePositiveDecimal() {
+  return {
+    gt: (value: number) => value === 0,
+    lte: () => false,
+    toString: () => '100',
+  };
+}
+
 test('returns no missing review information for a complete non-fun-dive booking', () => {
   expect(getMissingBookingReviewInformation(makeBooking())).toEqual([]);
 });
@@ -69,7 +85,7 @@ test('requires core booking details and one primary contact', () => {
 
   expect(warnings).toEqual([
     'Add at least one activity.',
-    'Number of people must be at least 1.',
+    'Total participants must be at least 1.',
     'Booking source is required.',
     'Add at least one customer or diver.',
     'Select exactly one primary contact.',
@@ -119,4 +135,196 @@ test('requires paid deposit records to include payment details', () => {
     'Deposit 1: currency is required.',
     'Deposit 1: paid to is required.',
   ]);
+});
+
+test('returns complete and not-required readiness states for a reviewable non-fun-dive booking', () => {
+  expect(getBookingReviewReadiness(makeBooking())).toEqual([
+    {
+      label: 'Activity selected',
+      status: 'complete',
+      description: 'At least one activity is selected.',
+    },
+    {
+      label: 'Requested date set',
+      status: 'complete',
+      description: 'All activities have requested dates.',
+    },
+    {
+      label: 'Primary customer set',
+      status: 'complete',
+      description: 'Exactly one primary contact is selected.',
+    },
+    {
+      label: 'Contact method present',
+      status: 'complete',
+      description: 'Primary contact has at least one contact method.',
+    },
+    {
+      label: 'Diving experience',
+      status: 'not required',
+      description: 'Not required for the selected activity type.',
+    },
+    {
+      label: 'Deposit info',
+      status: 'not required',
+      description: 'No paid deposit details are required.',
+    },
+    {
+      label: 'Equipment sizing',
+      status: 'recommended/optional',
+      description: 'Confirm whether rental equipment is needed when possible.',
+    },
+  ]);
+});
+
+test('marks required readiness items as missing when review data is incomplete', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: null,
+          specialtyCourse: null,
+          requestedDate: null,
+          requestedTime: null,
+          notes: null,
+        },
+      ],
+      customers: [
+        {
+          customerId: 'customer-1',
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          certificationLevel: null,
+          lastDiveAt: null,
+          divesLogged: null,
+          customer: {
+            fullName: 'Ada Diver',
+            firstName: null,
+            lastName: null,
+            weChatId: null,
+            whatsAppNumber: null,
+            email: null,
+            phone: null,
+          },
+        },
+      ],
+    }),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Activity selected',
+        status: 'missing',
+      }),
+      expect.objectContaining({
+        label: 'Requested date set',
+        status: 'missing',
+      }),
+      expect.objectContaining({
+        label: 'Contact method present',
+        status: 'missing',
+      }),
+    ]),
+  );
+});
+
+test('marks fun-dive experience, paid deposit info, and requested equipment sizing as missing when incomplete', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.FUN_DIVE,
+          specialtyCourse: null,
+          requestedDate: new Date('2026-07-01'),
+          requestedTime: null,
+          notes: null,
+        },
+      ],
+      customers: [
+        {
+          customerId: 'customer-1',
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          certificationLevel: null,
+          lastDiveAt: null,
+          divesLogged: null,
+          equipmentNeeded: 'Yes, full rental set',
+          heightCm: 170,
+          weightKg: null,
+          shoeSize: null,
+          customer: {
+            fullName: 'Ada Diver',
+            firstName: null,
+            lastName: null,
+            weChatId: 'ada-d',
+            whatsAppNumber: null,
+            email: null,
+            phone: null,
+          },
+        },
+      ],
+      deposits: [
+        {
+          id: 'deposit-1',
+          status: DepositStatus.PARTIALLY_PAID,
+          amount: makePositiveDecimal(),
+          currency: null,
+          paidTo: null,
+        },
+      ],
+    } as Partial<BookingDetailsItem>),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Diving experience',
+        status: 'missing',
+      }),
+      expect.objectContaining({
+        label: 'Deposit info',
+        status: 'missing',
+      }),
+      expect.objectContaining({
+        label: 'Equipment sizing',
+        status: 'missing',
+      }),
+    ]),
+  );
+});
+
+test('marks equipment sizing as not required when customers clearly do not need rentals', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      customers: [
+        {
+          customerId: 'customer-1',
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          certificationLevel: null,
+          lastDiveAt: null,
+          divesLogged: null,
+          equipmentNeeded: 'No equipment needed',
+          customer: {
+            fullName: 'Ada Diver',
+            firstName: null,
+            lastName: null,
+            weChatId: 'ada-d',
+            whatsAppNumber: null,
+            email: null,
+            phone: null,
+          },
+        },
+      ],
+    }),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Equipment sizing',
+        status: 'not required',
+      }),
+    ]),
+  );
 });

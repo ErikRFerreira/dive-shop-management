@@ -114,6 +114,83 @@ function currentCustomers() {
   ) as BookingFormValues['customers'];
 }
 
+/**
+ * Asserts that one element appears before another in document order.
+ *
+ * @param first - Element expected to appear first.
+ * @param second - Element expected to appear second.
+ */
+function expectElementBefore(first: HTMLElement, second: HTMLElement) {
+  expect(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+}
+
+test('renders customer, equipment, and diving experience labels', () => {
+  render(<CustomerDetailsHarness />);
+
+  expect(screen.getByText('Customers & divers')).not.toBeNull();
+  expect(screen.getByLabelText('Equipment needed?')).not.toBeNull();
+  expect(screen.getByText('Diving experience')).not.toBeNull();
+  expect(screen.getByLabelText('Hotel / pickup location')).not.toBeNull();
+  expect(screen.getByLabelText('Customer notes')).not.toBeNull();
+  expect(screen.getByLabelText('Logged dives')).not.toBeNull();
+});
+
+test('renders customer fields in the planned intake order', () => {
+  render(<CustomerDetailsHarness />);
+
+  expectElementBefore(
+    screen.getByText('Search existing customers'),
+    screen.getByText('Contact details'),
+  );
+  expectElementBefore(
+    screen.getByText('Contact details'),
+    screen.getByText('Diving experience'),
+  );
+  expectElementBefore(
+    screen.getByText('Diving experience'),
+    screen.getByText('Equipment details'),
+  );
+  expectElementBefore(
+    screen.getByText('Equipment details'),
+    screen.getByLabelText('Customer notes'),
+  );
+  expectElementBefore(
+    screen.getByLabelText('Equipment needed?'),
+    screen.getByLabelText('Shoe size'),
+  );
+  expectElementBefore(
+    screen.getByLabelText('Shoe size'),
+    screen.getByLabelText('Height (cm)'),
+  );
+  expectElementBefore(
+    screen.getByLabelText('Height (cm)'),
+    screen.getByLabelText('Weight (kg)'),
+  );
+});
+
+test('shows equipment details in the default customer row', () => {
+  render(
+    <CustomerDetailsHarness
+      defaultValues={bookingValues({
+        customers: [
+          {
+            ...bookingCustomerDefaultValues,
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            equipmentNeeded: 'YES',
+          },
+        ],
+      })}
+    />,
+  );
+
+  expect(screen.getByText('Equipment details')).not.toBeNull();
+  expect(screen.getByLabelText('Height (cm)')).not.toBeNull();
+  expect(screen.getByLabelText('Weight (kg)')).not.toBeNull();
+  expect(screen.getByLabelText('Shoe size')).not.toBeNull();
+});
+
 test('links an existing customer selected from search results', async () => {
   mocks.searchBookingCustomers.mockResolvedValue([selectedCustomer]);
 

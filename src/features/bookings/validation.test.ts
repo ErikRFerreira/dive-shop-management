@@ -159,6 +159,28 @@ test('requires an activity and its requested date for submission', () => {
   });
 });
 
+test('uses booking summary labels in submit validation errors', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({
+      numberOfPeople: '',
+      source: '',
+    }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      numberOfPeople: [
+        'Total participants must be at least 1 before submitting.',
+      ],
+      source: [
+        'Source / referrer is required before submitting for approval.',
+      ],
+    },
+  });
+});
+
 test('requires an exactly one primary contact with a contact method', () => {
   const result = validateBookingIntake(
     validSubmitValues({
@@ -241,7 +263,7 @@ test('requires Fun Dive details for every entered customer', () => {
         'Certification level is required when the booking includes a Fun Dive.',
       ],
       'customers.1.divesLogged': [
-        'Dives logged is required when the booking includes a Fun Dive.',
+        'Logged dives is required when the booking includes a Fun Dive.',
       ],
     },
   });

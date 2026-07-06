@@ -14,8 +14,8 @@ test('calculates the today schedule date range', () => {
       new Date('2026-07-15T18:30:00.000Z'),
     ),
   ).toEqual({
-    start: new Date('2026-07-15T00:00:00.000Z'),
-    end: new Date('2026-07-16T00:00:00.000Z'),
+    start: new Date('2026-07-16T00:00:00.000Z'),
+    end: new Date('2026-07-17T00:00:00.000Z'),
   });
 });
 
@@ -26,8 +26,20 @@ test('calculates the tomorrow schedule date range', () => {
       new Date('2026-07-15T18:30:00.000Z'),
     ),
   ).toEqual({
-    start: new Date('2026-07-16T00:00:00.000Z'),
-    end: new Date('2026-07-17T00:00:00.000Z'),
+    start: new Date('2026-07-17T00:00:00.000Z'),
+    end: new Date('2026-07-18T00:00:00.000Z'),
+  });
+});
+
+test('uses the shop timezone for schedule range shortcuts', () => {
+  expect(
+    getScheduleDateRangeForFilter(
+      'today',
+      new Date('2026-07-02T18:30:00.000Z'),
+    ),
+  ).toEqual({
+    start: new Date('2026-07-03T00:00:00.000Z'),
+    end: new Date('2026-07-04T00:00:00.000Z'),
   });
 });
 

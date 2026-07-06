@@ -16,6 +16,7 @@ import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
 import { getScheduleDateRangeForFilter } from './date-ranges';
+import { getActivityTypesForScheduleType } from './filters';
 import { canViewMyScheduleAssignments } from './permissions';
 import type {
   AssignableStaff,
@@ -267,23 +268,16 @@ function applyScheduleFiltersToWhere(
     });
   }
 
+  if (filters.scheduleType) {
+    andFilters.push(
+      buildActivityTypeFilter(
+        getActivityTypesForScheduleType(filters.scheduleType),
+      ),
+    );
+  }
+
   if (filters.activityType) {
-    andFilters.push({
-      OR: [
-        {
-          activityType: filters.activityType,
-        },
-        {
-          bookingRequest: {
-            activities: {
-              some: {
-                activityType: filters.activityType,
-              },
-            },
-          },
-        },
-      ],
-    });
+    andFilters.push(buildActivityTypeFilter([filters.activityType]));
   }
 
   if (andFilters.length > 0) {
@@ -291,6 +285,37 @@ function applyScheduleFiltersToWhere(
   }
 
   return where;
+}
+
+/**
+ * Builds a predicate that matches ScheduleItem activity type or child booking activities.
+ *
+ * @param activityTypes - Exact activity types that should remain visible.
+ * @returns Prisma where input for activity matching across schedule and booking rows.
+ */
+function buildActivityTypeFilter(
+  activityTypes: ReturnType<typeof getActivityTypesForScheduleType>,
+): Prisma.ScheduleItemWhereInput {
+  return {
+    OR: [
+      {
+        activityType: {
+          in: activityTypes,
+        },
+      },
+      {
+        bookingRequest: {
+          activities: {
+            some: {
+              activityType: {
+                in: activityTypes,
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 /**

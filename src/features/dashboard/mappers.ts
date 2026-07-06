@@ -1,4 +1,7 @@
-import type { ActivityType, BookingCustomerRole } from '@/generated/prisma/enums';
+import type {
+  ActivityType,
+  BookingCustomerRole,
+} from '@/generated/prisma/enums';
 import { BookingCustomerRole as BookingCustomerRoleValue } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
@@ -33,7 +36,10 @@ export function mapBookingToNeedsAttentionItem(
     bookingId: booking.id,
     scheduleItemId: null,
     status: booking.status,
-    activitySummary: summarizeActivities(booking.activities, booking.activityType),
+    activitySummary: summarizeActivities(
+      booking.activities,
+      booking.activityType,
+    ),
     primaryCustomerName: getPrimaryCustomerName(booking.customers),
     detail: getNeedsAttentionBookingDetail(booking),
     date: booking.requestedDate,
@@ -53,7 +59,7 @@ export function mapScheduleItemToNeedsAttentionItem(
   return {
     id: `schedule-${scheduleItem.id}`,
     kind: 'schedule',
-    label: 'scheduled activity needs staff assignment',
+    label: 'Scheduled activity needs staff assignment',
     bookingId: scheduleItem.bookingRequestId,
     scheduleItemId: scheduleItem.id,
     status: scheduleItem.bookingRequest.status,
@@ -64,7 +70,7 @@ export function mapScheduleItemToNeedsAttentionItem(
     primaryCustomerName: getPrimaryCustomerName(
       scheduleItem.bookingRequest.customers,
     ),
-    detail: scheduleItem.startTime?.trim() || 'TBD',
+    detail: formatDashboardDisplayText(scheduleItem.startTime) ?? 'TBD',
     date: scheduleItem.date,
     updatedAt: scheduleItem.updatedAt,
   };
@@ -91,7 +97,10 @@ export function mapScheduleItemToDashboardScheduleItem(
     isTimeTbd: startTime === null,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
-    activitySummary: summarizeActivities(booking.activities, scheduleItem.activityType),
+    activitySummary: summarizeActivities(
+      booking.activities,
+      scheduleItem.activityType,
+    ),
     primaryCustomerName: getPrimaryCustomerName(booking.customers),
     customers: mapDashboardScheduleCustomers(booking.customers),
     numberOfPeople: booking.numberOfPeople,
@@ -117,7 +126,10 @@ export function mapBookingToRecentActivityItem(
     label: getRecentActivityLabel(booking.status),
     status: booking.status,
     occurredAt: booking.updatedAt,
-    activitySummary: summarizeActivities(booking.activities, booking.activityType),
+    activitySummary: summarizeActivities(
+      booking.activities,
+      booking.activityType,
+    ),
     primaryCustomerName: getPrimaryCustomerName(booking.customers),
   };
 }
@@ -221,9 +233,7 @@ function getPrimaryCustomerName(
         bookingCustomer.role === BookingCustomerRoleValue.PRIMARY_CONTACT,
     ) ?? customers[0];
 
-  return displayCustomer
-    ? formatCustomerName(displayCustomer.customer)
-    : null;
+  return displayCustomer ? formatCustomerName(displayCustomer.customer) : null;
 }
 
 /**
@@ -318,20 +328,22 @@ function formatCustomerEnglishName(customer: {
  * @param status - Current booking workflow status.
  * @returns A short dashboard label.
  */
-function getNeedsAttentionBookingLabel(status: DashboardNeedsAttentionBookingRecord['status']) {
+function getNeedsAttentionBookingLabel(
+  status: DashboardNeedsAttentionBookingRecord['status'],
+) {
   if (status === 'PENDING_APPROVAL') {
-    return 'booking pending approval';
+    return 'Booking pending approval';
   }
 
   if (status === 'NEEDS_MORE_INFO') {
-    return 'booking needs more information';
+    return 'Booking needs more information';
   }
 
   if (status === 'DRAFT') {
-    return 'draft booking not submitted';
+    return 'Draft booking not submitted';
   }
 
-  return 'booking needs attention';
+  return 'Booking needs attention';
 }
 
 /**
@@ -344,10 +356,10 @@ function getNeedsAttentionBookingDetail(
   booking: DashboardNeedsAttentionBookingRecord,
 ) {
   if (booking.status === 'NEEDS_MORE_INFO') {
-    return booking.needsMoreInfoReason?.trim() || null;
+    return formatDashboardDisplayText(booking.needsMoreInfoReason);
   }
 
-  return booking.requestedTime?.trim() || null;
+  return formatDashboardDisplayText(booking.requestedTime);
 }
 
 /**
@@ -356,18 +368,40 @@ function getNeedsAttentionBookingDetail(
  * @param status - Current booking workflow status.
  * @returns A short activity label for dashboard display.
  */
-function getRecentActivityLabel(status: DashboardRecentActivityBookingRecord['status']) {
+function getRecentActivityLabel(
+  status: DashboardRecentActivityBookingRecord['status'],
+) {
   if (status === 'PENDING_APPROVAL') {
-    return 'booking submitted for approval';
+    return 'Booking submitted for approval';
   }
 
   if (status === 'NEEDS_MORE_INFO') {
-    return 'more information requested';
+    return 'More information requested';
   }
 
   if (status === 'SCHEDULED') {
-    return 'booking approved and scheduled';
+    return 'Booking approved and scheduled';
   }
 
-  return 'booking updated';
+  return 'Booking updated';
+}
+
+/**
+ * Normalizes raw dashboard detail text without changing stored booking data.
+ *
+ * @param value - Optional raw text from schedule or booking fields.
+ * @returns Trimmed, calm admin-facing text, or null when no text is available.
+ */
+function formatDashboardDisplayText(value: string | null | undefined) {
+  const trimmedValue = value?.trim().replace(/\s+/g, ' ');
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  return trimmedValue
+    .replace(/\bMarks house\b/gi, "Mark's house")
+    .replace(/\s+([.,!?])/g, '$1')
+    .replace(/!{2,}/g, '.')
+    .replace(/\?{2,}/g, '?');
 }

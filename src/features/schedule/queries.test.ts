@@ -258,14 +258,106 @@ test('queries calendar items by schedule item or booking activity type', async (
         AND: [
           {
             OR: [
+          {
+            activityType: {
+              in: [ActivityType.FUN_DIVE],
+            },
+          },
+          {
+            bookingRequest: {
+              activities: {
+                some: {
+                  activityType: {
+                    in: [ActivityType.FUN_DIVE],
+                  },
+                },
+              },
+            },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  );
+});
+
+test('queries calendar items by broad fun dives schedule type', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, {
+    scheduleType: 'fun-dives',
+  });
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        AND: [
+          {
+            OR: [
               {
-                activityType: ActivityType.FUN_DIVE,
+                activityType: {
+                  in: [ActivityType.FUN_DIVE],
+                },
               },
               {
                 bookingRequest: {
                   activities: {
                     some: {
-                      activityType: ActivityType.FUN_DIVE,
+                      activityType: {
+                        in: [ActivityType.FUN_DIVE],
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  );
+});
+
+test('queries calendar items by broad courses schedule type', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser, {
+    scheduleType: 'courses',
+  });
+
+  const courseActivityTypes = [
+    ActivityType.DISCOVER_SCUBA_DIVING,
+    ActivityType.OPEN_WATER_COURSE,
+    ActivityType.ADVANCED_OPEN_WATER_COURSE,
+    ActivityType.RESCUE_DIVER_COURSE,
+    ActivityType.SPECIALTY_COURSE,
+  ];
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        AND: [
+          {
+            OR: [
+              {
+                activityType: {
+                  in: courseActivityTypes,
+                },
+              },
+              {
+                bookingRequest: {
+                  activities: {
+                    some: {
+                      activityType: {
+                        in: courseActivityTypes,
+                      },
                     },
                   },
                 },
@@ -284,6 +376,7 @@ test('queries calendar items with combined schedule filters', async () => {
   await getScheduleItemsForCalendar(adminUser, {
     activityType: ActivityType.SNORKELING,
     range: 'this-week',
+    scheduleType: 'courses',
     staffId: 'staff-2',
     unassignedOnly: true,
   });
@@ -314,13 +407,49 @@ test('queries calendar items with combined schedule filters', async () => {
           {
             OR: [
               {
-                activityType: ActivityType.SNORKELING,
+                activityType: {
+                  in: [
+                    ActivityType.DISCOVER_SCUBA_DIVING,
+                    ActivityType.OPEN_WATER_COURSE,
+                    ActivityType.ADVANCED_OPEN_WATER_COURSE,
+                    ActivityType.RESCUE_DIVER_COURSE,
+                    ActivityType.SPECIALTY_COURSE,
+                  ],
+                },
               },
               {
                 bookingRequest: {
                   activities: {
                     some: {
-                      activityType: ActivityType.SNORKELING,
+                      activityType: {
+                        in: [
+                          ActivityType.DISCOVER_SCUBA_DIVING,
+                          ActivityType.OPEN_WATER_COURSE,
+                          ActivityType.ADVANCED_OPEN_WATER_COURSE,
+                          ActivityType.RESCUE_DIVER_COURSE,
+                          ActivityType.SPECIALTY_COURSE,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              {
+                activityType: {
+                  in: [ActivityType.SNORKELING],
+                },
+              },
+              {
+                bookingRequest: {
+                  activities: {
+                    some: {
+                      activityType: {
+                        in: [ActivityType.SNORKELING],
+                      },
                     },
                   },
                 },

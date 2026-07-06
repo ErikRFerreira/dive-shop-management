@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useId, useMemo, useState, useTransition } from 'react';
 
@@ -36,6 +36,8 @@ type ScheduleAssignmentsListProps = {
   assignments: ScheduleAssignmentDetail[];
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  isManagingAssignments?: boolean;
+  managementMode?: ScheduleAssignmentManagementMode;
   scheduleItemId: string;
   variant?: ScheduleAssignmentsListVariant;
 };
@@ -48,27 +50,86 @@ type ScheduleAssignmentFormProps = {
   assignments: ScheduleAssignmentDetail[];
   assignableStaff: AssignableStaff[];
   scheduleItemId: string;
+  variant?: ScheduleAssignmentFormVariant;
 };
 
 type AssignmentActionErrorProps = {
   message?: string;
 };
 
-type ScheduleAssignmentsListVariant = 'default' | 'compact';
+type ScheduleAssignmentsListVariant = 'default' | 'compact' | 'dialog';
+type ScheduleAssignmentManagementMode = 'always' | 'collapsible';
+type ScheduleAssignmentFormVariant = 'default' | 'dialog';
+
+/* Shared styling for the compact native selects, matched to the schedule
+   filter controls for visual consistency. */
+const selectClass =
+  'h-9 truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
 
 /**
  * Renders the schedule assignment section for a selected schedule event.
  *
- * @param props - Assignment data, available staff, permission state, and display variant.
+ * @param props - Assignment data, available staff, permission state, display
+ * variant, and whether controls should appear immediately or after expansion.
  * @returns A read-only assignment list with optional admin/manager controls.
  */
 export function ScheduleAssignmentsList({
   assignments,
   assignableStaff,
   canManageAssignments,
+  isManagingAssignments = false,
+  managementMode = 'always',
   scheduleItemId,
   variant = 'default',
 }: ScheduleAssignmentsListProps) {
+  const showManagementControls =
+    canManageAssignments &&
+    (managementMode === 'always' || isManagingAssignments);
+
+  if (variant === 'dialog') {
+    return showManagementControls ? (
+      <section className="rounded-xl border border-border bg-muted/30 p-4">
+        <div className="space-y-1 mb-1">
+          <h3 className="text-sm font-semibold text-foreground">
+            Manage staff assignments
+          </h3>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Assign instructors or update their roles for this scheduled
+            activity.
+          </p>
+        </div>
+
+        {assignments.length > 0 ? (
+          <ul className="space-y-2 pb-3">
+            {assignments.map((assignment) => (
+              <li
+                className="rounded-lg border border-border bg-card px-3 py-2"
+                key={assignment.id}
+              >
+                <ScheduleAssignmentRow
+                  assignment={assignment}
+                  canManageAssignments={showManagementControls}
+                  variant={variant}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-2xl border border-dashed border-unassigned/30 bg-unassigned/5 px-4 py-3 text-sm text-unassigned mb-3">
+            No instructors assigned yet.
+          </p>
+        )}
+
+        <ScheduleAssignmentForm
+          assignableStaff={assignableStaff}
+          assignments={assignments}
+          scheduleItemId={scheduleItemId}
+          variant="dialog"
+        />
+      </section>
+    ) : null;
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -89,19 +150,17 @@ export function ScheduleAssignmentsList({
             >
               <ScheduleAssignmentRow
                 assignment={assignment}
-                canManageAssignments={canManageAssignments}
+                canManageAssignments={showManagementControls}
                 variant={variant}
               />
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No instructor or divemaster has been assigned yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No staff assigned</p>
       )}
 
-      {canManageAssignments ? (
+      {showManagementControls ? (
         <ScheduleAssignmentForm
           assignableStaff={assignableStaff}
           assignments={assignments}
@@ -147,6 +206,7 @@ function ScheduleAssignmentRow({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   const roleSelectId = useId();
+  const isCompactLayout = variant === 'compact' || variant === 'dialog';
 
   /**
    * Updates the assignment role through the schedule assignment server action.
@@ -172,7 +232,7 @@ function ScheduleAssignmentRow({
     });
   }
 
-  if (variant === 'compact' && !canManageAssignments) {
+  if (isCompactLayout && !canManageAssignments) {
     return (
       <p className="text-sm">
         {assignment.user.name} <span aria-hidden="true">{'\u2014'}</span>{' '}
@@ -185,7 +245,7 @@ function ScheduleAssignmentRow({
     <div className="space-y-3">
       <div
         className={
-          variant === 'compact'
+          isCompactLayout
             ? 'grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-center'
             : 'flex flex-wrap items-start justify-between gap-3'
         }
@@ -193,7 +253,7 @@ function ScheduleAssignmentRow({
         <div className="min-w-0 space-y-1">
           <div
             className={
-              variant === 'compact'
+              isCompactLayout
                 ? 'min-h-9 content-center'
                 : 'flex flex-wrap items-center gap-2'
             }
@@ -214,11 +274,11 @@ function ScheduleAssignmentRow({
         {canManageAssignments ? (
           <div
             className={
-              variant === 'compact' ? 'grid gap-1' : 'grid gap-2 sm:max-w-64'
+              isCompactLayout ? 'grid gap-1' : 'grid gap-2 sm:max-w-64'
             }
           >
             <Label
-              className={variant === 'compact' ? 'sr-only' : undefined}
+              className={isCompactLayout ? 'sr-only' : undefined}
               htmlFor={roleSelectId}
             >
               Assignment role
@@ -228,7 +288,7 @@ function ScheduleAssignmentRow({
               onValueChange={handleRoleChange}
               value={assignment.role}
             >
-              <SelectTrigger id={roleSelectId}>
+              <SelectTrigger id={roleSelectId} className={selectClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -246,7 +306,7 @@ function ScheduleAssignmentRow({
           <Button
             aria-label={`Remove ${assignment.user.name}`}
             className={
-              variant === 'compact'
+              isCompactLayout
                 ? 'justify-self-start sm:justify-self-end'
                 : undefined
             }
@@ -269,19 +329,22 @@ function ScheduleAssignmentRow({
 /**
  * Renders admin/manager controls for adding a new assignment.
  *
- * @param props - Current assignments, assignable staff, and schedule item ID.
+ * @param props - Current assignments, assignable staff, schedule item ID, and
+ * display variant.
  * @returns A compact staff assignment form.
  */
 export function ScheduleAssignmentForm({
   assignments,
   assignableStaff,
   scheduleItemId,
+  variant = 'default',
 }: ScheduleAssignmentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] =
-    useState<ScheduleAssignmentRoleValue>(ScheduleAssignmentRole.STAFF);
+  const [selectedRole, setSelectedRole] = useState<ScheduleAssignmentRoleValue>(
+    ScheduleAssignmentRole.STAFF,
+  );
   const [error, setError] = useState<string>();
   const staffSelectId = useId();
   const roleSelectId = useId();
@@ -321,18 +384,32 @@ export function ScheduleAssignmentForm({
 
   return (
     <form
-      className="grid gap-3 rounded-md border p-3"
+      className={
+        variant === 'dialog'
+          ? 'grid gap-3 border-t border-border pt-4'
+          : 'grid gap-3 rounded-md border p-3'
+      }
       onSubmit={handleAddAssignment}
     >
+      {variant === 'dialog' ? (
+        <p className="text-xs font-semibold uppercase text-muted-foreground">
+          Add assignment
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
         <div className="grid gap-2">
-          <Label htmlFor={staffSelectId}>Staff</Label>
+          <Label
+            className={variant === 'dialog' ? 'sr-only' : undefined}
+            htmlFor={staffSelectId}
+          >
+            Staff
+          </Label>
           <Select
             disabled={isPending || availableStaff.length === 0}
             onValueChange={setSelectedUserId}
             value={selectedUserId}
           >
-            <SelectTrigger id={staffSelectId}>
+            <SelectTrigger id={staffSelectId} className={selectClass}>
               <SelectValue
                 placeholder={
                   availableStaff.length === 0
@@ -352,7 +429,12 @@ export function ScheduleAssignmentForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor={roleSelectId}>Role</Label>
+          <Label
+            className={variant === 'dialog' ? 'sr-only' : undefined}
+            htmlFor={roleSelectId}
+          >
+            Role
+          </Label>
           <Select
             disabled={isPending}
             onValueChange={(role) =>
@@ -360,7 +442,7 @@ export function ScheduleAssignmentForm({
             }
             value={selectedRole}
           >
-            <SelectTrigger id={roleSelectId}>
+            <SelectTrigger id={roleSelectId} className={selectClass}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -378,7 +460,14 @@ export function ScheduleAssignmentForm({
             disabled={isPending || availableStaff.length === 0}
             type="submit"
           >
-            {isPending ? 'Adding...' : 'Add assignment'}
+            {variant === 'dialog' && !isPending ? (
+              <Plus className="h-4 w-4" />
+            ) : null}
+            {isPending
+              ? 'Adding...'
+              : variant === 'dialog'
+                ? 'Add'
+                : 'Add assignment'}
           </Button>
         </div>
       </div>

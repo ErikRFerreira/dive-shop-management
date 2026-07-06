@@ -18,6 +18,7 @@ import { UserRole } from '@/generated/prisma/enums';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
+import PageHeader from '@/components/common/page-header';
 
 /**
  * Renders the internal schedule calendar for official scheduled bookings.
@@ -46,17 +47,19 @@ async function SchedulePage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Schedule</h1>
-        <p className="text-sm text-muted-foreground">
-          Official scheduled bookings shown by month, week, day, and list.
-        </p>
-      </div>
+      <PageHeader
+        title="Schedule"
+        description="Approved bookings and scheduled activities for daily operations."
+      />
 
       <ScheduleFilters
         assignableStaff={assignableStaff}
         filters={scheduleFilters}
       />
+
+      {scheduleEvents.length === 0 ? (
+        <ScheduleEmptyState filters={scheduleFilters} />
+      ) : null}
 
       <ScheduleCalendar
         assignableStaff={canManageAssignments ? assignableStaff : []}
@@ -64,9 +67,6 @@ async function SchedulePage({
         canViewBookingDetails={canViewBookingDetails}
         events={scheduleEvents}
       />
-      {scheduleEvents.length === 0 ? (
-        <ScheduleEmptyState filters={scheduleFilters} />
-      ) : null}
     </div>
   );
 }
@@ -81,10 +81,14 @@ function ScheduleEmptyState({ filters }: { filters: ScheduleFiltersValue }) {
   const emptyState = getScheduleEmptyStateCopy(filters);
 
   return (
-    <Card>
+    <Card className="bg-gradient-to-b from-card to-card-glow shadow-sm">
       <CardHeader>
-        <CardTitle>{emptyState.title}</CardTitle>
-        <CardDescription>{emptyState.description}</CardDescription>
+        <CardTitle className="text-sm font-semibold text-foreground">
+          {emptyState.title}
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          {emptyState.description}
+        </CardDescription>
       </CardHeader>
     </Card>
   );

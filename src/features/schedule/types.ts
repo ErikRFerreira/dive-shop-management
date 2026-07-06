@@ -9,9 +9,13 @@ import type {
 /** Supported date-range shortcuts for schedule filtering. */
 export type ScheduleRangeFilter = 'all' | 'today' | 'tomorrow' | 'this-week';
 
+/** Broad operational schedule categories supported by the schedule page. */
+export type ScheduleTypeFilter = 'fun-dives' | 'courses';
+
 /** Server-side filters accepted by schedule queries. */
 export type ScheduleFilters = {
   range?: ScheduleRangeFilter;
+  scheduleType?: ScheduleTypeFilter;
   staffId?: string;
   activityType?: ActivityType;
   unassignedOnly?: boolean;

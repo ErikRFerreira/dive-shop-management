@@ -1,4 +1,5 @@
 import { BookingForm } from '@/components/bookings/booking-form';
+import PageHeader from '@/components/common/page-header';
 import { mapBookingToFormValues } from '@/features/bookings/form-mappers';
 import { canEditBooking } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
@@ -26,20 +27,18 @@ async function EditBookingPage({ params }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Edit booking</h1>
-        <p className="text-sm text-muted-foreground">
-          Update the booking details or return it for approval when it is ready.
-        </p>
-      </div>
+    <>
+      <PageHeader
+        title="Edit Booking"
+        description="Update the booking details or return it for approval when it is ready."
+      />
       <BookingForm
         mode="edit"
         bookingId={booking.id}
         initialStatus={booking.status}
         initialValues={mapBookingToFormValues(booking)}
       />
-    </div>
+    </>
   );
 }
 

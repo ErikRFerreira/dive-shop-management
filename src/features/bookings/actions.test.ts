@@ -532,6 +532,38 @@ test.each([
   expect(mocks.transaction.scheduleItem.deleteMany).not.toHaveBeenCalled();
 });
 
+test('stores trimmed admin notes when cancelling a pending booking', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL,
+  });
+
+  await expect(
+    cancelBooking(
+      initialBookingWorkflowActionState,
+      formData({
+        bookingId: 'booking-1',
+        adminNotes: ' Duplicate request. ',
+      }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.updateMany).toHaveBeenCalledWith({
+    where: {
+      id: 'booking-1',
+      status: BookingStatus.PENDING_APPROVAL,
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+      adminNotes: 'Duplicate request.',
+    },
+  });
+});
+
 test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
   'allows %s to cancel a scheduled booking and remove its schedule item',
   async (role) => {

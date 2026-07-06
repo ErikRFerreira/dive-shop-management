@@ -152,12 +152,30 @@ describe('admin dashboard summary', () => {
     await getAdminDashboardSummary(managerUser);
 
     const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
-    const tomorrowRange = mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
+    const tomorrowRange =
+      mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
 
-    expect(todayRange.gte).toEqual(new Date(2026, 6, 14));
-    expect(todayRange.lt).toEqual(new Date(2026, 6, 15));
-    expect(tomorrowRange.gte).toEqual(new Date(2026, 6, 15));
-    expect(tomorrowRange.lt).toEqual(new Date(2026, 6, 16));
+    expect(todayRange.gte).toEqual(new Date('2026-07-14T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-15T00:00:00.000Z'));
+    expect(tomorrowRange.gte).toEqual(new Date('2026-07-15T00:00:00.000Z'));
+    expect(tomorrowRange.lt).toEqual(new Date('2026-07-16T00:00:00.000Z'));
+  });
+
+  test('uses the shop timezone for dashboard date range predicates', async () => {
+    vi.setSystemTime(new Date('2026-07-02T18:30:00.000Z'));
+    mocks.bookingRequestCount.mockResolvedValue(0);
+    mocks.scheduleItemCount.mockResolvedValue(0);
+
+    await getAdminDashboardSummary(managerUser);
+
+    const todayRange = mocks.scheduleItemCount.mock.calls[0]?.[0]?.where.date;
+    const tomorrowRange =
+      mocks.scheduleItemCount.mock.calls[1]?.[0]?.where.date;
+
+    expect(todayRange.gte).toEqual(new Date('2026-07-03T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-04T00:00:00.000Z'));
+    expect(tomorrowRange.gte).toEqual(new Date('2026-07-04T00:00:00.000Z'));
+    expect(tomorrowRange.lt).toEqual(new Date('2026-07-05T00:00:00.000Z'));
   });
 });
 
@@ -215,7 +233,9 @@ describe('instructor dashboard summary', () => {
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(3);
 
-    await expect(getInstructorDashboardSummary(instructorUser)).resolves.toEqual({
+    await expect(
+      getInstructorDashboardSummary(instructorUser),
+    ).resolves.toEqual({
       kind: 'instructor',
       todayAssignmentsCount: 1,
       tomorrowAssignmentsCount: 2,
@@ -281,12 +301,12 @@ describe('dashboard needs attention', () => {
     await expect(getNeedsAttentionItems(adminUser)).resolves.toEqual([
       expect.objectContaining({
         kind: 'booking',
-        label: 'booking pending approval',
+        label: 'Booking pending approval',
         bookingId: 'booking-1',
       }),
       expect.objectContaining({
         kind: 'schedule',
-        label: 'scheduled activity needs staff assignment',
+        label: 'Scheduled activity needs staff assignment',
         scheduleItemId: 'schedule-1',
       }),
     ]);
@@ -343,6 +363,23 @@ describe('dashboard needs attention', () => {
     expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
   });
 
+  test('normalizes dashboard needs-more-info detail copy for display', async () => {
+    mocks.bookingRequestFindMany.mockResolvedValueOnce([
+      bookingRecord({
+        status: BookingStatus.NEEDS_MORE_INFO,
+        needsMoreInfoReason: '  Needs more information!!!! Marks house  ',
+      }),
+    ]);
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
+
+    await expect(getNeedsAttentionItems(adminUser)).resolves.toEqual([
+      expect.objectContaining({
+        label: 'Booking needs more information',
+        detail: "Needs more information. Mark's house",
+      }),
+    ]);
+  });
+
   test('returns no needs-attention items for instructors', async () => {
     await expect(getNeedsAttentionItems(instructorUser)).resolves.toEqual([]);
 
@@ -365,6 +402,7 @@ describe("today's dashboard schedule", () => {
         activitySummary: 'Open Water',
         primaryCustomerName: 'Ada Lovelace',
         hotel: 'Sea View',
+        startTime: '09:00',
         isTimeTbd: false,
         isUnassigned: true,
       }),
@@ -383,6 +421,19 @@ describe("today's dashboard schedule", () => {
         },
       }),
     );
+  });
+
+  test('uses the shop timezone for today schedule rows', async () => {
+    vi.setSystemTime(new Date('2026-07-02T18:30:00.000Z'));
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
+
+    await getTodaysScheduleItems(managerUser);
+
+    const todayRange =
+      mocks.scheduleItemFindMany.mock.calls[0]?.[0]?.where.date;
+
+    expect(todayRange.gte).toEqual(new Date('2026-07-03T00:00:00.000Z'));
+    expect(todayRange.lt).toEqual(new Date('2026-07-04T00:00:00.000Z'));
   });
 
   test('scopes customer service schedule rows to owned scheduled bookings', async () => {
@@ -443,7 +494,7 @@ describe('recent dashboard activity', () => {
     await expect(getRecentDashboardActivity(adminUser)).resolves.toEqual([
       expect.objectContaining({
         bookingId: 'booking-1',
-        label: 'booking approved and scheduled',
+        label: 'Booking approved and scheduled',
         occurredAt: updatedAt,
       }),
     ]);
@@ -528,9 +579,7 @@ test('overview query returns summary plus operational sections', async () => {
     todaysSchedule: [
       expect.objectContaining({ scheduleItemId: 'today-schedule' }),
     ],
-    recentActivity: [
-      expect.objectContaining({ bookingId: 'recent-booking' }),
-    ],
+    recentActivity: [expect.objectContaining({ bookingId: 'recent-booking' })],
   });
 });
 
@@ -543,11 +592,11 @@ test('does not query protected sections for unsupported roles', async () => {
   ).resolves.toEqual({
     kind: 'empty',
   });
-  await expect(getDashboardSummaryForCurrentUser(divemasterUser)).resolves.toEqual(
-    {
-      kind: 'empty',
-    },
-  );
+  await expect(
+    getDashboardSummaryForCurrentUser(divemasterUser),
+  ).resolves.toEqual({
+    kind: 'empty',
+  });
   await expect(getNeedsAttentionItems(divemasterUser)).resolves.toEqual([]);
   await expect(getTodaysScheduleItems(divemasterUser)).resolves.toEqual([]);
   await expect(getRecentDashboardActivity(divemasterUser)).resolves.toEqual([]);
