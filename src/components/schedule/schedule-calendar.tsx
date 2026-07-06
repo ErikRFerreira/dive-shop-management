@@ -91,7 +91,7 @@ function ScheduleCalendarView({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card p-3 text-card-foreground">
+      <div className="schedule-calendar  rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm p-4">
         <FullCalendar
           allDayText="TBD"
           buttonText={{
@@ -105,8 +105,8 @@ function ScheduleCalendarView({
           events={calendarEvents}
           eventClick={handleEventClick}
           headerToolbar={{
-            center: 'title',
-            left: 'prev,next today',
+            center: '',
+            left: 'prev,next today title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
           }}
           height="auto"
@@ -146,6 +146,8 @@ function mapScheduleEventsToFullCalendarEvents(
 ): EventInput[] {
   return events.map((event) => ({
     allDay: event.allDay,
+    className:
+      event.assignments.length > 0 ? 'sched-assigned' : 'sched-unassigned',
     end: event.end ?? undefined,
     extendedProps: {
       scheduleEvent: event,

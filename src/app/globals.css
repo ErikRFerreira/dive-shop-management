@@ -276,6 +276,186 @@
   overflow: hidden;
 }
 
+/* Toolbar — clean header controls with border divider */
+.schedule-calendar .fc .fc-toolbar {
+  align-items: center;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0;
+  gap: 0.75rem;
+}
+.schedule-calendar .fc .fc-toolbar.fc-header-toolbar {
+  border-bottom: 1px solid var(--fc-border-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.875rem;
+}
+.schedule-calendar .fc .fc-toolbar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.schedule-calendar .fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:first-child {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:nth-child(2):empty {
+  display: none;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:last-child {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+/* Buttons — refined Blue Revival pill style */
+.schedule-calendar .fc .fc-button {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9999px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+  text-transform: none;
+  box-shadow: none;
+  line-height: 1;
+}
+.schedule-calendar .fc .fc-button-primary:not(:disabled) {
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:focus,
+.schedule-calendar .fc .fc-button:active,
+.schedule-calendar .fc .fc-button-primary:focus,
+.schedule-calendar .fc .fc-button-primary:active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled):active {
+  outline: none;
+  box-shadow: none;
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+}
+.schedule-calendar .fc .fc-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.schedule-calendar .fc .fc-button-active,
+.schedule-calendar .fc .fc-button-active:hover,
+.schedule-calendar .fc .fc-button-active:focus,
+.schedule-calendar .fc .fc-button-active:active,
+.schedule-calendar .fc .fc-button[aria-pressed='true'],
+.schedule-calendar .fc .fc-button[aria-pressed='true']:hover,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:focus,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:active,
+.schedule-calendar .fc .fc-button-primary.fc-button-active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:hover,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:focus,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:active {
+  background-color: var(--sidebar);
+  border-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  box-shadow: none;
+}
+.schedule-calendar .fc .fc-button-active:focus-visible,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--sidebar) 18%, transparent);
+}
+
+/* Button groups — unified pill */
+.schedule-calendar .fc .fc-button-group {
+  display: inline-flex;
+  gap: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.875rem;
+}
+.schedule-calendar .fc .fc-button-group > .fc-button:hover:not(:disabled) {
+  background-color: var(--accent);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button-active,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:hover,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:focus,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:active,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true'],
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:hover,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:focus,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:active {
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  font-weight: 600;
+}
+.schedule-calendar .fc .fc-prev-button,
+.schedule-calendar .fc .fc-next-button {
+  width: 2.25rem;
+  padding-inline: 0;
+}
+.schedule-calendar .fc .fc-prev-button .fc-icon,
+.schedule-calendar .fc .fc-next-button .fc-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.schedule-calendar .fc .fc-today-button {
+  box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+}
+
+@media (max-width: 720px) {
+  .schedule-calendar .fc .fc-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-chunk:first-child,
+  .schedule-calendar .fc .fc-toolbar-chunk:last-child {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-title {
+    flex-basis: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .schedule-calendar .fc .fc-button-group > .fc-button {
+    padding-inline: 0.75rem;
+  }
+}
+
 /* Weekday header row */
 .schedule-calendar .fc .fc-col-header-cell {
   background-color: color-mix(in oklch, var(--muted) 55%, transparent);
