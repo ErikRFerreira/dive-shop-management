@@ -110,17 +110,27 @@ const customerDetailArgs = {
             status: true,
             activityType: true,
             requestedDate: true,
+            requestedTime: true,
             startAt: true,
             numberOfPeople: true,
             source: true,
             referrerName: true,
             createdAt: true,
+            updatedAt: true,
+            scheduleItem: {
+              select: {
+                date: true,
+                startTime: true,
+              },
+            },
             activities: {
               orderBy: {
                 sortOrder: 'asc',
               },
               select: {
                 activityType: true,
+                requestedDate: true,
+                requestedTime: true,
               },
             },
           },
@@ -345,6 +355,10 @@ export function getCustomerBookingHistory(
         bookingId: booking.id,
         status: booking.status,
         date: getBookingHistoryDate(booking),
+        requestedDate: booking.requestedDate,
+        requestedTime: booking.requestedTime,
+        scheduledDate: booking.scheduleItem?.date ?? null,
+        scheduledTime: booking.scheduleItem?.startTime ?? null,
         activityType: booking.activityType,
         activities: booking.activities,
         role: bookingCustomer.role,
@@ -355,6 +369,7 @@ export function getCustomerBookingHistory(
         referrerName: booking.referrerName,
         hotelAtBooking: bookingCustomer.hotelAtBooking,
         createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
       };
     },
   );

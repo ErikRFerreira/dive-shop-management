@@ -76,8 +76,16 @@ export type CustomerBookingHistoryItem = {
   bookingId: string;
   status: BookingStatus;
   date: Date | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  scheduledDate: Date | null;
+  scheduledTime: string | null;
   activityType: ActivityType | null;
-  activities: Array<{ activityType: ActivityType | null }>;
+  activities: Array<{
+    activityType: ActivityType | null;
+    requestedDate: Date | null;
+    requestedTime: string | null;
+  }>;
   role: BookingCustomerRole;
   isPrimaryContact: boolean;
   numberOfPeople: number | null;
@@ -85,6 +93,7 @@ export type CustomerBookingHistoryItem = {
   referrerName: string | null;
   hotelAtBooking: string | null;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type CustomerDetail = {
