@@ -19,6 +19,7 @@ export type BookingActivityDisplay = {
 };
 
 export const EMPTY_VALUE = '\u2014';
+export const UNSCHEDULED_ASSIGNMENT_SUMMARY = 'Not scheduled yet';
 
 /**
  * Formats a nullable date for booking detail display.
@@ -118,11 +119,11 @@ export function formatSourceReferrer(
  * Formats assigned staff names for the compact booking overview.
  *
  * @param booking - Booking detail payload with optional schedule assignments.
- * @returns Comma-separated staff names, unassigned text, or the empty placeholder.
+ * @returns Comma-separated staff names, unassigned text, or a not-scheduled label.
  */
 export function formatAssignedStaffSummary(booking: BookingDetailsItem) {
   if (!booking.scheduleItem) {
-    return EMPTY_VALUE;
+    return UNSCHEDULED_ASSIGNMENT_SUMMARY;
   }
 
   const names = booking.scheduleItem.assignments.map(

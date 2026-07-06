@@ -316,6 +316,7 @@ function renderBookingDetails(
       booking={booking()}
       canEdit={false}
       canManageAssignments={false}
+      canShowManagerAssignmentAvailabilityCopy={false}
       canResubmit={false}
       canReview={false}
       {...props}
@@ -323,13 +324,36 @@ function renderBookingDetails(
   );
 }
 
-test('does not render the schedule section when the booking has no schedule item', () => {
+test('renders read-only assignment availability copy when the booking has no schedule item', () => {
   renderBookingDetails();
 
-  expect(screen.queryByRole('heading', { name: 'Schedule' })).toBeNull();
+  expect(screen.getByRole('heading', { name: 'Schedule' })).not.toBeNull();
+  expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
+  expect(
+    screen.getByText(
+      'Staff assignments are available after this booking is approved and added to the schedule.',
+    ),
+  ).not.toBeNull();
+  expect(screen.queryByLabelText('Staff')).toBeNull();
+  expect(screen.queryByLabelText('Role')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
   expect(
     screen.getByRole('heading', { level: 1, name: 'Booking details' }),
   ).not.toBeNull();
+});
+
+test('renders admin assignment availability copy when an approver views an unscheduled booking', () => {
+  renderBookingDetails({
+    canShowManagerAssignmentAvailabilityCopy: true,
+  });
+
+  expect(
+    screen.getByText(
+      'Approve and schedule this booking before assigning instructors or divemasters.',
+    ),
+  ).not.toBeNull();
+  expect(screen.queryByLabelText('Staff')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
 });
 
 test('renders the top-level booking overview with operational labels', () => {
@@ -355,7 +379,7 @@ test('renders the top-level booking overview with operational labels', () => {
     }),
   });
 
-  expect(screen.getByText('Booking reference')).not.toBeNull();
+  expect(screen.getByText('Booking summary')).not.toBeNull();
   expect(screen.getByText('Activity')).not.toBeNull();
   expect(screen.getAllByText('Total participants').length).toBeGreaterThan(0);
   expect(screen.getAllByText('Source / referrer').length).toBeGreaterThan(0);
@@ -675,9 +699,7 @@ test('renders the unassigned state when the schedule item has no assignments', (
 
   expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
   expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
-  expect(
-    screen.getByText('No instructor or divemaster has been assigned yet.'),
-  ).not.toBeNull();
+  expect(screen.getByText('No staff assigned')).not.toBeNull();
 });
 
 test('renders assignment controls for admin and manager users', () => {

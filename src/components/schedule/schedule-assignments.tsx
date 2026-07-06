@@ -387,7 +387,7 @@ export function ScheduleAssignmentForm({
       className={
         variant === 'dialog'
           ? 'grid gap-3 border-t border-border pt-4'
-          : 'grid gap-3 rounded-md border p-3'
+          : 'grid gap-3 rounded-lg border p-3 bg-muted/30'
       }
       onSubmit={handleAddAssignment}
     >

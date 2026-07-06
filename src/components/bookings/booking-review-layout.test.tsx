@@ -155,9 +155,14 @@ test('renders review sections before the sticky decision rail', () => {
   expect(stickyRail?.tagName).toBe('ASIDE');
   expect(stickyRail?.className).toContain('lg:sticky');
   expectElementBefore(
-    screen.getByRole('heading', { name: 'Admin review' }),
+    screen.getByRole('heading', { name: 'Booking review' }),
     screen.getByText('Booking summary'),
   );
+  expect(
+    screen.getByText(
+      'Approve and schedule this booking before assigning instructors or divemasters.',
+    ),
+  ).not.toBeNull();
   expectElementBefore(
     screen.getByText('Internal notes from customer service'),
     sidebar,

@@ -14,7 +14,7 @@ function DepositPaymentCard({
   deposit: BookingDetailsItem['deposits'][number];
 }) {
   return (
-    <div className="grid gap-4 rounded-lg border p-4 sm:col-span-2 sm:grid-cols-2">
+    <div className="grid gap-4 rounded-lg border p-4 sm:col-span-2 sm:grid-cols-2 bg-muted/30">
       <BookingInfoField
         label="Deposit status"
         value={formatBookingEnum(deposit.status)}
@@ -30,7 +30,10 @@ function DepositPaymentCard({
       <BookingInfoField label="Currency" value={deposit.currency} />
       <BookingInfoField label="Paid to" value={deposit.paidTo} />
       <BookingInfoField label="Payment method" value={deposit.paymentMethod} />
-      <BookingInfoField label="Due date" value={formatBookingDate(deposit.dueAt)} />
+      <BookingInfoField
+        label="Due date"
+        value={formatBookingDate(deposit.dueAt)}
+      />
       <BookingInfoField
         label="Paid date"
         value={formatBookingDate(deposit.paidAt)}

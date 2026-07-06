@@ -1,12 +1,9 @@
-import Link from 'next/link';
-
 import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
 import PageHeader from '@/components/common/page-header';
 import { BookingMainSections } from '@/components/bookings/booking-main-sections';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import type { AssignableStaff } from '@/features/schedule/types';
 import { BookingStatus } from '@/generated/prisma/enums';
-import { ArrowLeft } from 'lucide-react';
 import { getBookingDetailActions } from './booking-detail-actions';
 import {
   getDisplayActivities,
@@ -21,6 +18,7 @@ type Props = {
   booking: BookingDetailsItem;
   canEdit: boolean;
   canManageAssignments: boolean;
+  canShowManagerAssignmentAvailabilityCopy: boolean;
   canReview: boolean;
   canResubmit: boolean;
 };
@@ -36,6 +34,7 @@ function BookingDetails({
   booking,
   canEdit,
   canManageAssignments,
+  canShowManagerAssignmentAvailabilityCopy,
   canReview,
   canResubmit,
 }: Props) {
@@ -73,6 +72,9 @@ function BookingDetails({
               assignableStaff={assignableStaff}
               booking={booking}
               canManageAssignments={canManageAssignments}
+              showManagerAssignmentAvailabilityCopy={
+                canShowManagerAssignmentAvailabilityCopy
+              }
             />
           }
           afterSummary={
