@@ -83,7 +83,7 @@ function CustomerOverviewMetaItem({
       </span>
       <div className="min-w-0">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <div className="mt-0.5 break-words text-sm font-semibold">
+        <div className="mt-0.5 wrap-break-word text-sm font-semibold">
           {displayValue}
         </div>
       </div>
@@ -121,7 +121,7 @@ export function CustomerProfileHeader({
         linkHref="/customers"
       />
 
-      <Card className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm">
+      <Card className="overflow-hidden rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -199,4 +199,3 @@ export function CustomerProfileHeader({
     </header>
   );
 }
-

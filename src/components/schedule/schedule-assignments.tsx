@@ -264,7 +264,7 @@ function ScheduleAssignmentRow({
             ) : null}
           </div>
           {variant === 'default' ? (
-            <p className="break-words text-sm text-muted-foreground">
+            <p className="wrap-break-word text-sm text-muted-foreground">
               {formatEnumLabel(assignment.user.role)}
               {assignment.user.email ? ` / ${assignment.user.email}` : ''}
             </p>

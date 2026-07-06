@@ -21,7 +21,7 @@ export function ComingSoon({
   description,
 }: ComingSoonProps) {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
+    <div className="flex items-center justify-center min-h-100">
       <Card className="w-full max-w-md">
         <CardContent className="pt-6 text-center">
           <div className="mb-2">

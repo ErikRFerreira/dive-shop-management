@@ -24,7 +24,9 @@ export function BookingInfoField({
   return (
     <div className="min-w-0">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 break-words text-sm font-medium">{displayValue}</div>
+      <div className="mt-1 wrap-break-word text-sm font-medium">
+        {displayValue}
+      </div>
     </div>
   );
 }
@@ -112,7 +114,7 @@ export function BookingReferenceMetaItem({
       </span>
       <div className="min-w-0">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <div className="mt-0.5 break-words text-sm font-semibold">
+        <div className="mt-0.5 wrap-break-word text-sm font-semibold">
           {displayValue}
         </div>
       </div>

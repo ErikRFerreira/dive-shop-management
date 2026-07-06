@@ -202,7 +202,7 @@ export function CustomerList({
         <p className="text-sm text-muted-foreground">{resultSummary}</p>
       ) : null}
 
-      <Card className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow py-0 shadow-sm">
+      <Card className="overflow-hidden rounded-2xl border border-border bg-linear-to-b from-card to-card-glow py-0 shadow-sm">
         <CardContent className="p-0">
           <Table className="table-fixed">
             <TableHeader>
@@ -226,17 +226,20 @@ export function CustomerList({
             </TableHeader>
             <TableBody>
               {customers.map((customer) => (
-                <TableRow key={customer.id} className="border-b last:border-b-0">
-                  <TableCell className="whitespace-normal break-words py-5 pl-6 align-top">
+                <TableRow
+                  key={customer.id}
+                  className="border-b last:border-b-0"
+                >
+                  <TableCell className="whitespace-normal wrap-break-word py-5 pl-6 align-top">
                     {renderCustomerCell(customer)}
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderContactCell(customer)}
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderBookingHistoryCell(customer)}
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderDiveProfileCell(customer)}
                   </TableCell>
                   <TableCell className="py-5 pr-6 text-right align-top">
