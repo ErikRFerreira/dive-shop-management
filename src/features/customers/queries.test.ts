@@ -9,6 +9,7 @@ import {
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
+  count: vi.fn(),
   findUnique: vi.fn(),
   findMany: vi.fn(),
 }));
@@ -18,15 +19,24 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/lib/db', () => ({
   db: {
     customer: {
+      count: mocks.count,
       findUnique: mocks.findUnique,
       findMany: mocks.findMany,
     },
   },
 }));
 
-import { getCustomerDetail, searchCustomers } from './queries';
+import {
+  getCustomerDetail,
+  getCustomerLookupPage,
+  getRecentCustomers,
+  parseCustomerPageParam,
+  parseCustomerPageSizeParam,
+  searchCustomers,
+} from './queries';
 
 beforeEach(() => {
+  mocks.count.mockReset();
   mocks.findUnique.mockReset();
   mocks.findMany.mockReset();
 });
@@ -84,12 +94,17 @@ test('maps customer search results with latest booking details', async () => {
           lastDiveAt: lastDiveDate,
           divesLogged: 24,
           bookingRequest: {
+            activityType: ActivityType.FUN_DIVE,
             startAt: null,
             requestedDate: lastBookingDate,
             createdAt: new Date('2026-06-20T00:00:00.000Z'),
+            activities: [{ activityType: ActivityType.SNORKELING }],
           },
         },
       ],
+      _count: {
+        bookings: 3,
+      },
     },
   ]);
 
@@ -112,8 +127,109 @@ test('maps customer search results with latest booking details', async () => {
       lastDiveDate,
       divesLogged: 24,
       lastBookingDate,
+      lastActivity: ActivityType.FUN_DIVE,
+      bookingCount: 3,
     },
   ]);
+});
+
+test('returns recent customers ordered by newest update first', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await expect(getRecentCustomers(12)).resolves.toEqual([]);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      take: 12,
+    }),
+  );
+});
+
+test('returns a paginated default customer lookup page', async () => {
+  mocks.count.mockResolvedValue(26);
+  mocks.findMany.mockResolvedValue([]);
+
+  await expect(
+    getCustomerLookupPage('', { page: 2, pageSize: 10 }),
+  ).resolves.toEqual({
+    customers: [],
+    pagination: {
+      totalCount: 26,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+    },
+  });
+
+  expect(mocks.count).toHaveBeenCalledWith({ where: undefined });
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: undefined,
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      skip: 10,
+      take: 10,
+    }),
+  );
+});
+
+test('returns a paginated searched customer lookup page', async () => {
+  mocks.count.mockResolvedValue(23);
+  mocks.findMany.mockResolvedValue([]);
+
+  await expect(
+    getCustomerLookupPage(' anchie ', { page: 5, pageSize: 10 }),
+  ).resolves.toMatchObject({
+    pagination: {
+      totalCount: 23,
+      page: 3,
+      pageSize: 10,
+      totalPages: 3,
+    },
+  });
+
+  expect(mocks.count).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        OR: [
+          { fullName: { contains: 'anchie', mode: 'insensitive' } },
+          { firstName: { contains: 'anchie', mode: 'insensitive' } },
+          { lastName: { contains: 'anchie', mode: 'insensitive' } },
+          { chineseName: { contains: 'anchie', mode: 'insensitive' } },
+          { weChatId: { contains: 'anchie', mode: 'insensitive' } },
+          { whatsAppNumber: { contains: 'anchie', mode: 'insensitive' } },
+          { email: { contains: 'anchie', mode: 'insensitive' } },
+          { phone: { contains: 'anchie', mode: 'insensitive' } },
+        ],
+      },
+    }),
+  );
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      skip: 20,
+      take: 10,
+    }),
+  );
+});
+
+test('parses customer pagination params safely', () => {
+  expect(parseCustomerPageParam('3')).toBe(3);
+  expect(parseCustomerPageParam(undefined)).toBe(1);
+  expect(parseCustomerPageParam(['1', '2'])).toBe(1);
+  expect(parseCustomerPageParam('0')).toBe(1);
+  expect(parseCustomerPageParam('-1')).toBe(1);
+  expect(parseCustomerPageParam('1.5')).toBe(1);
+  expect(parseCustomerPageParam('unknown')).toBe(1);
+
+  expect(parseCustomerPageSizeParam('10')).toBe(10);
+  expect(parseCustomerPageSizeParam(undefined)).toBe(10);
+  expect(parseCustomerPageSizeParam(['10'])).toBe(10);
+  expect(parseCustomerPageSizeParam('25')).toBe(10);
+  expect(parseCustomerPageSizeParam('unknown')).toBe(10);
 });
 
 test('returns null when customer detail is missing', async () => {

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { PreferredLanguage } from '@/generated/prisma/enums';
+import { ActivityType, PreferredLanguage } from '@/generated/prisma/enums';
 import { bookingCustomerDefaultValues } from './form-values';
 import { mapSelectedCustomerToBookingCustomerValues } from './customer-picker';
 
@@ -22,6 +22,8 @@ const selectedCustomer = {
   weChatId: 'maria-wx',
   whatsAppNumber: '+639170000000',
   lastBookingDate: '2026-07-01',
+  lastActivity: ActivityType.FUN_DIVE,
+  bookingCount: 2,
 };
 
 test('maps a selected customer into a booking customer row', () => {

@@ -24,6 +24,8 @@ export type CustomerSearchResult = {
   weChatId: string | null;
   whatsAppNumber: string | null;
   lastBookingDate: Date | null;
+  lastActivity: ActivityType | null;
+  bookingCount: number;
 };
 
 export type DuplicateCustomerMatchField =

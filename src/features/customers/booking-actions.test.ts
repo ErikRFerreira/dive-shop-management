@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
-import { PreferredLanguage } from '@/generated/prisma/enums';
+import { ActivityType, PreferredLanguage } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
   findPotentialDuplicateCustomers: vi.fn(),
@@ -48,6 +48,8 @@ const customerSearchResult = {
   weChatId: 'maria-wx',
   whatsAppNumber: null,
   lastBookingDate: new Date('2026-07-01T00:00:00.000Z'),
+  lastActivity: ActivityType.FUN_DIVE,
+  bookingCount: 2,
 };
 
 beforeEach(() => {

@@ -27,6 +27,7 @@ import {
 } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
+  ActivityType,
   BookingCustomerRole,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
@@ -50,6 +51,8 @@ const selectedCustomer = {
   weChatId: 'maria-wx',
   whatsAppNumber: '+639170000000',
   lastBookingDate: '2026-07-01',
+  lastActivity: ActivityType.FUN_DIVE,
+  bookingCount: 2,
 };
 
 afterEach(() => {
