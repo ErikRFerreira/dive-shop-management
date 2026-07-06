@@ -41,28 +41,31 @@ export function CustomerSearch({ query }: CustomerSearchProps) {
   }
 
   return (
-    <form
-      action="/customers"
-      className="flex max-w-2xl flex-wrap gap-2"
-      onSubmit={handleSubmit}
-    >
-      <div className="min-w-64 flex-1">
-        <label className="sr-only" htmlFor="customer-search">
-          Search customers
-        </label>
-        <Input
-          id="customer-search"
-          name="q"
-          type="search"
-          defaultValue={query}
-          disabled={isPending}
-          placeholder="Search name, Chinese name, WeChat, WhatsApp, email, or phone"
-        />
-      </div>
-      <Button disabled={isPending} type="submit">
-        <Search className="h-4 w-4" />
-        {isPending ? 'Searching...' : 'Search'}
-      </Button>
-    </form>
+    <div className="rounded-2xl border border-border bg-card/60 p-3 shadow-sm">
+      <form
+        action="/customers"
+        className="flex max-w-2xl flex-wrap gap-2"
+        onSubmit={handleSubmit}
+      >
+        <div className="min-w-64 flex-1">
+          <label className="sr-only" htmlFor="customer-search">
+            Search customers
+          </label>
+          <Input
+            id="customer-search"
+            name="q"
+            type="search"
+            defaultValue={query}
+            disabled={isPending}
+            placeholder="Search name, Chinese name, WeChat, WhatsApp, email, or phone"
+            className="bg-background rounded-2xl border-border px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+        <Button disabled={isPending} type="submit">
+          <Search className="h-4 w-4" />
+          {isPending ? 'Searching...' : 'Search'}
+        </Button>
+      </form>
+    </div>
   );
 }
