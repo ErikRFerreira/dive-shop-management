@@ -18,6 +18,7 @@ import { UserRole } from '@/generated/prisma/enums';
 import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
+import PageHeader from '@/components/common/page-header';
 
 /**
  * Renders the internal schedule calendar for official scheduled bookings.
@@ -46,12 +47,10 @@ async function SchedulePage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Schedule</h1>
-        <p className="text-sm text-muted-foreground">
-          Approved bookings and scheduled activities for daily operations.
-        </p>
-      </div>
+      <PageHeader
+        title="Schedule"
+        description="Approved bookings and scheduled activities for daily operations."
+      />
 
       <ScheduleFilters
         assignableStaff={assignableStaff}

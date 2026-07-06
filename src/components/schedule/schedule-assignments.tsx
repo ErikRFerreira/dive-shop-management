@@ -115,7 +115,7 @@ export function ScheduleAssignmentsList({
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl border border-dashed border-unassigned/30 bg-unassigned/5 px-4 py-3 text-sm text-unassigned">
+          <p className="rounded-2xl border border-dashed border-unassigned/30 bg-unassigned/5 px-4 py-3 text-sm text-unassigned mb-3">
             No instructors assigned yet.
           </p>
         )}
