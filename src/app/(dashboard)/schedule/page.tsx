@@ -81,10 +81,14 @@ function ScheduleEmptyState({ filters }: { filters: ScheduleFiltersValue }) {
   const emptyState = getScheduleEmptyStateCopy(filters);
 
   return (
-    <Card>
+    <Card className="bg-gradient-to-b from-card to-card-glow shadow-sm">
       <CardHeader>
-        <CardTitle>{emptyState.title}</CardTitle>
-        <CardDescription>{emptyState.description}</CardDescription>
+        <CardTitle className="text-sm font-semibold text-foreground">
+          {emptyState.title}
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          {emptyState.description}
+        </CardDescription>
       </CardHeader>
     </Card>
   );
