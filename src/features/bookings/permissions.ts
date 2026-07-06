@@ -37,7 +37,10 @@ type BookingRowPermissionSubject = {
 export function canCreateBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return currentUser.role === UserRole.CUSTOMER_SERVICE;
+  return (
+    currentUser.role === UserRole.CUSTOMER_SERVICE ||
+    currentUser.role === UserRole.ADMIN
+  );
 }
 
 /**

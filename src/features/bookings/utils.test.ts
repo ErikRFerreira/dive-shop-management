@@ -2,6 +2,8 @@ import { expect, test } from 'vitest';
 
 import {
   buildBookingRequestWhere,
+  parseBookingPageParam,
+  parseBookingPageSizeParam,
   parseBookingQueueFilter,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
@@ -35,6 +37,23 @@ test('accepts only supported single booking queue filters', () => {
   expect(parseBookingQueueFilter(['unassigned'])).toBeUndefined();
   expect(parseBookingQueueFilter(BookingStatus.SCHEDULED)).toBeUndefined();
   expect(parseBookingQueueFilter('unknown')).toBeUndefined();
+});
+
+/** Verifies that booking pagination URL params resolve to safe defaults. */
+test('parses booking pagination params', () => {
+  expect(parseBookingPageParam('3')).toBe(3);
+  expect(parseBookingPageParam(undefined)).toBe(1);
+  expect(parseBookingPageParam(['1', '2'])).toBe(1);
+  expect(parseBookingPageParam('0')).toBe(1);
+  expect(parseBookingPageParam('-1')).toBe(1);
+  expect(parseBookingPageParam('1.5')).toBe(1);
+  expect(parseBookingPageParam('unknown')).toBe(1);
+
+  expect(parseBookingPageSizeParam('10')).toBe(10);
+  expect(parseBookingPageSizeParam(undefined)).toBe(10);
+  expect(parseBookingPageSizeParam(['10'])).toBe(10);
+  expect(parseBookingPageSizeParam('25')).toBe(10);
+  expect(parseBookingPageSizeParam('unknown')).toBe(10);
 });
 
 /** Verifies that a primary contact takes precedence over earlier participants. */

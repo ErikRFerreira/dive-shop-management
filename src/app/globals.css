@@ -211,12 +211,21 @@
     min-height: 100dvh;
 
     display: grid;
-    grid-template-columns: var(--sidebar-width, 15.625rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 64px minmax(0, 1fr);
     grid-template-areas:
-      'sidebar header'
-      'sidebar main';
-    transition: grid-template-columns 240ms ease-in-out;
+      'header'
+      'main';
+  }
+
+  @media (min-width: 1024px) {
+    .app-layout {
+      grid-template-columns: var(--sidebar-width, 15.625rem) minmax(0, 1fr);
+      grid-template-areas:
+        'sidebar header'
+        'sidebar main';
+      transition: grid-template-columns 240ms ease-in-out;
+    }
   }
 
   .app-sidebar {
@@ -232,7 +241,7 @@
   .app-header {
     grid-area: header;
 
-    @apply sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md sm:px-6;
+    @apply z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md sm:px-6;
   }
 
   .app-main {
@@ -240,4 +249,359 @@
 
     @apply flex-1 px-2 py-6 sm:px-6 lg:px-8;
   }
+}
+
+/* ---- FullCalendar theming — Blue Revival Dive Ops ---- */
+.schedule-calendar {
+  --fc-border-color: color-mix(in oklch, var(--border) 65%, transparent);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--muted);
+  --fc-today-bg-color: color-mix(in oklch, var(--primary) 7%, transparent);
+  --fc-now-indicator-color: var(--primary);
+  --fc-list-event-hover-bg-color: var(--muted);
+  --fc-small-font-size: 0.78rem;
+}
+
+/* Grid + structure: softer, warmer, less harsh than defaults */
+.schedule-calendar .fc {
+  font-family: var(--font-sans);
+}
+.schedule-calendar .fc .fc-scrollgrid,
+.schedule-calendar .fc .fc-scrollgrid td,
+.schedule-calendar .fc .fc-scrollgrid th {
+  border-color: var(--fc-border-color);
+}
+.schedule-calendar .fc .fc-scrollgrid {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+/* Toolbar — clean header controls with border divider */
+.schedule-calendar .fc .fc-toolbar {
+  align-items: center;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0;
+  gap: 0.75rem;
+}
+.schedule-calendar .fc .fc-toolbar.fc-header-toolbar {
+  border-bottom: 1px solid var(--fc-border-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.875rem;
+}
+.schedule-calendar .fc .fc-toolbar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+.schedule-calendar .fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:first-child {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:nth-child(2):empty {
+  display: none;
+}
+.schedule-calendar .fc .fc-toolbar-chunk:last-child {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+/* Buttons — refined Blue Revival pill style */
+.schedule-calendar .fc .fc-button {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9999px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+  text-transform: none;
+  box-shadow: none;
+  line-height: 1;
+}
+.schedule-calendar .fc .fc-button-primary:not(:disabled) {
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:focus,
+.schedule-calendar .fc .fc-button:active,
+.schedule-calendar .fc .fc-button-primary:focus,
+.schedule-calendar .fc .fc-button-primary:active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled):active {
+  outline: none;
+  box-shadow: none;
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+}
+.schedule-calendar .fc .fc-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.schedule-calendar .fc .fc-button-active,
+.schedule-calendar .fc .fc-button-active:hover,
+.schedule-calendar .fc .fc-button-active:focus,
+.schedule-calendar .fc .fc-button-active:active,
+.schedule-calendar .fc .fc-button[aria-pressed='true'],
+.schedule-calendar .fc .fc-button[aria-pressed='true']:hover,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:focus,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:active,
+.schedule-calendar .fc .fc-button-primary.fc-button-active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:hover,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:focus,
+.schedule-calendar .fc .fc-button-primary:not(:disabled).fc-button-active:active {
+  background-color: var(--sidebar);
+  border-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  box-shadow: none;
+}
+.schedule-calendar .fc .fc-button-active:focus-visible,
+.schedule-calendar .fc .fc-button[aria-pressed='true']:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--sidebar) 18%, transparent);
+}
+
+/* Button groups — unified pill */
+.schedule-calendar .fc .fc-button-group {
+  display: inline-flex;
+  gap: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.875rem;
+}
+.schedule-calendar .fc .fc-button-group > .fc-button:hover:not(:disabled) {
+  background-color: var(--accent);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.schedule-calendar .fc .fc-button-group > .fc-button-active,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:hover,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:focus,
+.schedule-calendar .fc .fc-button-group > .fc-button-active:active,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true'],
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:hover,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:focus,
+.schedule-calendar .fc .fc-button-group > .fc-button[aria-pressed='true']:active {
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  font-weight: 600;
+}
+.schedule-calendar .fc .fc-prev-button,
+.schedule-calendar .fc .fc-next-button {
+  width: 2.25rem;
+  padding-inline: 0;
+}
+.schedule-calendar .fc .fc-prev-button .fc-icon,
+.schedule-calendar .fc .fc-next-button .fc-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.schedule-calendar .fc .fc-today-button {
+  box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+}
+
+@media (max-width: 720px) {
+  .schedule-calendar .fc .fc-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-chunk:first-child,
+  .schedule-calendar .fc .fc-toolbar-chunk:last-child {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-title {
+    flex-basis: 100%;
+    margin-top: 0.25rem;
+  }
+
+  .schedule-calendar .fc .fc-button-group > .fc-button {
+    padding-inline: 0.75rem;
+  }
+}
+
+/* Weekday header row */
+.schedule-calendar .fc .fc-col-header-cell {
+  background-color: color-mix(in oklch, var(--muted) 55%, transparent);
+  padding-block: 0.55rem;
+}
+.schedule-calendar .fc .fc-col-header-cell-cushion {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding: 0.25rem 0.5rem;
+}
+
+/* Day numbers: quiet */
+.schedule-calendar .fc .fc-daygrid-day-number {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  padding: 0.4rem 0.5rem;
+}
+.schedule-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--primary);
+  font-weight: 600;
+}
+.schedule-calendar .fc .fc-daygrid-day.fc-day-other {
+  background-color: color-mix(in oklch, var(--muted) 30%, transparent);
+}
+
+/* Event chips */
+.schedule-calendar .fc .fc-daygrid-event,
+.schedule-calendar .fc .fc-timegrid-event {
+  border-radius: 0.45rem;
+  border: none;
+  padding: 0.12rem 0.42rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.3;
+  box-shadow: 0 1px 1px oklch(0 0 0 / 5%);
+}
+.schedule-calendar .fc .fc-daygrid-event {
+  margin-block: 1.5px;
+}
+/* Force inner title/time to inherit the chip's readable text color
+   instead of FullCalendar's default white (--fc-event-text-color). */
+.schedule-calendar .fc .fc-event .fc-event-main,
+.schedule-calendar .fc .fc-event .fc-event-main-frame,
+.schedule-calendar .fc .fc-event .fc-event-title,
+.schedule-calendar .fc .fc-event .fc-event-title-container,
+.schedule-calendar .fc .fc-event .fc-event-time {
+  color: inherit;
+}
+.schedule-calendar .fc .fc-event .fc-event-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Assigned = calm ocean/teal — light tint, dark teal text */
+.schedule-calendar .fc .sched-assigned {
+  --fc-event-text-color: color-mix(
+    in oklch,
+    var(--ocean) 55%,
+    oklch(0.18 0.03 245)
+  );
+  background-color: color-mix(in oklch, var(--ocean) 16%, var(--card));
+  color: color-mix(in oklch, var(--ocean) 55%, oklch(0.18 0.03 245));
+  border: 1px solid color-mix(in oklch, var(--ocean) 32%, transparent);
+  border-left: 3px solid var(--ocean);
+}
+.schedule-calendar .fc .sched-assigned .fc-event-time {
+  opacity: 0.8;
+}
+
+/* Unassigned = amber/orange accent — light tint, dark amber text */
+.schedule-calendar .fc .sched-unassigned {
+  --fc-event-text-color: color-mix(
+    in oklch,
+    var(--unassigned) 60%,
+    oklch(0.2 0.04 50)
+  );
+  background-color: color-mix(in oklch, var(--unassigned) 18%, var(--card));
+  color: color-mix(in oklch, var(--unassigned) 60%, oklch(0.2 0.04 50));
+  border: 1px solid color-mix(in oklch, var(--unassigned) 36%, transparent);
+  border-left: 3px solid var(--unassigned);
+}
+.schedule-calendar .fc .sched-unassigned .fc-event-time {
+  opacity: 0.8;
+}
+
+/* Dot events (used in some densities) match chip colors */
+.schedule-calendar .fc .sched-assigned .fc-daygrid-event-dot {
+  border-color: var(--ocean);
+}
+.schedule-calendar .fc .sched-unassigned .fc-daygrid-event-dot {
+  border-color: var(--unassigned);
+}
+
+.schedule-calendar .fc .fc-event:focus,
+.schedule-calendar .fc .fc-event:hover {
+  cursor: pointer;
+  filter: brightness(0.98);
+}
+
+/* "more" link */
+.schedule-calendar .fc .fc-daygrid-more-link {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* TimeGrid axis + slots */
+.schedule-calendar .fc .fc-timegrid-slot-label-cushion,
+.schedule-calendar .fc .fc-timegrid-axis-cushion {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+/* List view */
+.schedule-calendar .fc .fc-list {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border-color: var(--fc-border-color);
+}
+.schedule-calendar .fc .fc-list-day-cushion {
+  background-color: color-mix(in oklch, var(--muted) 55%, transparent);
+}
+.schedule-calendar .fc .fc-list-day-text,
+.schedule-calendar .fc .fc-list-day-side-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-list-event-title {
+  font-size: 0.85rem;
+  color: var(--foreground);
+}
+.schedule-calendar .fc .fc-list-event-time {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+.schedule-calendar .fc .fc-list-event-dot {
+  border-color: var(--ocean);
+}
+.schedule-calendar .fc .sched-unassigned .fc-list-event-dot {
+  border-color: var(--unassigned);
+}
+.schedule-calendar .fc .fc-list-empty {
+  background-color: transparent;
 }

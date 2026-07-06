@@ -190,6 +190,18 @@ function renderScheduleFilters(
   );
 }
 
+/**
+ * Reads option labels from a mocked native select by accessible label.
+ *
+ * @param label - Select label text.
+ * @returns Option labels in rendered order.
+ */
+function getSelectOptionNames(label: string) {
+  const select = screen.getByLabelText(label) as HTMLSelectElement;
+
+  return Array.from(select.options).map((option) => option.textContent);
+}
+
 test('does not render date range shortcut filters', () => {
   renderScheduleFilters({
     filters: {
@@ -207,7 +219,7 @@ test('does not render date range shortcut filters', () => {
   expect(screen.queryByRole('link', { name: 'This week' })).toBeNull();
 });
 
-test('renders staff and activity filter dropdown options', () => {
+test('renders staff schedule type and activity filter dropdown options', () => {
   renderScheduleFilters({
     assignableStaff: [
       assignableStaff(),
@@ -226,9 +238,59 @@ test('renders staff and activity filter dropdown options', () => {
   expect(
     screen.getByRole('option', { name: 'Dina Divemaster (Divemaster)' }),
   ).not.toBeNull();
+  expect(screen.getByRole('option', { name: 'All' })).not.toBeNull();
+  expect(screen.getByRole('option', { name: 'Fun dives' })).not.toBeNull();
+  expect(screen.getByRole('option', { name: 'Courses' })).not.toBeNull();
   expect(screen.getByRole('option', { name: 'All activities' })).not.toBeNull();
   expect(screen.getByRole('option', { name: 'DSD' })).not.toBeNull();
   expect(screen.getByRole('option', { name: 'Open Water' })).not.toBeNull();
+});
+
+test('shows all activity options when schedule type is all', () => {
+  renderScheduleFilters();
+
+  expect(getSelectOptionNames('Activity')).toEqual([
+    'All activities',
+    'Fun Dive',
+    'DSD',
+    'Open Water',
+    'Advanced Open Water',
+    'Rescue Diver Course',
+    'Divemaster',
+    'Specialty Course',
+    'Scuba Review',
+    'Snorkeling',
+    'Other',
+  ]);
+});
+
+test('limits activity options to fun dives when schedule type is fun dives', () => {
+  renderScheduleFilters({
+    filters: {
+      scheduleType: 'fun-dives',
+    },
+  });
+
+  expect(getSelectOptionNames('Activity')).toEqual([
+    'All fun dives',
+  ]);
+});
+
+test('limits activity options to courses when schedule type is courses', () => {
+  renderScheduleFilters({
+    filters: {
+      scheduleType: 'courses',
+    },
+  });
+
+  expect(getSelectOptionNames('Activity')).toEqual([
+    'All course activities',
+    'DSD',
+    'Open Water',
+    'Advanced Open Water',
+    'Rescue Diver Course',
+    'Specialty Course',
+  ]);
 });
 
 test('navigates when dropdown and checkbox filters change', () => {
@@ -245,6 +307,13 @@ test('navigates when dropdown and checkbox filters change', () => {
     '/schedule?range=this-week&staffId=instructor-1',
   );
 
+  fireEvent.change(screen.getByLabelText('Schedule type'), {
+    target: { value: 'courses' },
+  });
+  expect(mocks.push).toHaveBeenLastCalledWith(
+    '/schedule?range=this-week&scheduleType=courses',
+  );
+
   fireEvent.change(screen.getByLabelText('Activity'), {
     target: { value: ActivityType.FUN_DIVE },
   });
@@ -258,11 +327,47 @@ test('navigates when dropdown and checkbox filters change', () => {
   );
 });
 
+test('clears an invalid activity when schedule type changes', () => {
+  renderScheduleFilters({
+    filters: {
+      activityType: ActivityType.FUN_DIVE,
+      range: 'this-week',
+      scheduleType: 'fun-dives',
+    },
+  });
+
+  fireEvent.change(screen.getByLabelText('Schedule type'), {
+    target: { value: 'courses' },
+  });
+
+  expect(mocks.push).toHaveBeenLastCalledWith(
+    '/schedule?range=this-week&scheduleType=courses',
+  );
+});
+
+test('preserves a valid activity when schedule type changes', () => {
+  renderScheduleFilters({
+    filters: {
+      activityType: ActivityType.RESCUE_DIVER_COURSE,
+      range: 'this-week',
+    },
+  });
+
+  fireEvent.change(screen.getByLabelText('Schedule type'), {
+    target: { value: 'courses' },
+  });
+
+  expect(mocks.push).toHaveBeenLastCalledWith(
+    '/schedule?range=this-week&scheduleType=courses&activityType=RESCUE_DIVER_COURSE',
+  );
+});
+
 test('renders clear filters link to the base schedule page', () => {
   renderScheduleFilters({
     filters: {
       activityType: ActivityType.SNORKELING,
       range: 'tomorrow',
+      scheduleType: 'courses',
     },
   });
 
@@ -287,18 +392,46 @@ test('builds schedule filter URLs with only active params', () => {
       },
       {
         range: 'all',
+        scheduleType: 'fun-dives',
         staffId: undefined,
       },
     ),
-  ).toBe('/schedule?activityType=SNORKELING&unassignedOnly=true');
+  ).toBe('/schedule?scheduleType=fun-dives&unassignedOnly=true');
+
+  expect(
+    buildScheduleFilterHref(
+      {
+        activityType: ActivityType.FUN_DIVE,
+      },
+      {
+        scheduleType: 'fun-dives',
+      },
+    ),
+  ).toBe('/schedule?scheduleType=fun-dives');
+
+  expect(
+    buildScheduleFilterHref(
+      {
+        activityType: ActivityType.RESCUE_DIVER_COURSE,
+        range: 'today',
+      },
+      {
+        scheduleType: 'courses',
+      },
+    ),
+  ).toBe(
+    '/schedule?range=today&scheduleType=courses&activityType=RESCUE_DIVER_COURSE',
+  );
 
   expect(
     buildScheduleFilterHref(
       {
         range: 'this-week',
+        scheduleType: 'courses',
         unassignedOnly: true,
       },
       {
+        scheduleType: undefined,
         unassignedOnly: undefined,
       },
     ),

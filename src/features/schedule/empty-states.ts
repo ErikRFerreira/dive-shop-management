@@ -24,8 +24,8 @@ export function getScheduleEmptyStateCopy(
 
   if (hasActiveScheduleFilters(filters)) {
     return {
-      title: 'No scheduled activities match these filters',
-      description: 'Clear filters or adjust staff and activity selections.',
+      title: 'No scheduled activities found',
+      description: 'Try changing the staff, schedule type, activity, or date.',
     };
   }
 
@@ -44,6 +44,7 @@ export function getScheduleEmptyStateCopy(
 function hasActiveScheduleFilters(filters: ScheduleFilters) {
   return Boolean(
     (filters.range && filters.range !== 'all') ||
+      filters.scheduleType ||
       filters.staffId ||
       filters.activityType ||
       filters.unassignedOnly,

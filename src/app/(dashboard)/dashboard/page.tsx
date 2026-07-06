@@ -10,6 +10,10 @@ import type { DashboardSummary } from '@/features/dashboard/types';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 import { requireCurrentUser } from '@/lib/current-user';
 import PageHeader from '@/components/common/page-header';
+import { Button } from '@/components/ui/button';
+import Link from 'next/dist/client/link';
+import { canCreateBookingRequest } from '@/features/bookings/permissions';
+import { Plus } from 'lucide-react';
 
 /**
  * Renders the role-aware operational dashboard for the authenticated user.
@@ -23,11 +27,20 @@ async function Dashboard() {
 
   return (
     <>
-      <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           title="Dashboard"
           description="Operational overview for Blue Revival"
         />
+
+        {canCreateBookingRequest(currentUser) ? (
+          <Button asChild className="shadow-sm shadow-primary/20">
+            <Link href="/bookings/new">
+              <Plus className="size-4" />
+              Create Booking
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <DashboardSummaryContent summary={overview.summary} />

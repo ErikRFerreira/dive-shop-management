@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  getDefaultScheduleActivityFilterLabel,
+  getScheduleActivityFilterOptions,
+  getValidActivityTypeForScheduleType,
+  normalizeScheduleFilters,
+} from '@/features/schedule/filters';
 import type {
   AssignableStaff,
   ScheduleFilters as ScheduleFiltersValue,
@@ -21,15 +27,19 @@ import type {
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import { X } from 'lucide-react';
 
 const allStaffValue = 'all-staff';
+const allScheduleTypesValue = 'all-schedule-types';
 const allActivitiesValue = 'all-activities';
-const activityTypes = Object.values(ActivityType);
 
 type ScheduleFiltersProps = {
   assignableStaff: AssignableStaff[];
   filters: ScheduleFiltersValue;
 };
+
+const selectClass =
+  'h-9 truncate rounded-lg border border-border bg-white px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
 
 /**
  * Renders URL-backed controls for filtering the internal schedule page.
@@ -43,10 +53,21 @@ export function ScheduleFilters({
 }: ScheduleFiltersProps) {
   const router = useRouter();
   const staffSelectId = useId();
+  const scheduleTypeSelectId = useId();
   const activitySelectId = useId();
   const unassignedOnlyId = useId();
   const [isPending, startTransition] = useTransition();
   const hasActiveFilters = hasActiveScheduleFilters(filters);
+  const activityOptions = getScheduleActivityFilterOptions(
+    filters.scheduleType,
+  );
+  const defaultActivityLabel = getDefaultScheduleActivityFilterLabel(
+    filters.scheduleType,
+  );
+  const selectedActivityType = getValidActivityTypeForScheduleType(
+    filters.activityType,
+    filters.scheduleType,
+  );
 
   /**
    * Navigates to the schedule page with one operational filter updated.
@@ -59,15 +80,40 @@ export function ScheduleFilters({
     });
   }
 
+  /**
+   * Updates the broad schedule type and clears an incompatible exact activity.
+   *
+   * @param value - Selected schedule type value from the dropdown.
+   */
+  function handleScheduleTypeChange(value: string) {
+    const scheduleType =
+      value === allScheduleTypesValue
+        ? undefined
+        : (value as ScheduleFiltersValue['scheduleType']);
+
+    updateFilters({
+      scheduleType,
+      activityType: getValidActivityTypeForScheduleType(
+        filters.activityType,
+        scheduleType,
+      ),
+    });
+  }
+
   return (
     <section
       aria-label="Schedule filters"
-      className="rounded-lg border bg-card p-3 text-card-foreground"
+      className="rounded-2xl border border-border bg-linear-to-b from-card to-card-glow p-4 shadow-sm sm:p-5"
     >
       <h2 className="sr-only">Filters</h2>
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid min-w-48 gap-1">
-          <Label htmlFor={staffSelectId}>Staff</Label>
+          <Label
+            htmlFor={staffSelectId}
+            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            Staff
+          </Label>
           <Select
             disabled={isPending}
             onValueChange={(value) =>
@@ -77,7 +123,7 @@ export function ScheduleFilters({
             }
             value={filters.staffId ?? allStaffValue}
           >
-            <SelectTrigger id={staffSelectId}>
+            <SelectTrigger id={staffSelectId} className={selectClass}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -91,8 +137,36 @@ export function ScheduleFilters({
           </Select>
         </div>
 
+        <div className="grid min-w-44 gap-1">
+          <Label
+            htmlFor={scheduleTypeSelectId}
+            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            Schedule type
+          </Label>
+          <Select
+            disabled={isPending}
+            onValueChange={handleScheduleTypeChange}
+            value={filters.scheduleType ?? allScheduleTypesValue}
+          >
+            <SelectTrigger id={scheduleTypeSelectId} className={selectClass}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={allScheduleTypesValue}>All</SelectItem>
+              <SelectItem value="fun-dives">Fun dives</SelectItem>
+              <SelectItem value="courses">Courses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid min-w-52 gap-1">
-          <Label htmlFor={activitySelectId}>Activity</Label>
+          <Label
+            htmlFor={activitySelectId}
+            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            Activity
+          </Label>
           <Select
             disabled={isPending}
             onValueChange={(value) =>
@@ -103,14 +177,16 @@ export function ScheduleFilters({
                     : (value as ActivityType),
               })
             }
-            value={filters.activityType ?? allActivitiesValue}
+            value={selectedActivityType ?? allActivitiesValue}
           >
-            <SelectTrigger id={activitySelectId}>
+            <SelectTrigger id={activitySelectId} className={selectClass}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={allActivitiesValue}>All activities</SelectItem>
-              {activityTypes.map((activityType) => (
+              <SelectItem value={allActivitiesValue}>
+                {defaultActivityLabel}
+              </SelectItem>
+              {activityOptions.map((activityType) => (
                 <SelectItem key={activityType} value={activityType}>
                   {formatScheduleActivityLabel(activityType)}
                 </SelectItem>
@@ -119,7 +195,7 @@ export function ScheduleFilters({
           </Select>
         </div>
 
-        <div className="flex h-8 items-center gap-2">
+        <div className="flex h-9 items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-colors hover:border-primary/50">
           <Checkbox
             checked={filters.unassignedOnly ?? false}
             disabled={isPending}
@@ -129,8 +205,12 @@ export function ScheduleFilters({
                 unassignedOnly: checked === true ? true : undefined,
               })
             }
+            className="size-4.5 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
           />
-          <Label className="font-normal" htmlFor={unassignedOnlyId}>
+          <Label
+            className="cursor-pointer select-none font-normal text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+            htmlFor={unassignedOnlyId}
+          >
             Unassigned only
           </Label>
         </div>
@@ -143,7 +223,9 @@ export function ScheduleFilters({
 
         {hasActiveFilters ? (
           <Button asChild size="sm" variant="ghost">
-            <Link href="/schedule">Clear filters</Link>
+            <Link href="/schedule">
+              <X className="size-3.5" /> Clear filters
+            </Link>
           </Button>
         ) : null}
       </div>
@@ -152,7 +234,7 @@ export function ScheduleFilters({
 }
 
 /**
- * Builds a schedule URL with selected filter values added or removed.
+ * Builds a schedule URL with selected filter values added, removed, and normalized.
  *
  * @param currentFilters - Current normalized schedule filters.
  * @param updates - Filter values to apply on top of the current filters.
@@ -162,10 +244,10 @@ export function buildScheduleFilterHref(
   currentFilters: ScheduleFiltersValue,
   updates: Partial<ScheduleFiltersValue>,
 ) {
-  const nextFilters = {
+  const nextFilters = normalizeScheduleFilters({
     ...currentFilters,
     ...updates,
-  };
+  });
   const params = new URLSearchParams();
 
   if (nextFilters.range && nextFilters.range !== 'all') {
@@ -174,6 +256,10 @@ export function buildScheduleFilterHref(
 
   if (nextFilters.staffId) {
     params.set('staffId', nextFilters.staffId);
+  }
+
+  if (nextFilters.scheduleType) {
+    params.set('scheduleType', nextFilters.scheduleType);
   }
 
   if (nextFilters.activityType) {
@@ -198,6 +284,7 @@ export function buildScheduleFilterHref(
 function hasActiveScheduleFilters(filters: ScheduleFiltersValue) {
   return Boolean(
     (filters.range && filters.range !== 'all') ||
+    filters.scheduleType ||
     filters.staffId ||
     filters.activityType ||
     filters.unassignedOnly,

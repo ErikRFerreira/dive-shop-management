@@ -1,5 +1,9 @@
+import { Menu } from 'lucide-react';
+
 import AppSearch from '../common/app-search';
 import { ModeToggle } from '../common/mode-toggle';
+import { useMobileMenu } from '@/components/layout/mobile-menu-provider';
+import { Button } from '@/components/ui/button';
 
 type DashboardHeaderProps = {
   currentUser: {
@@ -9,8 +13,21 @@ type DashboardHeaderProps = {
 };
 
 function DashboardHeader({ currentUser }: DashboardHeaderProps) {
+  const { toggle } = useMobileMenu();
+
   return (
     <header className="app-header">
+      {/* Mobile menu button - visible below lg breakpoint */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggle}
+        aria-label="Open navigation menu"
+        className="lg:hidden"
+      >
+        <Menu className="size-5" />
+      </Button>
+
       {/* <AppSearch /> */}
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <ModeToggle />

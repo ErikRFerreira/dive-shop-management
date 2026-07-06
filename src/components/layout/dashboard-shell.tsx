@@ -8,6 +8,7 @@ import {
   SidebarCollapseProvider,
   useSidebarCollapse,
 } from '@/components/layout/sidebar-collapse-provider';
+import { MobileMenuProvider } from '@/components/layout/mobile-menu-provider';
 import type { CurrentUser } from '@/lib/current-user';
 import { cn } from '@/lib/utils';
 
@@ -20,9 +21,11 @@ type DashboardShellProps = {
 function DashboardShell({ currentUser, children }: DashboardShellProps) {
   return (
     <SidebarCollapseProvider>
-      <DashboardShellContent currentUser={currentUser}>
-        {children}
-      </DashboardShellContent>
+      <MobileMenuProvider>
+        <DashboardShellContent currentUser={currentUser}>
+          {children}
+        </DashboardShellContent>
+      </MobileMenuProvider>
     </SidebarCollapseProvider>
   );
 }
@@ -41,6 +44,9 @@ function DashboardShellContent({ currentUser, children }: DashboardShellProps) {
       }
     >
       <DashboardSidebar currentUser={currentUser} />
+
+      <DashboardSidebar currentUser={currentUser} variant="mobile" />
+
       <DashboardHeader currentUser={currentUser} />
 
       <main className="app-main">

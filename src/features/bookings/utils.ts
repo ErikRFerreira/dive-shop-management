@@ -13,6 +13,7 @@ import {
 import { formatEnumLabel } from '@/lib/format';
 import {
   bookingQueueFilters,
+  bookingDefaultPageSize,
   bookingStatusFilters,
   type BookingQueueFilter,
   type BookingRequestFilter,
@@ -57,6 +58,44 @@ export function parseBookingQueueFilter(
   }
 
   return bookingQueueFilters.find((queue) => queue === value);
+}
+
+/**
+ * Parses a booking list page number from the URL.
+ *
+ * @param value - The raw page value read from a URL search parameter.
+ * @returns A positive integer page number, or page 1 for missing, repeated,
+ * non-numeric, or non-positive values.
+ */
+export function parseBookingPageParam(value: string | string[] | undefined) {
+  if (typeof value !== 'string') {
+    return 1;
+  }
+
+  const page = Number(value);
+
+  if (!Number.isInteger(page) || page < 1) {
+    return 1;
+  }
+
+  return page;
+}
+
+/**
+ * Resolves the booking list page size from the URL.
+ *
+ * @param value - The raw page-size value read from a URL search parameter.
+ * @returns The fixed booking page size. The URL value is accepted only when it
+ * matches the supported page size so callers can safely include pageSize in links.
+ */
+export function parseBookingPageSizeParam(
+  value: string | string[] | undefined,
+) {
+  if (value !== String(bookingDefaultPageSize)) {
+    return bookingDefaultPageSize;
+  }
+
+  return bookingDefaultPageSize;
 }
 
 /**

@@ -10,7 +10,11 @@ import 'server-only';
 import { Prisma } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
-import type { BookingQueueFilter, BookingStatusFilter } from './types';
+import {
+  bookingDefaultPageSize,
+  type BookingQueueFilter,
+  type BookingStatusFilter,
+} from './types';
 import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
 
 /**
@@ -24,11 +28,17 @@ import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
  */
 export {
   buildBookingRequestWhere,
+  parseBookingPageParam,
+  parseBookingPageSizeParam,
   parseBookingQueueFilter,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
 } from './utils';
-export { bookingQueueFilters, bookingStatusFilters } from './types';
+export {
+  bookingDefaultPageSize,
+  bookingQueueFilters,
+  bookingStatusFilters,
+} from './types';
 export type { BookingQueueFilter, BookingStatusFilter } from './types';
 
 /**
@@ -142,6 +152,26 @@ export type BookingListItem = BookingRequestWithRelations & {
     | null;
 };
 
+/** Pagination metadata returned with the internal booking list. */
+export type BookingListPagination = {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/** Page and page-size inputs accepted by the booking list query. */
+export type BookingListPaginationInput = {
+  page: number;
+  pageSize: number;
+};
+
+/** Paginated booking rows and metadata for the internal booking list. */
+export type PaginatedBookingList = {
+  bookings: BookingListItem[];
+  pagination: BookingListPagination;
+};
+
 /** A visible booking request with all relations required by the detail view. */
 export type BookingDetailsItem = BookingRequestDetailWithRelations & {
   displayCustomer:
@@ -150,7 +180,7 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
 };
 
 /**
- * Returns the visible bookings for the current user, newest first.
+ * Returns a paginated page of visible bookings for the current user, newest first.
  *
  * Customer Service users only receive bookings they created; Admin and Manager
  * users receive all bookings. Unsupported roles receive no bookings.
@@ -158,26 +188,57 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
  * @param currentUser - The authenticated user whose role scopes visibility.
  * @param status - Optional status filter validated from the request URL.
  * @param queue - Optional operational queue filter validated from the request URL.
- * @returns Booking-list rows, including their creator, customers, and derived
- * display customer.
+ * @param paginationInput - Requested page and fixed page size parsed from the URL.
+ * @returns Booking-list rows for the resolved page plus total-count metadata.
  */
 export async function getBookingRequests(
   currentUser: CurrentUser,
   status?: BookingStatusFilter,
   queue?: BookingQueueFilter,
-): Promise<BookingListItem[]> {
+  paginationInput: BookingListPaginationInput = {
+    page: 1,
+    pageSize: bookingDefaultPageSize,
+  },
+): Promise<PaginatedBookingList> {
+  const where = buildBookingRequestWhere(currentUser, status, queue);
+  const totalCount = await db.bookingRequest.count({ where });
+  const totalPages = Math.ceil(totalCount / paginationInput.pageSize);
+  const page = totalPages > 0 ? Math.min(paginationInput.page, totalPages) : 1;
+
+  if (totalCount === 0) {
+    return {
+      bookings: [],
+      pagination: {
+        totalCount,
+        page,
+        pageSize: paginationInput.pageSize,
+        totalPages,
+      },
+    };
+  }
+
   const bookingRequests = await db.bookingRequest.findMany({
     ...bookingRequestListArgs,
-    where: buildBookingRequestWhere(currentUser, status, queue),
+    where,
     orderBy: {
       createdAt: 'desc',
     },
+    skip: (page - 1) * paginationInput.pageSize,
+    take: paginationInput.pageSize,
   });
 
-  return bookingRequests.map((bookingRequest) => ({
-    ...bookingRequest,
-    displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
-  }));
+  return {
+    bookings: bookingRequests.map((bookingRequest) => ({
+      ...bookingRequest,
+      displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
+    })),
+    pagination: {
+      totalCount,
+      page,
+      pageSize: paginationInput.pageSize,
+      totalPages,
+    },
+  };
 }
 
 /**

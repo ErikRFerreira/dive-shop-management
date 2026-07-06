@@ -4,6 +4,13 @@ import { mapSelectedCustomerToBookingCustomerValues } from '@/features/bookings/
 import type { BookingFormValues } from '@/features/bookings/types';
 import type { BookingCustomerPickerResult } from '@/features/customers/types';
 
+/**
+ * Replaces one booking customer row with values from a linked customer profile.
+ *
+ * @param form - React Hook Form instance for the booking intake form.
+ * @param index - Customer/diver row index to replace.
+ * @param customer - Existing customer selected by staff.
+ */
 export function applyExistingCustomer(
   form: UseFormReturn<BookingFormValues>,
   index: number,
@@ -18,6 +25,12 @@ export function applyExistingCustomer(
   );
 }
 
+/**
+ * Unlinks an existing customer row while preserving its booking-specific values.
+ *
+ * @param form - React Hook Form instance for the booking intake form.
+ * @param index - Customer/diver row index to unlink from the reusable customer record.
+ */
 export function createNewCustomerInstead(
   form: UseFormReturn<BookingFormValues>,
   index: number,

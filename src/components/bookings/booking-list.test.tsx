@@ -1,7 +1,12 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 
-import type { BookingListItem } from '@/features/bookings/queries';
+import type {
+  BookingListItem,
+  BookingListPagination,
+  BookingQueueFilter,
+  BookingStatusFilter,
+} from '@/features/bookings/queries';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -116,49 +121,75 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
   } as BookingListItem;
 }
 
+type RenderBookingListOptions = {
+  pagination?: BookingListPagination;
+  selectedQueue?: BookingQueueFilter;
+  selectedStatus?: BookingStatusFilter;
+};
+
 /**
  * Renders the booking list with an admin user so row actions are visible.
  *
  * @param bookings - Booking rows to render.
+ * @param options - Optional pagination metadata and active filters.
  * @returns React Testing Library render result.
  */
-function renderBookingList(bookings: BookingListItem[]) {
+function renderBookingList(
+  bookings: BookingListItem[],
+  options: RenderBookingListOptions = {},
+) {
+  const pagination = options.pagination ?? {
+    totalCount: bookings.length,
+    page: 1,
+    pageSize: 10,
+    totalPages: Math.ceil(bookings.length / 10),
+  };
+
   return render(
     <BookingList
       bookings={bookings}
       currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+      pagination={pagination}
+      selectedQueue={options.selectedQueue}
+      selectedStatus={options.selectedStatus}
     />,
   );
 }
 
-test('renders operational and audit columns', () => {
+test('renders compact operational columns', () => {
   renderBookingList([
     booking({ updatedAt: new Date('2026-07-02T09:30:00.000Z') }),
   ]);
 
   expect(screen.getByRole('columnheader', { name: 'Status' })).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Booking' })).not.toBeNull();
   expect(
-    screen.getByRole('columnheader', { name: 'Customers/divers' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Activities' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Activity date/time' }),
+    screen.getByRole('columnheader', { name: 'Activity / Schedule' }),
   ).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Hotel' })).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Created by' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Created/edited' }),
-  ).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Updated' })).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
-  expect(screen.getByText('Casey Service')).not.toBeNull();
-  expect(screen.getByText('Created 01 Jul 2026, 04:00 pm')).not.toBeNull();
-  expect(screen.getByText('Edited 02 Jul 2026, 05:30 pm')).not.toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Source/referrer' })).toBeNull();
+  expect(screen.getByText('02 Jul')).not.toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Customers/divers' }),
+  ).toBeNull();
+  expect(screen.queryByRole('columnheader', { name: 'Activities' })).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Activity date/time' }),
+  ).toBeNull();
+  expect(screen.queryByRole('columnheader', { name: 'Hotel' })).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Created by' }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Created/edited' }),
+  ).toBeNull();
+  expect(screen.queryByText('Casey Service')).toBeNull();
+  expect(screen.queryByText('Created 01 Jul 2026, 04:00 pm')).toBeNull();
+  expect(screen.queryByText('Edited 02 Jul 2026, 05:30 pm')).toBeNull();
+  expect(
+    screen.queryByRole('columnheader', { name: 'Source/referrer' }),
+  ).toBeNull();
   expect(
     screen.queryByRole('columnheader', { name: 'Customer service owner' }),
   ).toBeNull();
@@ -179,7 +210,9 @@ test('renders assigned staff names without exposing emails', () => {
     }),
   ]);
 
-  expect(screen.getByText('Inez Instructor, Dina Divemaster')).not.toBeNull();
+  expect(screen.getByText('Inez Instructor')).not.toBeNull();
+  expect(screen.getByText('Dina Divemaster')).not.toBeNull();
+  expect(screen.queryByText('Inez Instructor, Dina Divemaster')).toBeNull();
   expect(screen.queryByText('inez@example.test')).toBeNull();
   expect(screen.queryByText('dina@example.test')).toBeNull();
 });
@@ -206,7 +239,7 @@ test('renders staff state for unassigned and unscheduled bookings', () => {
   expect(screen.getAllByText('\u2014').length).toBeGreaterThan(0);
 });
 
-test('renders every customer, safe fallback, date time, hotel, and row actions', () => {
+test('renders every customer, activity, safe fallback, schedule, hotel, and row actions', () => {
   const createdAt = new Date('2026-07-01T08:00:00.000Z');
   const participantCustomer = {
     id: 'customer-2',
@@ -253,6 +286,21 @@ test('renders every customer, safe fallback, date time, hotel, and row actions',
           customer: participantCustomer,
         },
       ],
+      activities: [
+        ...(booking().activities ?? []),
+        {
+          id: 'activity-2',
+          bookingRequestId: 'booking-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: null,
+          requestedDate: new Date('2026-07-15T00:00:00.000Z'),
+          requestedTime: '13:00',
+          notes: null,
+          sortOrder: 1,
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
     }),
     booking({
       id: 'booking-missing-customer',
@@ -286,10 +334,13 @@ test('renders every customer, safe fallback, date time, hotel, and row actions',
   expect(screen.getByText('Maria Santos')).not.toBeNull();
   expect(screen.getByText('Lina Chen')).not.toBeNull();
   expect(screen.queryByText('Maria Santos + 1 more')).toBeNull();
+  expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
+  expect(screen.getByText('Open Water Course')).not.toBeNull();
+  expect(screen.queryByText('Fun Dive + Open Water Course')).toBeNull();
   expect(screen.getByText('Unnamed customer')).not.toBeNull();
-  expect(screen.getByText('15 Jul 2026 13:00')).not.toBeNull();
-  expect(screen.getByText('16 Jul 2026 TBD')).not.toBeNull();
-  expect(screen.getByText('Booking Hotel')).not.toBeNull();
+  expect(screen.getByText('15 Jul 2026 \u00b7 13:00')).not.toBeNull();
+  expect(screen.getByText('16 Jul 2026 \u00b7 TBD')).not.toBeNull();
+  expect(screen.getByText('Hotel: Booking Hotel')).not.toBeNull();
   expect(
     screen.getAllByRole('button', { name: /Open actions for booking/ }).length,
   ).toBeGreaterThan(0);
@@ -309,5 +360,83 @@ test('falls back to customer profile hotel when booking-specific hotel is missin
 
   const table = screen.getByRole('table');
 
-  expect(within(table).getByText('Customer Profile Hotel')).not.toBeNull();
+  expect(
+    within(table).getByText('Hotel: Customer Profile Hotel'),
+  ).not.toBeNull();
+});
+
+test('renders booking count label without pagination for a single page', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 10,
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+    },
+  });
+
+  expect(screen.getByText('Showing 1 of 10 bookings')).not.toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
+});
+
+test('renders pagination links that preserve a status filter', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 11,
+      page: 1,
+      pageSize: 10,
+      totalPages: 2,
+    },
+    selectedStatus: BookingStatus.DRAFT,
+  });
+
+  expect(screen.getByText('Showing 1 of 11 bookings')).not.toBeNull();
+  expect(
+    screen.getByRole('navigation', { name: 'pagination' }),
+  ).not.toBeNull();
+  expect(screen.getByRole('link', { name: '2' }).getAttribute('href')).toBe(
+    '/bookings?status=DRAFT&page=2&pageSize=10',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
+  ).toBe('/bookings?status=DRAFT&page=2&pageSize=10');
+  expect(
+    screen
+      .getByRole('link', { name: 'Go to previous page' })
+      .getAttribute('aria-disabled'),
+  ).toBe('true');
+});
+
+test('renders pagination links that preserve the unassigned queue filter', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 21,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+    },
+    selectedQueue: 'unassigned',
+  });
+
+  expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe(
+    '/bookings?queue=unassigned&page=1&pageSize=10',
+  );
+  expect(
+    screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
+  ).toBe('/bookings?queue=unassigned&page=3&pageSize=10');
+});
+
+test('renders empty state without count label or pagination', () => {
+  renderBookingList([], {
+    pagination: {
+      totalCount: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 0,
+    },
+  });
+
+  expect(screen.getByText('No bookings found')).not.toBeNull();
+  expect(screen.queryByText(/Showing \d+ of \d+ bookings/)).toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
 });

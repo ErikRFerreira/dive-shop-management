@@ -14,11 +14,12 @@ test('uses a filtered empty state when active filters have no matches', () => {
   expect(
     getScheduleEmptyStateCopy({
       activityType: ActivityType.FUN_DIVE,
+      scheduleType: 'fun-dives',
       staffId: 'staff-1',
     }),
   ).toEqual({
-    title: 'No scheduled activities match these filters',
-    description: 'Clear filters or adjust staff and activity selections.',
+    title: 'No scheduled activities found',
+    description: 'Try changing the staff, schedule type, activity, or date.',
   });
 });
 

@@ -18,10 +18,12 @@ type EmptyStateProps = {
  */
 export function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <Card>
+    <Card className="flex h-full flex-col rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="text-base font-semibold">{title}</CardTitle>
+        <CardDescription className="mt-0.5 text-sm">
+          {description}
+        </CardDescription>
       </CardHeader>
     </Card>
   );

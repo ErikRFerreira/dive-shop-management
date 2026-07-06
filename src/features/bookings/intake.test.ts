@@ -47,7 +47,7 @@ test('normalizes nested activity and customer values for persistence', () => {
         customerName: '  Maria Santos ',
         preferredLanguage: PreferredLanguage.CHINESE,
         hotelAtBooking: '  Sea View Hotel ',
-        equipmentNeeded: '  BCD and fins ',
+        equipmentNeeded: '  YES ',
         heightCm: '170',
         weightKg: ' 63.5 ',
         shoeSize: '40.5',
@@ -79,7 +79,7 @@ test('normalizes nested activity and customer values for persistence', () => {
         customerName: 'Maria Santos',
         preferredLanguage: PreferredLanguage.CHINESE,
         hotelAtBooking: 'Sea View Hotel',
-        equipmentNeeded: 'BCD and fins',
+        equipmentNeeded: 'YES',
         heightCm: 170,
         weightKg: 63.5,
         shoeSize: 40.5,
@@ -89,6 +89,20 @@ test('normalizes nested activity and customer values for persistence', () => {
   });
   expect(values.activities[0].requestedDate?.toISOString()).toBe('2026-07-14T00:00:00.000Z');
   expect(values.customers[0].lastDiveDate?.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+});
+
+test('normalizes legacy free-text equipment values to yes', () => {
+  const values = normalizeBookingFormValues({
+    ...bookingFormDefaultValues,
+    customers: [
+      {
+        ...bookingCustomerDefaultValues,
+        equipmentNeeded: 'BCD and fins',
+      },
+    ],
+  });
+
+  expect(values.customers[0].equipmentNeeded).toBe('YES');
 });
 
 test('creates deposits only for non-default status or supplied deposit values', () => {
