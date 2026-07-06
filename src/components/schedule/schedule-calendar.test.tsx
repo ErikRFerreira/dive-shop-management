@@ -376,20 +376,36 @@ test('opens an operational booking summary dialog from an event click', () => {
   expect(
     screen.getByRole('heading', { name: DEFAULT_EVENT_TITLE }),
   ).not.toBeNull();
+  const dialogBody = screen.getByTestId('schedule-dialog-body');
+  expect(dialogBody.className).toContain('overflow-y-auto');
+  expect(
+    dialogBody.contains(
+      screen.getByRole('heading', { name: DEFAULT_EVENT_TITLE }),
+    ),
+  ).toBe(false);
+  expect(
+    dialogBody.contains(screen.getAllByRole('button', { name: 'Close' })[0]),
+  ).toBe(false);
   expect(screen.getAllByText('Needs staff').length).toBeGreaterThan(0);
   expect(screen.getByText('Fun dive')).not.toBeNull();
-  expect(screen.getByText('Activity')).not.toBeNull();
-  expect(screen.getByText('Fun Dive')).not.toBeNull();
-  expect(screen.getByText('Customers/divers · 2')).not.toBeNull();
-  expect(screen.getByText('Maria Santos / 玛丽亚')).not.toBeNull();
-  expect(screen.getByText('Participant Diver')).not.toBeNull();
-  expect(screen.getByText('Primary')).not.toBeNull();
-  expect(screen.getByText('Participants')).not.toBeNull();
-  expect(screen.getByText('2')).not.toBeNull();
-  expect(screen.getByText('14 Jul 2026, 08:00-12:00')).not.toBeNull();
+  expect(screen.getByText('Date / time')).not.toBeNull();
+  expect(screen.getByText('14 Jul 2026 / 08:00-12:00')).not.toBeNull();
+  expect(screen.getByText('Hotel')).not.toBeNull();
   expect(screen.getByText('Ocean View')).not.toBeNull();
+  expect(screen.getByText('Customers')).not.toBeNull();
+  expect(screen.getByText('Assigned staff')).not.toBeNull();
+  expect(screen.queryByText('Assignment status')).toBeNull();
+  expect(screen.queryByText(/Maria Santos.*2 divers/)).toBeNull();
+  expect(screen.queryByText(/Customers\/divers/)).toBeNull();
+  expect(screen.getAllByText(/Maria Santos \//)).toHaveLength(1);
+  expect(screen.getAllByText('Participant Diver')).toHaveLength(1);
+  expect(screen.queryByText('Primary')).toBeNull();
   expect(screen.getByText('Wechat / Lina')).not.toBeNull();
   expect(screen.getByText('Bring cash for marine park fees.')).not.toBeNull();
+  expect(screen.getByText('No staff assigned')).not.toBeNull();
+  expect(
+    screen.getByText('Assign an instructor to run this activity.'),
+  ).not.toBeNull();
   expect(screen.queryByText(/BOOK-1/)).toBeNull();
   expect(screen.queryByRole('heading', { name: 'Activities' })).toBeNull();
   expect(screen.getByRole('link', { name: /Open booking/i }).getAttribute('href'))
@@ -433,7 +449,7 @@ test('does not reopen a stale dialog when a filtered event leaves and returns', 
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-test('renders notes above assigned staff in the event dialog', () => {
+test('renders assigned staff above notes in the event dialog', () => {
   renderScheduleCalendar();
 
   fireEvent.click(
@@ -443,12 +459,12 @@ test('renders notes above assigned staff in the event dialog', () => {
   const notesHeading = screen.getByRole('heading', { name: 'Schedule notes' });
   const staffHeading = screen.getByRole('heading', { name: 'Assigned staff' });
 
-  expect(notesHeading.compareDocumentPosition(staffHeading)).toBe(
+  expect(staffHeading.compareDocumentPosition(notesHeading)).toBe(
     Node.DOCUMENT_POSITION_FOLLOWING,
   );
 });
 
-test('renders a subtle empty notes state in the event dialog', () => {
+test('hides schedule notes when no notes are present in the event dialog', () => {
   renderScheduleCalendar({
     events: [scheduleEvent({ notes: null })],
   });
@@ -457,11 +473,11 @@ test('renders a subtle empty notes state in the event dialog', () => {
     screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
-  expect(screen.getByRole('heading', { name: 'Schedule notes' })).not.toBeNull();
-  expect(screen.getByText('No schedule notes')).not.toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Schedule notes' })).toBeNull();
+  expect(screen.queryByText('No schedule notes')).toBeNull();
 });
 
-test('renders calm missing pickup participant and source states in the event dialog', () => {
+test('renders calm missing hotel and source states in the event dialog', () => {
   renderScheduleCalendar({
     events: [
       scheduleEvent({
@@ -477,7 +493,7 @@ test('renders calm missing pickup participant and source states in the event dia
     screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }),
   );
 
-  expect(screen.getByText('Participants TBD')).not.toBeNull();
+  expect(screen.queryByText(/Participants TBD/)).toBeNull();
   expect(
     screen.getByText('No hotel / pickup location recorded'),
   ).not.toBeNull();
@@ -569,7 +585,9 @@ test('renders multiple assigned staff in the event dialog', () => {
   );
 
   expect(screen.getByText('Assigned staff')).not.toBeNull();
-  expect(screen.getAllByText('Scheduled').length).toBeGreaterThan(0);
+  expect(screen.queryByText('Assignment status')).toBeNull();
+  expect(screen.queryByText('Assigned')).toBeNull();
+  expect(screen.queryByText('Scheduled')).toBeNull();
   expect(
     screen.getByText(hasExactText('Inez Instructor \u2014 Lead Instructor')),
   ).not.toBeNull();
@@ -588,8 +606,10 @@ test('renders unassigned state when the event has no assignments', () => {
   );
 
   expect(screen.getByText('Assigned staff')).not.toBeNull();
-  expect(screen.getByText('Unassigned')).not.toBeNull();
   expect(screen.getByText('No staff assigned')).not.toBeNull();
+  expect(
+    screen.getByText('Assign an instructor to run this activity.'),
+  ).not.toBeNull();
 });
 
 test('keeps assignment controls hidden for managers and admins until requested', () => {
@@ -604,13 +624,21 @@ test('keeps assignment controls hidden for managers and admins until requested',
 
   expect(screen.queryByLabelText('Staff')).toBeNull();
   expect(screen.queryByLabelText('Role')).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
 
   fireEvent.click(screen.getByRole('button', { name: 'Manage assignments' }));
 
+  expect(screen.getByText('Manage staff assignments')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Assign instructors or update their roles for this scheduled activity.',
+    ),
+  ).not.toBeNull();
+  expect(screen.getByText('No instructors assigned yet.')).not.toBeNull();
+  expect(screen.getByText('Add assignment')).not.toBeNull();
   expect(screen.getByLabelText('Staff')).not.toBeNull();
   expect(screen.getByLabelText('Role')).not.toBeNull();
-  expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Add' })).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Done managing' })).not.toBeNull();
 });
 
@@ -650,7 +678,7 @@ test('hides assignment controls behind manage assignments when staff are assigne
   expect(screen.getByRole('button', { name: 'Remove Inez Instructor' }))
     .not.toBeNull();
   expect(screen.getByLabelText('Staff')).not.toBeNull();
-  expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Add' })).not.toBeNull();
 });
 
 test('renders a helpful empty picker state when all available staff are assigned', () => {
@@ -683,7 +711,7 @@ test('renders a helpful empty picker state when all available staff are assigned
     ),
   ).not.toBeNull();
   expect(
-    screen.getByRole('button', { name: 'Add assignment' }).hasAttribute('disabled'),
+    screen.getByRole('button', { name: 'Add' }).hasAttribute('disabled'),
   ).toBe(true);
 });
 
@@ -699,7 +727,7 @@ test('does not render assignment controls for read-only users', () => {
 
   expect(screen.queryByLabelText('Staff')).toBeNull();
   expect(screen.queryByLabelText('Role')).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Add' })).toBeNull();
 });
 
 test('refreshes the schedule after adding an assignment', async () => {
@@ -720,7 +748,7 @@ test('refreshes the schedule after adding an assignment', async () => {
   fireEvent.change(screen.getByLabelText('Role'), {
     target: { value: ScheduleAssignmentRole.LEAD_INSTRUCTOR },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Add assignment' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
   expect(mocks.addScheduleAssignment).toHaveBeenCalledWith(
     'schedule-1',

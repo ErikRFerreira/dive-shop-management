@@ -1,6 +1,14 @@
 'use client';
 
-import { ExternalLink } from 'lucide-react';
+import {
+  CalendarCheck,
+  CalendarClock,
+  ExternalLink,
+  FileText,
+  MapPin,
+  Users,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -20,6 +28,7 @@ import type {
 } from '@/features/schedule/types';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 type ScheduleEventDialogContentProps = {
   assignableStaff: AssignableStaff[];
@@ -41,7 +50,7 @@ export function ScheduleEventDialogContent({
   event,
 }: ScheduleEventDialogContentProps) {
   const activityCategory = getActivityCategoryLabel(event.activityType);
-  const sourceLabel = formatSourceLabel(event);
+  const hasAssignments = event.assignments.length > 0;
   const [isManagingAssignments, setIsManagingAssignments] = useState(false);
 
   /**
@@ -53,72 +62,75 @@ export function ScheduleEventDialogContent({
 
   return (
     <>
-      <DialogHeader className="gap-3 pr-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant={event.assignments.length > 0 ? 'secondary' : 'outline'}
-          >
-            {event.assignments.length > 0 ? 'Scheduled' : 'Needs staff'}
-          </Badge>
-          {activityCategory ? (
-            <Badge variant="outline">{activityCategory}</Badge>
-          ) : null}
-        </div>
-        <DialogTitle>{event.title}</DialogTitle>
+      <DialogHeader className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <ScheduleDialogHeaderBadges
+          activityCategory={activityCategory}
+          needsStaff={!hasAssignments}
+        />
+        <DialogTitle className="font-heading text-base font-semibold tracking-tight text-foreground flex items-center">
+          <CalendarCheck className="h-6 w-6 mr-2" />
+          {event.title}
+        </DialogTitle>
       </DialogHeader>
 
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <DetailField label="Activity" value={getActivityDisplayName(event)} />
-          <DetailField label="Date/time" value={formatEventDateTime(event)} />
-          <DetailField
-            label="Participants"
-            value={formatParticipantsLabel(event.numberOfPeople)}
-          />
-          <DetailField
-            label="Hotel / pickup"
-            value={event.hotel ?? 'No hotel / pickup location recorded'}
-          />
-          <DetailField
-            label="Assignment status"
-            value={event.assignments.length > 0 ? 'Scheduled' : 'Needs staff'}
-          />
-          <DetailField
-            label="Source / referrer"
-            value={sourceLabel ?? 'No source recorded'}
-          />
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
+        data-testid="schedule-dialog-body"
+      >
+        <div className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <SummaryField
+              icon={CalendarClock}
+              label="Date / time"
+              value={formatDateTimeSummary(event)}
+            />
+            <SummaryField
+              icon={MapPin}
+              label="Hotel"
+              value={event.hotel ?? 'No hotel / pickup location recorded'}
+            />
+            <SummaryField
+              icon={Users}
+              label="Customers"
+              value={<CustomersSummary customers={event.customers} />}
+            />
+            <SummaryField
+              icon={Users}
+              label="Assigned staff"
+              value={<AssignedStaffSummary event={event} />}
+            />
+            {event.notes ? (
+              <SummaryField
+                className="sm:col-span-2"
+                icon={FileText}
+                label="Schedule notes"
+                value={<p className="whitespace-pre-wrap">{event.notes}</p>}
+              />
+            ) : null}
+          </div>
+
+          {canManageAssignments && isManagingAssignments ? (
+            <ScheduleAssignmentsList
+              assignableStaff={assignableStaff}
+              assignments={event.assignments}
+              canManageAssignments={canManageAssignments}
+              isManagingAssignments={isManagingAssignments}
+              managementMode="collapsible"
+              scheduleItemId={event.scheduleItemId}
+              variant="dialog"
+            />
+          ) : null}
         </div>
-
-        <CustomerDiversSection customers={event.customers} />
-
-        <section className="space-y-2">
-          <h3 className="text-sm font-medium">Schedule notes</h3>
-          {event.notes ? (
-            <p className="whitespace-pre-wrap text-sm">{event.notes}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">No schedule notes</p>
-          )}
-        </section>
-
-        <ScheduleAssignmentsList
-          assignableStaff={assignableStaff}
-          assignments={event.assignments}
-          canManageAssignments={canManageAssignments}
-          isManagingAssignments={isManagingAssignments}
-          managementMode="collapsible"
-          scheduleItemId={event.scheduleItemId}
-          variant="compact"
-        />
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="m-0 rounded-none border-t bg-card px-5 py-4 sm:rounded-b-3xl sm:justify-end">
         {canManageAssignments ? (
           <Button
             onClick={handleManageAssignmentsToggle}
             type="button"
             variant="outline"
           >
-            {isManagingAssignments ? 'Done managing' : 'Manage assignments'}
+            {isManagingAssignments ? 'Close assignments' : 'Manage assignments'}
           </Button>
         ) : null}
         {canViewBookingDetails ? (
@@ -140,89 +152,147 @@ export function ScheduleEventDialogContent({
 }
 
 /**
- * Renders all customers and divers attached to the selected schedule event.
+ * Renders one icon-labeled summary field in the schedule dialog body.
  *
- * @param props - Customer/diver rows prepared by the schedule query mapper.
- * @returns A compact customer list with primary contact markers.
+ * @param props - Icon, uppercase label, and rendered value for the field.
+ * @returns A compact operational detail field.
  */
-function CustomerDiversSection({
-  customers,
+function SummaryField({
+  className,
+  icon: Icon,
+  label,
+  value,
 }: {
-  customers: SerializedScheduleCalendarEvent['customers'];
+  className?: string;
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
 }) {
   return (
-    <section className="space-y-2">
-      <h3 className="text-sm font-medium">
-        Customers/divers &middot; {customers.length}
-      </h3>
-      {customers.length > 0 ? (
-        <ul className="space-y-1 text-sm">
-          {customers.map((customer, index) => (
-            <li
-              className="flex flex-wrap items-center gap-2"
-              key={`${customer.role}-${customer.name}-${index}`}
-            >
-              <span>{customer.name}</span>
-              {customer.isPrimaryContact ? (
-                <Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
-                  Primary
-                </Badge>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          No customers/divers recorded
-        </p>
-      )}
+    <section
+      className={cn('grid grid-cols-[1.25rem_minmax(0,1fr)] gap-3', className)}
+    >
+      <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+      <div className="min-w-0 space-y-1">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </h3>
+        <div className="text-sm text-foreground">{value}</div>
+      </div>
     </section>
   );
 }
 
 /**
- * Renders one compact label/value pair for the schedule summary dialog.
+ * Renders all customers and divers attached to the selected schedule event.
  *
- * @param props - Label and display value.
- * @returns A small definition-style field.
+ * @param props - Customer/diver rows prepared by the schedule query mapper.
+ * @returns A compact customer list without repeating the primary summary.
  */
-function DetailField({ label, value }: { label: string; value: ReactNode }) {
+function CustomersSummary({
+  customers,
+}: {
+  customers: SerializedScheduleCalendarEvent['customers'];
+}) {
+  if (customers.length === 0) {
+    return (
+      <p className="text-muted-foreground">No customers/divers recorded</p>
+    );
+  }
+
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 text-sm">{value}</div>
-    </div>
+    <ul className="space-y-1">
+      {customers.map((customer, index) => (
+        <li key={`${customer.role}-${customer.name}-${index}`}>
+          {customer.name}
+        </li>
+      ))}
+    </ul>
   );
 }
 
 /**
- * Formats the schedule date and time, making no-time events explicit.
+ * Renders assigned staff names and roles, or the unassigned callout.
  *
- * @param event - The selected schedule event.
- * @returns Staff-facing date/time text.
+ * @param props - Selected schedule event with assignment data.
+ * @returns Staff summary content for the dialog overview.
  */
-function formatEventDateTime(event: SerializedScheduleCalendarEvent) {
-  const dateText = formatDisplayDate(new Date(event.date));
-
-  if (event.isTimeTbd) {
-    return `${dateText}, Time TBD`;
+function AssignedStaffSummary({
+  event,
+}: {
+  event: SerializedScheduleCalendarEvent;
+}) {
+  if (event.assignments.length === 0) {
+    return (
+      <div className="space-y-1">
+        <p className="font-medium text-unassigned">No staff assigned</p>
+        <p className="text-muted-foreground">
+          Assign an instructor to run this activity.
+        </p>
+      </div>
+    );
   }
 
-  if (event.startTime && event.endTime) {
-    return `${dateText}, ${event.startTime}-${event.endTime}`;
-  }
-
-  return `${dateText}, ${event.startTime ?? 'Time TBD'}`;
+  return (
+    <ul className="space-y-1">
+      {event.assignments.map((assignment) => (
+        <li key={assignment.id}>
+          <p>
+            {assignment.user.name} <span aria-hidden="true">{'\u2014'}</span>{' '}
+            {formatEnumLabel(assignment.role)}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /**
- * Chooses the most operational activity label available on the event.
+ * Renders the operational status pills shown above a schedule dialog title.
  *
- * @param event - The selected schedule event.
- * @returns Activity summary text for the dialog details.
+ * @param props - Whether the activity still needs staff and its broad category.
+ * @returns Header badges that omit redundant scheduled status.
  */
-function getActivityDisplayName(event: SerializedScheduleCalendarEvent) {
-  return event.activitySummary || event.activityLabel;
+function ScheduleDialogHeaderBadges({
+  activityCategory,
+  needsStaff,
+}: {
+  activityCategory: string | null;
+  needsStaff: boolean;
+}) {
+  const badgeClassName =
+    'h-7 rounded-full border-transparent px-3 text-[0.7rem] font-medium ring-1 ring-inset';
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {needsStaff ? (
+        <Badge
+          className={cn(
+            badgeClassName,
+            'bg-unassigned/10 text-unassigned ring-unassigned/20',
+          )}
+          variant="outline"
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-current"
+          />
+          Needs staff
+        </Badge>
+      ) : null}
+      {activityCategory ? (
+        <Badge
+          className={cn(
+            badgeClassName,
+            'bg-muted text-muted-foreground ring-border/80',
+          )}
+          variant="outline"
+        >
+          {activityCategory}
+        </Badge>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -249,28 +319,29 @@ function getActivityCategoryLabel(activityType: ActivityType) {
 }
 
 /**
- * Formats the booked party size for quick daily operations scanning.
+ * Formats the scheduled date and time for the dialog summary.
  *
- * @param numberOfPeople - Stored participant count from the booking.
- * @returns A participant count label or a calm missing-data label.
+ * @param event - Selected schedule event with date and time data.
+ * @returns Staff-facing date with time range, start time, or TBD label.
  */
-function formatParticipantsLabel(numberOfPeople: number | null) {
-  return numberOfPeople === null ? 'Participants TBD' : `${numberOfPeople}`;
+function formatDateTimeSummary(event: SerializedScheduleCalendarEvent) {
+  return `${formatDisplayDate(new Date(event.date))} · ${formatEventTimeLabel(event)}`;
 }
 
 /**
- * Formats source and referrer data without showing full booking details.
+ * Formats the scheduled time without repeating the full date.
  *
- * @param event - The selected schedule event.
- * @returns Source/referrer text, or null when both values are missing.
+ * @param event - Selected schedule event with time fields.
+ * @returns Time range, single start time, or a TBD label.
  */
-function formatSourceLabel(event: SerializedScheduleCalendarEvent) {
-  const source = event.source ? formatEnumLabel(event.source) : null;
-  const referrer = event.referrerName?.trim() || null;
-
-  if (source && referrer) {
-    return `${source} / ${referrer}`;
+function formatEventTimeLabel(event: SerializedScheduleCalendarEvent) {
+  if (event.isTimeTbd) {
+    return 'TBD';
   }
 
-  return source ?? referrer;
+  if (event.startTime && event.endTime) {
+    return `${event.startTime}-${event.endTime}`;
+  }
+
+  return event.startTime ?? 'TBD';
 }

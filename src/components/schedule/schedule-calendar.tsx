@@ -120,7 +120,7 @@ function ScheduleCalendarView({
         onOpenChange={handleDialogOpenChange}
         open={selectedEvent !== null}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-t-3xl border border-border bg-card p-0 shadow-xl sm:max-w-lg sm:rounded-3xl">
           {selectedEvent ? (
             <ScheduleEventDialogContent
               assignableStaff={assignableStaff}
