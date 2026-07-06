@@ -36,6 +36,8 @@ type ScheduleAssignmentsListProps = {
   assignments: ScheduleAssignmentDetail[];
   assignableStaff: AssignableStaff[];
   canManageAssignments: boolean;
+  isManagingAssignments?: boolean;
+  managementMode?: ScheduleAssignmentManagementMode;
   scheduleItemId: string;
   variant?: ScheduleAssignmentsListVariant;
 };
@@ -55,20 +57,28 @@ type AssignmentActionErrorProps = {
 };
 
 type ScheduleAssignmentsListVariant = 'default' | 'compact';
+type ScheduleAssignmentManagementMode = 'always' | 'collapsible';
 
 /**
  * Renders the schedule assignment section for a selected schedule event.
  *
- * @param props - Assignment data, available staff, permission state, and display variant.
+ * @param props - Assignment data, available staff, permission state, display
+ * variant, and whether controls should appear immediately or after expansion.
  * @returns A read-only assignment list with optional admin/manager controls.
  */
 export function ScheduleAssignmentsList({
   assignments,
   assignableStaff,
   canManageAssignments,
+  isManagingAssignments = false,
+  managementMode = 'always',
   scheduleItemId,
   variant = 'default',
 }: ScheduleAssignmentsListProps) {
+  const showManagementControls =
+    canManageAssignments &&
+    (managementMode === 'always' || isManagingAssignments);
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -89,19 +99,17 @@ export function ScheduleAssignmentsList({
             >
               <ScheduleAssignmentRow
                 assignment={assignment}
-                canManageAssignments={canManageAssignments}
+                canManageAssignments={showManagementControls}
                 variant={variant}
               />
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No instructor or divemaster has been assigned yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No staff assigned</p>
       )}
 
-      {canManageAssignments ? (
+      {showManagementControls ? (
         <ScheduleAssignmentForm
           assignableStaff={assignableStaff}
           assignments={assignments}

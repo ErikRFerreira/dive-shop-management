@@ -49,7 +49,7 @@ async function SchedulePage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Schedule</h1>
         <p className="text-sm text-muted-foreground">
-          Official scheduled bookings shown by month, week, day, and list.
+          Approved bookings and scheduled activities for daily operations.
         </p>
       </div>
 
@@ -58,15 +58,16 @@ async function SchedulePage({
         filters={scheduleFilters}
       />
 
+      {scheduleEvents.length === 0 ? (
+        <ScheduleEmptyState filters={scheduleFilters} />
+      ) : null}
+
       <ScheduleCalendar
         assignableStaff={canManageAssignments ? assignableStaff : []}
         canManageAssignments={canManageAssignments}
         canViewBookingDetails={canViewBookingDetails}
         events={scheduleEvents}
       />
-      {scheduleEvents.length === 0 ? (
-        <ScheduleEmptyState filters={scheduleFilters} />
-      ) : null}
     </div>
   );
 }

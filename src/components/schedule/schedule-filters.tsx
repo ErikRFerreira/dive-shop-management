@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  getDefaultScheduleActivityFilterLabel,
+  getScheduleActivityFilterOptions,
+  getValidActivityTypeForScheduleType,
+  normalizeScheduleFilters,
+} from '@/features/schedule/filters';
 import type {
   AssignableStaff,
   ScheduleFilters as ScheduleFiltersValue,
@@ -23,8 +29,8 @@ import { ActivityType } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
 
 const allStaffValue = 'all-staff';
+const allScheduleTypesValue = 'all-schedule-types';
 const allActivitiesValue = 'all-activities';
-const activityTypes = Object.values(ActivityType);
 
 type ScheduleFiltersProps = {
   assignableStaff: AssignableStaff[];
@@ -43,10 +49,19 @@ export function ScheduleFilters({
 }: ScheduleFiltersProps) {
   const router = useRouter();
   const staffSelectId = useId();
+  const scheduleTypeSelectId = useId();
   const activitySelectId = useId();
   const unassignedOnlyId = useId();
   const [isPending, startTransition] = useTransition();
   const hasActiveFilters = hasActiveScheduleFilters(filters);
+  const activityOptions = getScheduleActivityFilterOptions(filters.scheduleType);
+  const defaultActivityLabel = getDefaultScheduleActivityFilterLabel(
+    filters.scheduleType,
+  );
+  const selectedActivityType = getValidActivityTypeForScheduleType(
+    filters.activityType,
+    filters.scheduleType,
+  );
 
   /**
    * Navigates to the schedule page with one operational filter updated.
@@ -56,6 +71,26 @@ export function ScheduleFilters({
   function updateFilters(updates: Partial<ScheduleFiltersValue>) {
     startTransition(() => {
       router.push(buildScheduleFilterHref(filters, updates));
+    });
+  }
+
+  /**
+   * Updates the broad schedule type and clears an incompatible exact activity.
+   *
+   * @param value - Selected schedule type value from the dropdown.
+   */
+  function handleScheduleTypeChange(value: string) {
+    const scheduleType =
+      value === allScheduleTypesValue
+        ? undefined
+        : (value as ScheduleFiltersValue['scheduleType']);
+
+    updateFilters({
+      scheduleType,
+      activityType: getValidActivityTypeForScheduleType(
+        filters.activityType,
+        scheduleType,
+      ),
     });
   }
 
@@ -91,6 +126,24 @@ export function ScheduleFilters({
           </Select>
         </div>
 
+        <div className="grid min-w-44 gap-1">
+          <Label htmlFor={scheduleTypeSelectId}>Schedule type</Label>
+          <Select
+            disabled={isPending}
+            onValueChange={handleScheduleTypeChange}
+            value={filters.scheduleType ?? allScheduleTypesValue}
+          >
+            <SelectTrigger id={scheduleTypeSelectId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={allScheduleTypesValue}>All</SelectItem>
+              <SelectItem value="fun-dives">Fun dives</SelectItem>
+              <SelectItem value="courses">Courses</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid min-w-52 gap-1">
           <Label htmlFor={activitySelectId}>Activity</Label>
           <Select
@@ -103,14 +156,16 @@ export function ScheduleFilters({
                     : (value as ActivityType),
               })
             }
-            value={filters.activityType ?? allActivitiesValue}
+            value={selectedActivityType ?? allActivitiesValue}
           >
             <SelectTrigger id={activitySelectId}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={allActivitiesValue}>All activities</SelectItem>
-              {activityTypes.map((activityType) => (
+              <SelectItem value={allActivitiesValue}>
+                {defaultActivityLabel}
+              </SelectItem>
+              {activityOptions.map((activityType) => (
                 <SelectItem key={activityType} value={activityType}>
                   {formatScheduleActivityLabel(activityType)}
                 </SelectItem>
@@ -152,7 +207,7 @@ export function ScheduleFilters({
 }
 
 /**
- * Builds a schedule URL with selected filter values added or removed.
+ * Builds a schedule URL with selected filter values added, removed, and normalized.
  *
  * @param currentFilters - Current normalized schedule filters.
  * @param updates - Filter values to apply on top of the current filters.
@@ -162,10 +217,10 @@ export function buildScheduleFilterHref(
   currentFilters: ScheduleFiltersValue,
   updates: Partial<ScheduleFiltersValue>,
 ) {
-  const nextFilters = {
+  const nextFilters = normalizeScheduleFilters({
     ...currentFilters,
     ...updates,
-  };
+  });
   const params = new URLSearchParams();
 
   if (nextFilters.range && nextFilters.range !== 'all') {
@@ -174,6 +229,10 @@ export function buildScheduleFilterHref(
 
   if (nextFilters.staffId) {
     params.set('staffId', nextFilters.staffId);
+  }
+
+  if (nextFilters.scheduleType) {
+    params.set('scheduleType', nextFilters.scheduleType);
   }
 
   if (nextFilters.activityType) {
@@ -198,6 +257,7 @@ export function buildScheduleFilterHref(
 function hasActiveScheduleFilters(filters: ScheduleFiltersValue) {
   return Boolean(
     (filters.range && filters.range !== 'all') ||
+    filters.scheduleType ||
     filters.staffId ||
     filters.activityType ||
     filters.unassignedOnly,
