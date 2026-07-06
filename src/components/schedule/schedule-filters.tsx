@@ -39,7 +39,7 @@ type ScheduleFiltersProps = {
 };
 
 const selectClass =
-  'h-9 truncate rounded-lg border border-border bg-white px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
+  'h-9 truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
 
 /**
  * Renders URL-backed controls for filtering the internal schedule page.
@@ -103,14 +103,14 @@ export function ScheduleFilters({
   return (
     <section
       aria-label="Schedule filters"
-      className="rounded-2xl border border-border bg-linear-to-b from-card to-card-glow p-4 shadow-sm sm:p-5"
+      className="rounded-2xl border border-border bg-card/60 p-3 shadow-sm sm:p-5 "
     >
       <h2 className="sr-only">Filters</h2>
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid min-w-48 gap-1">
           <Label
             htmlFor={staffSelectId}
-            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-medium text-muted-foreground mb-0.5"
           >
             Staff
           </Label>
@@ -140,7 +140,7 @@ export function ScheduleFilters({
         <div className="grid min-w-44 gap-1">
           <Label
             htmlFor={scheduleTypeSelectId}
-            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-medium text-muted-foreground mb-0.5"
           >
             Schedule type
           </Label>
@@ -163,7 +163,7 @@ export function ScheduleFilters({
         <div className="grid min-w-52 gap-1">
           <Label
             htmlFor={activitySelectId}
-            className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-medium text-muted-foreground mb-0.5"
           >
             Activity
           </Label>
@@ -195,7 +195,7 @@ export function ScheduleFilters({
           </Select>
         </div>
 
-        <div className="flex h-9 items-center gap-2.5 rounded-lg border border-border bg-white px-3 py-2 shadow-sm transition-colors hover:border-primary/50">
+        <div className="flex h-9 items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition-colors hover:border-primary/50">
           <Checkbox
             checked={filters.unassignedOnly ?? false}
             disabled={isPending}
