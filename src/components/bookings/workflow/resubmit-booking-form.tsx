@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { RotateCw } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { PendingButton } from '@/components/common/pending-button';
 import { resubmitBookingForApproval } from '@/features/bookings/actions';
 
 import {
@@ -33,16 +33,17 @@ export function ResubmitBookingForApprovalForm({
     <form action={formAction}>
       <input name="bookingId" type="hidden" value={bookingId} />
       <ActionError message={state.formError} />
-      <Button
-        disabled={pending}
-        size="lg"
-        type="reset"
+      <PendingButton
         className="w-full"
+        pending={pending}
+        pendingLabel="Resubmitting..."
+        size="lg"
+        type="submit"
         variant="ghost"
       >
         <RotateCw className="mr-2 h-4 w-4" />
-        {pending ? 'Resubmittingâ€¦' : 'Resubmit for Approval'}
-      </Button>
+        Resubmit for Approval
+      </PendingButton>
     </form>
   );
 }

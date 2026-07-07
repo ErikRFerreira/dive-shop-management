@@ -37,6 +37,15 @@ const reviewReadiness = [
   },
 ];
 
+/**
+ * Creates a promise that intentionally remains unresolved for pending UI tests.
+ *
+ * @returns A never-resolving promise for mocked workflow server actions.
+ */
+function pendingPromise() {
+  return new Promise(() => {});
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.approveBooking.mockResolvedValue({});
@@ -109,6 +118,30 @@ test('submits cancellation through the workflow action', () => {
   expect(mocks.cancelBooking).toHaveBeenCalled();
 });
 
+test('shows cancellation pending copy and disables duplicate submission', async () => {
+  mocks.cancelBooking.mockReturnValue(pendingPromise());
+  render(
+    <CancelBookingForm
+      bookingId="booking-1"
+      status={BookingStatus.PENDING_APPROVAL}
+    />,
+  );
+
+  const form = screen
+    .getByRole('button', { name: 'Cancel / Reject' })
+    .closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  const button = await screen.findByRole('button', { name: 'Cancelling...' });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(button);
+  expect(mocks.cancelBooking).toHaveBeenCalledTimes(1);
+});
+
 test('submits scheduled cancellation with optional admin notes', () => {
   render(
     <CancelBookingForm
@@ -160,6 +193,25 @@ test('submits approval through the workflow action', () => {
   expect(mocks.approveBooking).toHaveBeenCalled();
 });
 
+test('shows approval pending copy and disables duplicate submission', async () => {
+  mocks.approveBooking.mockReturnValue(pendingPromise());
+  render(<ApproveBookingForm bookingId="booking-1" />);
+
+  const form = screen
+    .getByRole('button', { name: 'Approve & Schedule' })
+    .closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  const button = await screen.findByRole('button', { name: 'Approving...' });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(button);
+  expect(mocks.approveBooking).toHaveBeenCalledTimes(1);
+});
+
 test('renders and submits resubmission through the workflow action', () => {
   render(<ResubmitBookingForApprovalForm bookingId="booking-1" />);
 
@@ -173,6 +225,25 @@ test('renders and submits resubmission through the workflow action', () => {
   fireEvent.submit(form!);
 
   expect(mocks.resubmitBookingForApproval).toHaveBeenCalled();
+});
+
+test('shows resubmission pending copy and disables duplicate submission', async () => {
+  mocks.resubmitBookingForApproval.mockReturnValue(pendingPromise());
+  render(<ResubmitBookingForApprovalForm bookingId="booking-1" />);
+
+  const form = screen
+    .getByRole('button', { name: 'Resubmit for Approval' })
+    .closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  const button = await screen.findByRole('button', { name: 'Resubmitting...' });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(button);
+  expect(mocks.resubmitBookingForApproval).toHaveBeenCalledTimes(1);
 });
 
 test('shows approval in the review sidebar only for approvers on pending bookings', () => {
@@ -343,6 +414,31 @@ test('switches the admin decision panel to needs-more-info only', () => {
     screen.getByText('Enter a reason before requesting more information.'),
   ).not.toBeNull();
   expect(mocks.markBookingNeedsMoreInfo).not.toHaveBeenCalled();
+});
+
+test('shows needs-more-info pending copy and disables duplicate submission', async () => {
+  mocks.markBookingNeedsMoreInfo.mockReturnValue(pendingPromise());
+  render(<MarkNeedsMoreInfoForm bookingId="booking-1" />);
+
+  fireEvent.change(screen.getByLabelText('Reason'), {
+    target: { value: 'Need hotel pickup details.' },
+  });
+
+  const form = screen
+    .getByRole('button', { name: 'Mark as Needs More Info' })
+    .closest('form');
+
+  expect(form).not.toBeNull();
+
+  fireEvent.submit(form!);
+
+  const button = await screen.findByRole('button', {
+    name: 'Sending request...',
+  });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(button);
+  expect(mocks.markBookingNeedsMoreInfo).toHaveBeenCalledTimes(1);
 });
 
 test('switches the admin decision panel to cancellation only', () => {

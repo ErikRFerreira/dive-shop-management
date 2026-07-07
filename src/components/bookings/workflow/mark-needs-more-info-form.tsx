@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 
 import { MessageCircleQuestion } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { PendingButton } from '@/components/common/pending-button';
 import { Textarea } from '@/components/ui/textarea';
 import { markBookingNeedsMoreInfo } from '@/features/bookings/actions';
 
@@ -89,15 +89,16 @@ export function MarkNeedsMoreInfoForm({
         ) : null}
       </div>
       <ActionError message={state.formError} />
-      <Button
+      <PendingButton
         className="border-orange-500 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
-        disabled={pending}
+        pending={pending}
+        pendingLabel="Sending request..."
         type="submit"
         variant="outline"
       >
         <MessageCircleQuestion className="h-4 w-4" />
-        {pending ? 'Marking…' : 'Mark as Needs More Info'}
-      </Button>
+        Mark as Needs More Info
+      </PendingButton>
     </form>
   );
 }

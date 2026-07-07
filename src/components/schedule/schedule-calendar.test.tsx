@@ -231,6 +231,15 @@ vi.mock('@/components/ui/select', () => {
   };
 });
 
+/**
+ * Creates a promise that remains pending for transition-state assertions.
+ *
+ * @returns A never-resolving promise for mocked schedule mutation actions.
+ */
+function pendingPromise() {
+  return new Promise(() => {});
+}
+
 afterEach(() => {
   cleanup();
   mocks.addScheduleAssignment.mockReset();
@@ -756,6 +765,31 @@ test('refreshes the schedule after adding an assignment', async () => {
     ScheduleAssignmentRole.LEAD_INSTRUCTOR,
   );
   await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+});
+
+test('shows pending feedback while adding an assignment', async () => {
+  mocks.addScheduleAssignment.mockReturnValue(pendingPromise());
+
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage assignments' }));
+  fireEvent.change(screen.getByLabelText('Staff'), {
+    target: { value: 'instructor-1' },
+  });
+  fireEvent.change(screen.getByLabelText('Role'), {
+    target: { value: ScheduleAssignmentRole.LEAD_INSTRUCTOR },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+  const button = await screen.findByRole('button', { name: 'Adding...' });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+  fireEvent.click(button);
+  expect(mocks.addScheduleAssignment).toHaveBeenCalledTimes(1);
 });
 
 test('refreshes the schedule after updating an assignment role', async () => {
