@@ -15,10 +15,47 @@ import {
   ActivityType,
   BookingCustomerRole,
   BookingSource,
+  BookingStatus,
   Currency,
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
+
+/**
+ * Builds the minimum booking details fixture needed by mapper tests.
+ *
+ * @param overrides - Persisted booking fields to override for a scenario.
+ * @returns A booking details item shaped like the query result.
+ */
+function bookingDetailsFixture(
+  overrides: Record<string, unknown> = {},
+): BookingDetailsItem {
+  return {
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    activityType: null,
+    specialtyCourse: null,
+    source: null,
+    requestedDate: null,
+    requestedTime: null,
+    numberOfPeople: null,
+    referrerName: null,
+    startAt: null,
+    endAt: null,
+    notes: null,
+    internalNotes: null,
+    needsMoreInfoReason: null,
+    createdById: 'cs-1',
+    createdBy: { id: 'cs-1', name: 'Customer Service' },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    activities: [],
+    customers: [],
+    deposits: [],
+    displayCustomer: null,
+    ...overrides,
+  } as unknown as BookingDetailsItem;
+}
 
 test('formats enum labels for display', () => {
   expect(formatEnumLabel(ActivityType.OPEN_WATER_COURSE)).toBe('Open Water Course');
@@ -210,4 +247,57 @@ test('maps persisted booking relations into editable browser form values', () =>
     amount: '1200.50',
     currency: Currency.PESOS,
   });
+});
+
+test('maps bookings without customers to one editable primary contact row', () => {
+  const values = mapBookingToFormValues(bookingDetailsFixture());
+
+  expect(values.customers).toHaveLength(1);
+  expect(values.customers[0]).toMatchObject({
+    role: BookingCustomerRole.PRIMARY_CONTACT,
+    customerName: '',
+    email: '',
+  });
+  expect(values.customers[0].customerId).toBeUndefined();
+});
+
+test('maps blank linked customers to an editable empty row', () => {
+  const values = mapBookingToFormValues(
+    bookingDetailsFixture({
+      customers: [
+        {
+          bookingRequestId: 'booking-1',
+          customerId: 'blank-customer-1',
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          hotelAtBooking: null,
+          equipmentNeeded: null,
+          notes: null,
+          certificationAgency: null,
+          certificationLevel: null,
+          lastDiveAt: null,
+          heightCm: null,
+          weightKg: null,
+          shoeSize: null,
+          divesLogged: null,
+          customer: {
+            fullName: null,
+            chineseName: null,
+            weChatId: null,
+            whatsAppNumber: null,
+            email: null,
+            phone: null,
+            preferredLanguage: null,
+          },
+        },
+      ],
+    }),
+  );
+
+  expect(values.customers).toHaveLength(1);
+  expect(values.customers[0]).toMatchObject({
+    role: BookingCustomerRole.PRIMARY_CONTACT,
+    customerName: '',
+    phone: '',
+  });
+  expect(values.customers[0].customerId).toBeUndefined();
 });

@@ -1101,6 +1101,57 @@ test('creates a draft with a selected existing customer without duplicating the 
   });
 });
 
+test('creates a raw-text draft without persisting the default empty customer row', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    createBookingDraft({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer asked for course options but gave no details.',
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings',
+  });
+
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+});
+
+test('removes existing booking customer links when edit form only has an empty row', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [{ customerId: 'blank-customer-1' }],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', {
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Keep the booking draft but remove blank customer data.',
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  expect(mocks.transaction.bookingCustomer.deleteMany).toHaveBeenCalledWith({
+    where: { bookingRequestId: 'booking-1' },
+  });
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+});
+
 test('creates mixed existing and new booking customers in one transaction', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
     id: 'customer-service-1',

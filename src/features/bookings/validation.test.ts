@@ -124,6 +124,31 @@ test('blocks a completely empty draft', () => {
   });
 });
 
+test('does not treat booking-specific-only customer fields as draft content', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues({
+      ...bookingFormDefaultValues,
+      customers: [
+        {
+          ...bookingCustomerDefaultValues,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+          equipmentNeeded: 'YES',
+          certificationLevel: 'Open Water',
+          divesLogged: '12',
+        },
+      ],
+    }),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    formErrors: [
+      'Enter at least one booking, activity, or customer detail before saving a draft.',
+    ],
+  });
+});
+
 test('allows a draft when an existing customer is selected', () => {
   const result = validateBookingIntake(
     normalizeBookingFormValues({

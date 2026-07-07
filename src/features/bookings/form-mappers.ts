@@ -14,7 +14,12 @@ import {
   PreferredLanguage,
 } from '@/generated/prisma/enums';
 import { formatDateInputValue } from '@/lib/format';
-import type { BookingFormValues, NormalizedBookingFormValues } from './types';
+import { bookingCustomerDefaultValues } from './form-values';
+import type {
+  BookingCustomerFormValues,
+  BookingFormValues,
+  NormalizedBookingFormValues,
+} from './types';
 import type { BookingDetailsItem } from './queries';
 
 /**
@@ -133,6 +138,45 @@ function formEnumValue<T extends Record<string, string>>(
 }
 
 /**
+ * Checks whether a normalized customer row identifies a real customer record.
+ *
+ * Draft forms always contain one blank customer row for UI convenience. Only
+ * existing customer links or rows with customer identity/contact fields should
+ * be persisted as Customer records.
+ *
+ * @param customer - Normalized booking customer row from the intake form.
+ * @returns `true` when the row should be persisted and linked to the booking.
+ */
+export function hasPersistableBookingCustomer(
+  customer: NormalizedBookingFormValues['customers'][number],
+) {
+  return Boolean(
+    customer.customerId ||
+      customer.customerName ||
+      customer.chineseName ||
+      customer.weChatId ||
+      customer.whatsAppNumber ||
+      customer.email ||
+      customer.phone,
+  );
+}
+
+/**
+ * Removes blank or booking-specific-only customer rows before persistence.
+ *
+ * @param values - Normalized booking intake values.
+ * @returns Booking values with only customer rows that can map to real Customer records.
+ */
+export function filterPersistableBookingCustomers(
+  values: NormalizedBookingFormValues,
+): NormalizedBookingFormValues {
+  return {
+    ...values,
+    customers: values.customers.filter(hasPersistableBookingCustomer),
+  };
+}
+
+/**
  * Normalizes the booking form values into a shape suitable for backend processing.
  *
  * @param values - The booking form values to normalize.
@@ -218,6 +262,71 @@ export function hasMeaningfulDeposit(
 }
 
 /**
+ * Checks whether a persisted linked customer is an empty placeholder row.
+ *
+ * Blank placeholder customers were created by earlier draft saves. They should
+ * not be shown as linked existing customers when reopening a booking for edit.
+ *
+ * @param bookingCustomer - Persisted booking/customer relation from the details query.
+ * @returns `true` when neither the customer profile nor booking-specific row has data.
+ */
+function isBlankLinkedBookingCustomer(
+  bookingCustomer: BookingDetailsItem['customers'][number],
+) {
+  return [
+    bookingCustomer.customer.fullName,
+    bookingCustomer.customer.chineseName,
+    bookingCustomer.customer.weChatId,
+    bookingCustomer.customer.whatsAppNumber,
+    bookingCustomer.customer.email,
+    bookingCustomer.customer.phone,
+    bookingCustomer.customer.preferredLanguage,
+    bookingCustomer.hotelAtBooking,
+    bookingCustomer.equipmentNeeded,
+    bookingCustomer.notes,
+    bookingCustomer.certificationAgency,
+    bookingCustomer.certificationLevel,
+    bookingCustomer.lastDiveAt,
+    bookingCustomer.heightCm,
+    bookingCustomer.weightKg,
+    bookingCustomer.shoeSize,
+    bookingCustomer.divesLogged,
+  ].every((value) => value === null || value === '');
+}
+
+/**
+ * Converts one persisted booking/customer relation into editable form values.
+ *
+ * @param bookingCustomer - Persisted booking/customer relation from the details query.
+ * @returns Browser-safe customer form values for one row.
+ */
+function mapBookingCustomerToFormValues(
+  bookingCustomer: BookingDetailsItem['customers'][number],
+): BookingCustomerFormValues {
+  return {
+    customerId: bookingCustomer.customerId,
+    role: bookingCustomer.role,
+    customerName: bookingCustomer.customer.fullName ?? '',
+    chineseName: bookingCustomer.customer.chineseName ?? '',
+    weChatId: bookingCustomer.customer.weChatId ?? '',
+    whatsAppNumber: bookingCustomer.customer.whatsAppNumber ?? '',
+    email: bookingCustomer.customer.email ?? '',
+    phone: bookingCustomer.customer.phone ?? '',
+    hotelAtBooking: bookingCustomer.hotelAtBooking ?? '',
+    equipmentNeeded: bookingCustomer.equipmentNeeded ?? '',
+    customerNotes: bookingCustomer.notes ?? '',
+    preferredLanguage: bookingCustomer.customer.preferredLanguage ?? '',
+    heightCm: formNumber(bookingCustomer.heightCm),
+    weightKg: formNumber(bookingCustomer.weightKg),
+    shoeSize: formNumber(bookingCustomer.shoeSize),
+    certificationLevel: bookingCustomer.certificationLevel ?? '',
+    certificationAgency: bookingCustomer.certificationAgency ?? '',
+    lastDiveDate: formDate(bookingCustomer.lastDiveAt),
+    divesLogged: formNumber(bookingCustomer.divesLogged),
+  };
+}
+
+/**
  * Converts a persisted booking and its relations into browser-safe form values.
  *
  * @param booking - The booking details to convert.
@@ -239,6 +348,9 @@ export function mapBookingToFormValues(
           },
         ];
   const deposit = booking.deposits[0];
+  const customerValues = booking.customers
+    .filter((bookingCustomer) => !isBlankLinkedBookingCustomer(bookingCustomer))
+    .map(mapBookingCustomerToFormValues);
 
   return {
     rawBookingText: booking.notes ?? '',
@@ -253,27 +365,15 @@ export function mapBookingToFormValues(
     source: booking.source ?? '',
     referrerName: booking.referrerName ?? '',
     internalNotes: booking.internalNotes ?? '',
-    customers: booking.customers.map((bookingCustomer) => ({
-      customerId: bookingCustomer.customerId,
-      role: bookingCustomer.role,
-      customerName: bookingCustomer.customer.fullName ?? '',
-      chineseName: bookingCustomer.customer.chineseName ?? '',
-      weChatId: bookingCustomer.customer.weChatId ?? '',
-      whatsAppNumber: bookingCustomer.customer.whatsAppNumber ?? '',
-      email: bookingCustomer.customer.email ?? '',
-      phone: bookingCustomer.customer.phone ?? '',
-      hotelAtBooking: bookingCustomer.hotelAtBooking ?? '',
-      equipmentNeeded: bookingCustomer.equipmentNeeded ?? '',
-      customerNotes: bookingCustomer.notes ?? '',
-      preferredLanguage: bookingCustomer.customer.preferredLanguage ?? '',
-      heightCm: formNumber(bookingCustomer.heightCm),
-      weightKg: formNumber(bookingCustomer.weightKg),
-      shoeSize: formNumber(bookingCustomer.shoeSize),
-      certificationLevel: bookingCustomer.certificationLevel ?? '',
-      certificationAgency: bookingCustomer.certificationAgency ?? '',
-      lastDiveDate: formDate(bookingCustomer.lastDiveAt),
-      divesLogged: formNumber(bookingCustomer.divesLogged),
-    })),
+    customers:
+      customerValues.length > 0
+        ? customerValues
+        : [
+            {
+              ...bookingCustomerDefaultValues,
+              role: BookingCustomerRole.PRIMARY_CONTACT,
+            },
+          ],
     depositStatus: deposit?.status ?? DepositStatus.UNKNOWN,
     amount: formNumber(deposit?.amount ?? null),
     currency: formEnumValue(Currency, deposit?.currency ?? null),
