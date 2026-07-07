@@ -8,6 +8,7 @@ import {
 import { BookingFormSection } from '@/components/bookings/form/booking-form-section';
 import {
   BookingFormField,
+  BookingFormFieldError,
   EnumSelect,
 } from '@/components/bookings/form/booking-form-controls';
 import { Button } from '@/components/ui/button';
@@ -77,14 +78,10 @@ export function BookingDetailsSection({
               className={inputClassName}
             />
           </BookingFormField>
-          {sourceError ? (
-            <p
-              className="text-sm text-destructive md:col-span-2"
-              role="alert"
-            >
-              {sourceError}
-            </p>
-          ) : null}
+          <BookingFormFieldError
+            error={sourceError}
+            className="md:col-span-2"
+          />
         </div>
         <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
           <BookingFormField
@@ -101,14 +98,10 @@ export function BookingDetailsSection({
               className={inputClassName}
             />
           </BookingFormField>
-          {numberOfPeopleError ? (
-            <p
-              className="text-sm text-destructive md:col-span-2"
-              role="alert"
-            >
-              {numberOfPeopleError}
-            </p>
-          ) : null}
+          <BookingFormFieldError
+            error={numberOfPeopleError}
+            className="md:col-span-2"
+          />
         </div>
         <BookingFormField
           id="internalNotes"
@@ -131,6 +124,12 @@ export function BookingDetailsSection({
         <div className="space-y-4 md:col-span-2">
           {fields.map((activity: { id: string }, index: number) => {
             const prefix = `activities.${index}` as const;
+            const activityTypeError = getFieldError(
+              `${prefix}.activityType`,
+            );
+            const requestedDateError = getFieldError(
+              `${prefix}.requestedDate`,
+            );
             const isSpecialtyCourse =
               activities[index]?.activityType === ActivityType.SPECIALTY_COURSE;
 
@@ -158,7 +157,6 @@ export function BookingDetailsSection({
                     id={`${prefix}.activityType`}
                     label="Activity type"
                     required
-                    error={getFieldError(`${prefix}.activityType`)}
                   >
                     <Controller
                       control={form.control}
@@ -179,7 +177,6 @@ export function BookingDetailsSection({
                     id={`${prefix}.requestedDate`}
                     label="Requested date"
                     required
-                    error={getFieldError(`${prefix}.requestedDate`)}
                   >
                     <Input
                       id={`${prefix}.requestedDate`}
@@ -196,6 +193,12 @@ export function BookingDetailsSection({
                       className={inputClassName}
                     />
                   </BookingFormField>
+                  {activityTypeError || requestedDateError ? (
+                    <div className="grid gap-1 md:col-span-3">
+                      <BookingFormFieldError error={activityTypeError} />
+                      <BookingFormFieldError error={requestedDateError} />
+                    </div>
+                  ) : null}
                   {isSpecialtyCourse ? (
                     <BookingFormField
                       id={`${prefix}.specialtyCourse`}
