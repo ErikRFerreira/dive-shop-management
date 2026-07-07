@@ -7,6 +7,7 @@ import {
 
 import {
   BookingFormField,
+  BookingFormFieldError,
   EnumSelect,
 } from '@/components/bookings/form/booking-form-controls';
 import { Input } from '@/components/ui/input';
@@ -175,6 +176,9 @@ export function CustomerFields({
   const contactProps = { ...readOnlyInputProps, ...contactInputProps };
   const preferredLanguagePath = `customers.${index}.preferredLanguage` as const;
   const preferredLanguage = form.getValues(preferredLanguagePath);
+  const customerNameError = getFieldError(
+    customerFieldPath(index, 'customerName'),
+  );
 
   return (
     <div className="space-y-4 md:col-span-2">
@@ -188,7 +192,6 @@ export function CustomerFields({
           name="customerName"
           label="Customer name"
           required
-          error={getFieldError(customerFieldPath(index, 'customerName'))}
           inputProps={readOnlyInputProps}
         />
         <RegisteredInputField
@@ -197,6 +200,10 @@ export function CustomerFields({
           name="chineseName"
           label="Chinese name"
           inputProps={readOnlyInputProps}
+        />
+        <BookingFormFieldError
+          error={customerNameError}
+          className="md:col-span-2"
         />
         <RegisteredInputField
           form={form}
@@ -381,6 +388,16 @@ export function DivingExperienceFields({
   requiresDivingExperience: boolean;
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
 }) {
+  const certificationLevelError = getFieldError(
+    customerFieldPath(index, 'certificationLevel'),
+  );
+  const lastDiveDateError = getFieldError(
+    customerFieldPath(index, 'lastDiveDate'),
+  );
+  const divesLoggedError = getFieldError(
+    customerFieldPath(index, 'divesLogged'),
+  );
+
   return (
     <div className="space-y-4 md:col-span-2 border-t border-border pt-5 mt-1">
       <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -393,7 +410,6 @@ export function DivingExperienceFields({
           name="certificationLevel"
           label="Certification level"
           required={requiresDivingExperience}
-          error={getFieldError(customerFieldPath(index, 'certificationLevel'))}
         />
         <RegisteredInputField
           form={form}
@@ -401,12 +417,15 @@ export function DivingExperienceFields({
           name="certificationAgency"
           label="Certification agency"
         />
+        <BookingFormFieldError
+          error={certificationLevelError}
+          className="md:col-span-2"
+        />
         <RegisteredInputField
           form={form}
           index={index}
           name="lastDiveDate"
           label="Last dive date"
-          error={getFieldError(customerFieldPath(index, 'lastDiveDate'))}
           inputProps={{ type: 'date' }}
         />
         <RegisteredInputField
@@ -415,9 +434,14 @@ export function DivingExperienceFields({
           name="divesLogged"
           label="Logged dives"
           required={requiresDivingExperience}
-          error={getFieldError(customerFieldPath(index, 'divesLogged'))}
           inputProps={{ type: 'number', min: '0', step: '1' }}
         />
+        {lastDiveDateError || divesLoggedError ? (
+          <div className="grid gap-1 md:col-span-2">
+            <BookingFormFieldError error={lastDiveDateError} />
+            <BookingFormFieldError error={divesLoggedError} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

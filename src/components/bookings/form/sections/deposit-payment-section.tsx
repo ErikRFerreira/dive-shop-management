@@ -7,6 +7,7 @@ import {
 import { BookingFormSection } from '@/components/bookings/form/booking-form-section';
 import {
   BookingFormField,
+  BookingFormFieldError,
   EnumSelect,
 } from '@/components/bookings/form/booking-form-controls';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,10 @@ export function DepositPaymentSection({
   isPaidDeposit,
   getFieldError,
 }: DepositPaymentSectionProps) {
+  const amountError = getFieldError('amount');
+  const currencyError = getFieldError('currency');
+  const paidToError = getFieldError('paidTo');
+
   return (
     <BookingFormSection sectionNumber={5} title="Deposit / payment">
       <BookingFormField id="depositStatus" label="Deposit status">
@@ -52,12 +57,7 @@ export function DepositPaymentSection({
           )}
         />
       </BookingFormField>
-      <BookingFormField
-        id="amount"
-        label="Amount"
-        required={isPaidDeposit}
-        error={getFieldError('amount')}
-      >
+      <BookingFormField id="amount" label="Amount" required={isPaidDeposit}>
         <Input
           id="amount"
           type="number"
@@ -67,12 +67,7 @@ export function DepositPaymentSection({
           className={inputClassName}
         />
       </BookingFormField>
-      <BookingFormField
-        id="currency"
-        label="Currency"
-        required={isPaidDeposit}
-        error={getFieldError('currency')}
-      >
+      <BookingFormField id="currency" label="Currency" required={isPaidDeposit}>
         <Controller
           control={form.control}
           name="currency"
@@ -87,12 +82,13 @@ export function DepositPaymentSection({
           )}
         />
       </BookingFormField>
-      <BookingFormField
-        id="paidTo"
-        label="Paid to"
-        required={isPaidDeposit}
-        error={getFieldError('paidTo')}
-      >
+      {amountError || currencyError ? (
+        <div className="grid gap-1 md:col-span-2">
+          <BookingFormFieldError error={amountError} />
+          <BookingFormFieldError error={currencyError} />
+        </div>
+      ) : null}
+      <BookingFormField id="paidTo" label="Paid to" required={isPaidDeposit}>
         <Input
           id="paidTo"
           {...form.register('paidTo')}
@@ -106,6 +102,7 @@ export function DepositPaymentSection({
           className={inputClassName}
         />
       </BookingFormField>
+      <BookingFormFieldError error={paidToError} className="md:col-span-2" />
       <BookingFormField id="paymentNotes" label="Payment notes">
         <Textarea
           id="paymentNotes"

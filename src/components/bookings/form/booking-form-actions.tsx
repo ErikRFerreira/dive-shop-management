@@ -57,7 +57,7 @@ export function BookingFormValidationFeedback({
 
   return (
     <div
-      className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+      className="rounded-md border border-destructive/50 p-3 text-sm text-destructive mb-4"
       role="alert"
     >
       <p>Please fix the following before continuing:</p>

@@ -11,6 +11,7 @@ import {
 import { formatEnumLabel } from '@/features/bookings/form-options';
 import type { BookingFormValues } from '@/features/bookings/types';
 import { inputClassName } from '@/lib/consts';
+import { cn } from '@/lib/utils';
 
 type BookingFormFieldProps = {
   id: string;
@@ -27,6 +28,11 @@ type EnumSelectProps<T extends string> = {
   onValueChange: (value: T) => void;
   values: T[];
   placeholder: string;
+  className?: string;
+};
+
+type BookingFormFieldErrorProps = {
+  error?: string;
   className?: string;
 };
 
@@ -57,6 +63,26 @@ export function BookingFormField({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Renders booking form validation text for layouts that place errors outside
+ * the field wrapper to preserve multi-column alignment.
+ *
+ * @param props - Optional error text and layout classes for the error row.
+ * @returns A validation alert when an error is present.
+ */
+export function BookingFormFieldError({
+  error,
+  className,
+}: BookingFormFieldErrorProps) {
+  if (!error) return null;
+
+  return (
+    <p className={cn('text-sm text-destructive', className)} role="alert">
+      {error}
+    </p>
   );
 }
 

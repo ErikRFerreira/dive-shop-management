@@ -8,6 +8,7 @@ import {
 import { BookingFormSection } from '@/components/bookings/form/booking-form-section';
 import {
   BookingFormField,
+  BookingFormFieldError,
   EnumSelect,
 } from '@/components/bookings/form/booking-form-controls';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ export function BookingDetailsSection({
   activities,
   getFieldError,
 }: BookingDetailsSectionProps) {
+  const sourceError = getFieldError('source');
+  const numberOfPeopleError = getFieldError('numberOfPeople');
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'activities',
@@ -51,49 +54,55 @@ export function BookingDetailsSection({
   return (
     <>
       <BookingFormSection sectionNumber={2} title="Booking summary">
-        <BookingFormField
-          id="source"
-          label="Source / referrer"
-          required
-          error={getFieldError('source')}
-        >
-          <Controller
-            control={form.control}
-            name="source"
-            render={({ field }) => (
-              <EnumSelect
-                id={field.name}
-                value={field.value}
-                onValueChange={field.onChange}
-                values={bookingSourceOptions}
-                placeholder="Select source"
-                className={inputClassName}
-              />
-            )}
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <BookingFormField id="source" label="Source / referrer" required>
+            <Controller
+              control={form.control}
+              name="source"
+              render={({ field }) => (
+                <EnumSelect
+                  id={field.name}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  values={bookingSourceOptions}
+                  placeholder="Select source"
+                  className={inputClassName}
+                />
+              )}
+            />
+          </BookingFormField>
+          <BookingFormField id="referrerName" label="Referrer name">
+            <Input
+              id="referrerName"
+              {...form.register('referrerName')}
+              className={inputClassName}
+            />
+          </BookingFormField>
+          <BookingFormFieldError
+            error={sourceError}
+            className="md:col-span-2"
           />
-        </BookingFormField>
-        <BookingFormField id="referrerName" label="Referrer name">
-          <Input
-            id="referrerName"
-            {...form.register('referrerName')}
-            className={inputClassName}
-          />
-        </BookingFormField>
-        <BookingFormField
-          id="numberOfPeople"
-          label="Total participants"
-          required
-          error={getFieldError('numberOfPeople')}
-        >
-          <Input
+        </div>
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <BookingFormField
             id="numberOfPeople"
-            type="number"
-            min="1"
-            step="1"
-            {...form.register('numberOfPeople')}
-            className={inputClassName}
+            label="Total participants"
+            required
+          >
+            <Input
+              id="numberOfPeople"
+              type="number"
+              min="1"
+              step="1"
+              {...form.register('numberOfPeople')}
+              className={inputClassName}
+            />
+          </BookingFormField>
+          <BookingFormFieldError
+            error={numberOfPeopleError}
+            className="md:col-span-2"
           />
-        </BookingFormField>
+        </div>
         <BookingFormField
           id="internalNotes"
           label="Internal notes"
@@ -115,6 +124,12 @@ export function BookingDetailsSection({
         <div className="space-y-4 md:col-span-2">
           {fields.map((activity: { id: string }, index: number) => {
             const prefix = `activities.${index}` as const;
+            const activityTypeError = getFieldError(
+              `${prefix}.activityType`,
+            );
+            const requestedDateError = getFieldError(
+              `${prefix}.requestedDate`,
+            );
             const isSpecialtyCourse =
               activities[index]?.activityType === ActivityType.SPECIALTY_COURSE;
 
@@ -142,7 +157,6 @@ export function BookingDetailsSection({
                     id={`${prefix}.activityType`}
                     label="Activity type"
                     required
-                    error={getFieldError(`${prefix}.activityType`)}
                   >
                     <Controller
                       control={form.control}
@@ -163,7 +177,6 @@ export function BookingDetailsSection({
                     id={`${prefix}.requestedDate`}
                     label="Requested date"
                     required
-                    error={getFieldError(`${prefix}.requestedDate`)}
                   >
                     <Input
                       id={`${prefix}.requestedDate`}
@@ -180,6 +193,12 @@ export function BookingDetailsSection({
                       className={inputClassName}
                     />
                   </BookingFormField>
+                  {activityTypeError || requestedDateError ? (
+                    <div className="grid gap-1 md:col-span-3">
+                      <BookingFormFieldError error={activityTypeError} />
+                      <BookingFormFieldError error={requestedDateError} />
+                    </div>
+                  ) : null}
                   {isSpecialtyCourse ? (
                     <BookingFormField
                       id={`${prefix}.specialtyCourse`}

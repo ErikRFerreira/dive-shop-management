@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useId, useTransition } from 'react';
+import { useId } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,7 +34,10 @@ const allActivitiesValue = 'all-activities';
 
 type ScheduleFiltersProps = {
   assignableStaff: AssignableStaff[];
+  disabled?: boolean;
   filters: ScheduleFiltersValue;
+  isPending?: boolean;
+  onFilterChange: (href: string) => void;
 };
 
 const selectClass =
@@ -49,14 +51,15 @@ const selectClass =
  */
 export function ScheduleFilters({
   assignableStaff,
+  disabled = false,
   filters,
+  isPending = false,
+  onFilterChange,
 }: ScheduleFiltersProps) {
-  const router = useRouter();
   const staffSelectId = useId();
   const scheduleTypeSelectId = useId();
   const activitySelectId = useId();
   const unassignedOnlyId = useId();
-  const [isPending, startTransition] = useTransition();
   const hasActiveFilters = hasActiveScheduleFilters(filters);
   const activityOptions = getScheduleActivityFilterOptions(
     filters.scheduleType,
@@ -75,9 +78,7 @@ export function ScheduleFilters({
    * @param updates - Filter values to set or clear.
    */
   function updateFilters(updates: Partial<ScheduleFiltersValue>) {
-    startTransition(() => {
-      router.push(buildScheduleFilterHref(filters, updates));
-    });
+    onFilterChange(buildScheduleFilterHref(filters, updates));
   }
 
   /**
@@ -115,7 +116,7 @@ export function ScheduleFilters({
             Staff
           </Label>
           <Select
-            disabled={isPending}
+            disabled={disabled || isPending}
             onValueChange={(value) =>
               updateFilters({
                 staffId: value === allStaffValue ? undefined : value,
@@ -145,7 +146,7 @@ export function ScheduleFilters({
             Schedule type
           </Label>
           <Select
-            disabled={isPending}
+            disabled={disabled || isPending}
             onValueChange={handleScheduleTypeChange}
             value={filters.scheduleType ?? allScheduleTypesValue}
           >
@@ -168,7 +169,7 @@ export function ScheduleFilters({
             Activity
           </Label>
           <Select
-            disabled={isPending}
+            disabled={disabled || isPending}
             onValueChange={(value) =>
               updateFilters({
                 activityType:
@@ -198,7 +199,7 @@ export function ScheduleFilters({
         <div className="flex h-9 items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition-colors hover:border-primary/50">
           <Checkbox
             checked={filters.unassignedOnly ?? false}
-            disabled={isPending}
+            disabled={disabled || isPending}
             id={unassignedOnlyId}
             onCheckedChange={(checked) =>
               updateFilters({
@@ -215,15 +216,31 @@ export function ScheduleFilters({
           </Label>
         </div>
 
-        {isPending ? (
-          <p aria-live="polite" className="pb-1 text-sm text-muted-foreground">
-            Updating filters...
-          </p>
-        ) : null}
-
         {hasActiveFilters ? (
-          <Button asChild size="sm" variant="ghost">
-            <Link href="/schedule">
+          <Button
+            asChild
+            className={
+              disabled || isPending
+                ? 'pointer-events-none opacity-50'
+                : undefined
+            }
+            size="sm"
+            variant="ghost"
+          >
+            <Link
+              aria-disabled={disabled || isPending}
+              href="/schedule"
+              onClick={(event) => {
+                if (disabled || isPending) {
+                  event.preventDefault();
+                  return;
+                }
+
+                event.preventDefault();
+                onFilterChange('/schedule');
+              }}
+              tabIndex={disabled || isPending ? -1 : undefined}
+            >
               <X className="size-3.5" /> Clear filters
             </Link>
           </Button>
