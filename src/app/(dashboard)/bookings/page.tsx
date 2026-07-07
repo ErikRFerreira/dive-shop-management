@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BookingList } from '@/components/bookings/booking-list';
-import { BookingStatusFilter } from '@/components/bookings/booking-status-filter';
+import { BookingsListShell } from '@/components/bookings/list/bookings-list-shell';
 import { Button } from '@/components/ui/button';
 import { canCreateBookingRequest } from '@/features/bookings/permissions';
 import {
@@ -65,14 +65,15 @@ export default async function BookingsPage({
         ) : null}
       </div>
 
-      <BookingStatusFilter selectedQueue={queue} selectedStatus={status} />
-      <BookingList
-        bookings={bookings}
-        currentUser={currentUser}
-        pagination={pagination}
-        selectedQueue={queue}
-        selectedStatus={status}
-      />
+      <BookingsListShell selectedQueue={queue} selectedStatus={status}>
+        <BookingList
+          bookings={bookings}
+          currentUser={currentUser}
+          pagination={pagination}
+          selectedQueue={queue}
+          selectedStatus={status}
+        />
+      </BookingsListShell>
     </div>
   );
 }

@@ -44,9 +44,11 @@ vi.mock('@/components/ui/select', () => {
    */
   function getTriggerId(children: React.ReactNode): string | undefined {
     for (const child of React.Children.toArray(children)) {
-      if (!React.isValidElement<{ id?: string; children?: React.ReactNode }>(
-        child,
-      )) {
+      if (
+        !React.isValidElement<{ id?: string; children?: React.ReactNode }>(
+          child,
+        )
+      ) {
         continue;
       }
 
@@ -151,10 +153,7 @@ afterEach(() => {
   mocks.push.mockReset();
 });
 
-import {
-  ScheduleFilters,
-  buildScheduleFilterHref,
-} from './schedule-filters';
+import { ScheduleFilters, buildScheduleFilterHref } from './schedule-filters';
 
 /**
  * Builds assignable staff used by schedule filter tests.
@@ -162,7 +161,9 @@ import {
  * @param overrides - Staff fields to override for a specific scenario.
  * @returns Assignable staff record.
  */
-function assignableStaff(overrides: Partial<AssignableStaff> = {}): AssignableStaff {
+function assignableStaff(
+  overrides: Partial<AssignableStaff> = {},
+): AssignableStaff {
   return {
     id: 'instructor-1',
     name: 'Inez Instructor',
@@ -185,6 +186,7 @@ function renderScheduleFilters(
     <ScheduleFilters
       assignableStaff={[assignableStaff()]}
       filters={{}}
+      onFilterChange={mocks.push}
       {...props}
     />,
   );
@@ -271,9 +273,7 @@ test('limits activity options to fun dives when schedule type is fun dives', () 
     },
   });
 
-  expect(getSelectOptionNames('Activity')).toEqual([
-    'All fun dives',
-  ]);
+  expect(getSelectOptionNames('Activity')).toEqual(['All fun dives']);
 });
 
 test('limits activity options to courses when schedule type is courses', () => {
@@ -371,14 +371,42 @@ test('renders clear filters link to the base schedule page', () => {
     },
   });
 
-  expect(screen.getByRole('link', { name: 'Clear filters' }).getAttribute('href'))
-    .toBe('/schedule');
+  expect(
+    screen.getByRole('link', { name: 'Clear filters' }).getAttribute('href'),
+  ).toBe('/schedule');
 });
 
 test('hides clear filters when no filter is active', () => {
   renderScheduleFilters();
 
   expect(screen.queryByRole('link', { name: 'Clear filters' })).toBeNull();
+});
+
+test('disables schedule filter controls while results are pending', () => {
+  renderScheduleFilters({
+    filters: {
+      staffId: 'instructor-1',
+    },
+    isPending: true,
+  });
+
+  expect((screen.getByLabelText('Staff') as HTMLSelectElement).disabled).toBe(
+    true,
+  );
+  expect(
+    (screen.getByLabelText('Schedule type') as HTMLSelectElement).disabled,
+  ).toBe(true);
+  expect(
+    (screen.getByLabelText('Activity') as HTMLSelectElement).disabled,
+  ).toBe(true);
+  expect(
+    (screen.getByLabelText('Unassigned only') as HTMLButtonElement).disabled,
+  ).toBe(true);
+  expect(
+    screen
+      .getByRole('link', { name: 'Clear filters' })
+      .getAttribute('aria-disabled'),
+  ).toBe('true');
 });
 
 test('builds schedule filter URLs with only active params', () => {
