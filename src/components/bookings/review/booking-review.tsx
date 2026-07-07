@@ -6,14 +6,13 @@ import {
   getBookingReviewReadiness,
   getMissingBookingReviewInformation,
 } from '@/features/bookings/review-requirements';
-import Link from 'next/link';
 import {
   getReviewActivities,
   reviewActivitiesIncludeFunDive,
 } from './booking-review-activities';
 import { BookingReviewSidebar } from './booking-review-sidebar';
-import { ArrowLeft } from 'lucide-react';
 import PageHeader from '@/components/common/page-header';
+import { ScheduleSection } from '../view/sections/schedule-section';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
@@ -58,6 +57,14 @@ export function BookingReview({ booking, canApprove }: BookingReviewProps) {
 
       <BookingMainSections
         activities={activities}
+        afterOriginalMessage={
+          <ScheduleSection
+            assignableStaff={[]}
+            booking={booking}
+            canManageAssignments={false}
+            showManagerAssignmentAvailabilityCopy
+          />
+        }
         booking={booking}
         includesFunDive={includesFunDive}
         internalNotesVariant="review"

@@ -91,7 +91,7 @@ function ScheduleCalendarView({
 
   return (
     <div className="space-y-4">
-      <div className="schedule-calendar  rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm p-4">
+      <div className="schedule-calendar rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm p-4">
         <FullCalendar
           allDayText="TBD"
           buttonText={{

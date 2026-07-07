@@ -6,7 +6,7 @@ import {
   BookingCustomerRole,
 } from '@/generated/prisma/enums';
 import {
-  EMPTY_VALUE,
+  UNSCHEDULED_ASSIGNMENT_SUMMARY,
   formatAssignedStaffSummary,
   getDisplayActivities,
   getPrimaryBookingCustomer,
@@ -84,7 +84,7 @@ test('prefers the primary booking customer and falls back to the first customer'
 
 test('formats assigned staff summaries for unscheduled, unassigned, and assigned bookings', () => {
   expect(formatAssignedStaffSummary(booking({ scheduleItem: null }))).toBe(
-    EMPTY_VALUE,
+    UNSCHEDULED_ASSIGNMENT_SUMMARY,
   );
   expect(
     formatAssignedStaffSummary(

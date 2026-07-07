@@ -45,7 +45,7 @@ export function BookingSummarySection({
   );
 
   return (
-    <Card className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

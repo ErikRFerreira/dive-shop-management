@@ -66,7 +66,7 @@ export function BookingList({
 
   return (
     <div className="space-y-3">
-      <Card className="overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow shadow-sm py-0">
+      <Card className="overflow-hidden rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm py-0">
         <CardContent className="p-0">
           <Table className="table-fixed">
             <TableHeader>
@@ -97,13 +97,13 @@ export function BookingList({
                   <TableCell className="py-5 pl-6 align-top">
                     <BookingStatusBadge status={booking.status} />
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderBookingSummary(booking)}
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderActivitySchedule(booking)}
                   </TableCell>
-                  <TableCell className="whitespace-normal break-words py-5 align-top">
+                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
                     {renderStaffAssignments(booking)}
                   </TableCell>
                   <TableCell className="py-5 align-top">

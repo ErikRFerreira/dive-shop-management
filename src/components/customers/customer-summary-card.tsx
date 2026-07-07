@@ -2,12 +2,7 @@ import Link from 'next/link';
 import { Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Tooltip,
   TooltipContent,
@@ -36,7 +31,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 break-words text-sm">{displayValue}</div>
+      <div className="mt-1 wrap-break-word text-sm">{displayValue}</div>
     </div>
   );
 }

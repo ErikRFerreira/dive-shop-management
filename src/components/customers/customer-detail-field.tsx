@@ -19,8 +19,7 @@ export function CustomerDetailField({
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 break-words text-sm">{displayValue}</div>
+      <div className="mt-1 wrap-break-word text-sm">{displayValue}</div>
     </div>
   );
 }
-

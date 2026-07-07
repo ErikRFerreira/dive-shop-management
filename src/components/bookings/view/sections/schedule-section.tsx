@@ -1,38 +1,70 @@
 import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import type { AssignableStaff } from '@/features/schedule/types';
-import { formatDate, formatTimeOrTbd } from '../booking-detail-display';
-import { Field, Section } from '../booking-detail-layout';
+import {
+  formatBookingDate,
+  formatBookingTimeOrTbd,
+} from '../../booking-display-utils';
+import { BookingInfoField, BookingInfoSection } from '../../booking-info-layout';
+
+const MANAGER_ASSIGNMENT_AVAILABILITY_MESSAGE =
+  'Approve and schedule this booking before assigning instructors or divemasters.';
+const READ_ONLY_ASSIGNMENT_AVAILABILITY_MESSAGE =
+  'Staff assignments are available after this booking is approved and added to the schedule.';
 
 /**
- * Renders schedule details and assignment controls when a schedule item exists.
+ * Renders schedule details, official staff assignments, or the availability
+ * explanation shown before a booking has been approved and scheduled.
  *
- * @param props - Schedule assignment data and management permissions.
- * @returns Schedule detail section or null.
+ * @param props - Schedule assignment data, permissions, and role-aware copy flag.
+ * @returns Schedule detail section with assignment controls or availability copy.
  */
 export function ScheduleSection({
   assignableStaff,
   booking,
   canManageAssignments,
+  showManagerAssignmentAvailabilityCopy = false,
 }: {
   assignableStaff: AssignableStaff[];
   booking: BookingDetailsItem;
   canManageAssignments: boolean;
+  showManagerAssignmentAvailabilityCopy?: boolean;
 }) {
   if (!booking.scheduleItem) {
-    return null;
+    return (
+      <BookingInfoSection title="Schedule">
+        <div className="sm:col-span-2">
+          <BookingInfoField
+            label="Assigned staff"
+            value={
+              <p className="text-sm text-muted-foreground">
+                {showManagerAssignmentAvailabilityCopy
+                  ? MANAGER_ASSIGNMENT_AVAILABILITY_MESSAGE
+                  : READ_ONLY_ASSIGNMENT_AVAILABILITY_MESSAGE}
+              </p>
+            }
+          />
+        </div>
+      </BookingInfoSection>
+    );
   }
 
   return (
-    <Section title="Schedule">
-      <Field label="Scheduled date" value={formatDate(booking.scheduleItem.date)} />
-      <Field
+    <BookingInfoSection title="Schedule">
+      <BookingInfoField
+        label="Scheduled date"
+        value={formatBookingDate(booking.scheduleItem.date)}
+      />
+      <BookingInfoField
         label="Scheduled time"
-        value={formatTimeOrTbd(booking.scheduleItem.startTime)}
+        value={formatBookingTimeOrTbd(booking.scheduleItem.startTime)}
       />
       {booking.scheduleItem.scheduleNotes ? (
         <div className="sm:col-span-2">
-          <Field label="Schedule notes" value={booking.scheduleItem.scheduleNotes} />
+          <BookingInfoField
+            label="Schedule notes"
+            value={booking.scheduleItem.scheduleNotes}
+          />
         </div>
       ) : null}
       <div className="sm:col-span-2">
@@ -43,6 +75,6 @@ export function ScheduleSection({
           scheduleItemId={booking.scheduleItem.id}
         />
       </div>
-    </Section>
+    </BookingInfoSection>
   );
 }

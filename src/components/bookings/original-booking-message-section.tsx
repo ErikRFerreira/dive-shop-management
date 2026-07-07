@@ -1,5 +1,4 @@
 import { TextFieldEmptyState } from '@/components/common/text-field-empty-state';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookingInfoSection } from './booking-info-layout';
 
 /**

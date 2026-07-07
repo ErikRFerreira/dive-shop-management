@@ -135,7 +135,7 @@ test('renders the details summary and internal notes variants', () => {
   );
 
   expect(screen.getByText('Booking reference')).not.toBeNull();
-  expect(screen.getByText('booking-1')).not.toBeNull();
+  expect(screen.getByText(/Booking ID:/)).not.toBeNull();
   expect(screen.getAllByText('Hotel / pickup location').length).toBeGreaterThan(
     0,
   );
@@ -158,7 +158,7 @@ test('renders the review summary and customer-service internal notes variant', (
   );
 
   expect(screen.getByText('Booking summary')).not.toBeNull();
-  expect(screen.getByText('booking-1')).not.toBeNull();
+  expect(screen.getByText(/Booking ID:/)).not.toBeNull();
   expect(screen.getByText('Activity')).not.toBeNull();
   expect(screen.getAllByText('Hotel / pickup location').length).toBeGreaterThan(
     0,
