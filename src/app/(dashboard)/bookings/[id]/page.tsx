@@ -1,6 +1,7 @@
 import BookingDetails from '@/components/bookings/booking-details';
 import {
   canApproveBookingRequest,
+  canCancelBooking,
   canReviewBooking,
   canEditBooking,
   canResubmitBookingForApproval,
@@ -43,6 +44,10 @@ async function BookingDetailsPage({ params }: Props) {
     <BookingDetails
       assignableStaff={assignableStaff}
       booking={booking}
+      canCancel={
+        booking.status === BookingStatus.SCHEDULED &&
+        canCancelBooking(currentUser, booking.status)
+      }
       canManageAssignments={canManageAssignments}
       canShowManagerAssignmentAvailabilityCopy={canApproveBookingRequest(
         currentUser,

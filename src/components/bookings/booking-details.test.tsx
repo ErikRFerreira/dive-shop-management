@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
@@ -14,6 +14,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   addScheduleAssignment: vi.fn(),
+  cancelBooking: vi.fn(),
   refresh: vi.fn(),
   removeScheduleAssignment: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
@@ -29,6 +30,10 @@ vi.mock('@/features/schedule/actions', () => ({
   addScheduleAssignment: mocks.addScheduleAssignment,
   removeScheduleAssignment: mocks.removeScheduleAssignment,
   updateScheduleAssignmentRole: mocks.updateScheduleAssignmentRole,
+}));
+
+vi.mock('@/features/bookings/actions', () => ({
+  cancelBooking: mocks.cancelBooking,
 }));
 
 vi.mock('@/components/ui/select', () => {
@@ -165,9 +170,14 @@ vi.mock('@/components/ui/select', () => {
   };
 });
 
+beforeEach(() => {
+  mocks.cancelBooking.mockResolvedValue({});
+});
+
 afterEach(() => {
   cleanup();
   mocks.addScheduleAssignment.mockReset();
+  mocks.cancelBooking.mockReset();
   mocks.refresh.mockReset();
   mocks.removeScheduleAssignment.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
@@ -311,6 +321,7 @@ function renderBookingDetails(
     <BookingDetails
       assignableStaff={[]}
       booking={booking()}
+      canCancel={false}
       canEdit={false}
       canManageAssignments={false}
       canShowManagerAssignmentAvailabilityCopy={false}
@@ -319,6 +330,15 @@ function renderBookingDetails(
       {...props}
     />,
   );
+}
+
+/**
+ * Creates a promise that intentionally remains unresolved for pending UI tests.
+ *
+ * @returns A never-resolving promise for mocked workflow server actions.
+ */
+function pendingPromise() {
+  return new Promise(() => {});
 }
 
 test('hides assignment controls before a booking has a schedule item', () => {
@@ -396,6 +416,66 @@ test('renders schedule action for scheduled bookings with schedule items', () =>
 
   expect(screen.getByRole('link', { name: 'View schedule' })).not.toBeNull();
   expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+});
+
+test('renders scheduled cancellation action for authorized detail users', async () => {
+  renderBookingDetails({
+    booking: booking({
+      status: BookingStatus.SCHEDULED,
+      scheduleItem: {
+        id: 'schedule-1',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        startTime: '08:00',
+        scheduleNotes: null,
+        assignments: [],
+      },
+    }),
+    canCancel: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel booking' }));
+
+  expect(await screen.findByText('Cancel scheduled booking?')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'This booking is already on the schedule. Cancelling it will remove it from active schedule views and assigned staff will no longer see it as active work.',
+    ),
+  ).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Keep booking' })).not.toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel booking' }));
+
+  expect(mocks.cancelBooking).toHaveBeenCalled();
+});
+
+test('shows pending copy while detail scheduled cancellation submits', async () => {
+  mocks.cancelBooking.mockReturnValue(pendingPromise());
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.SCHEDULED }),
+    canCancel: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel booking' }));
+  const cancelButton = await screen.findByRole('button', {
+    name: 'Cancel booking',
+  });
+  fireEvent.click(cancelButton);
+
+  const pendingButton = await screen.findByRole('button', {
+    name: 'Cancelling...',
+  });
+
+  expect(pendingButton.hasAttribute('disabled')).toBe(true);
+  expect(mocks.cancelBooking).toHaveBeenCalledTimes(1);
+});
+
+test('hides scheduled cancellation action when detail user cannot cancel', () => {
+  renderBookingDetails({
+    booking: booking({ status: BookingStatus.SCHEDULED }),
+    canCancel: false,
+  });
+
+  expect(screen.queryByRole('button', { name: 'Cancel booking' })).toBeNull();
 });
 
 test('renders read-only navigation for cancelled bookings', () => {
