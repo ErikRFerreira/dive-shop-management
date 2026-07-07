@@ -43,6 +43,8 @@ export function BookingDetailsSection({
   activities,
   getFieldError,
 }: BookingDetailsSectionProps) {
+  const sourceError = getFieldError('source');
+  const numberOfPeopleError = getFieldError('numberOfPeople');
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'activities',
@@ -51,49 +53,63 @@ export function BookingDetailsSection({
   return (
     <>
       <BookingFormSection sectionNumber={2} title="Booking summary">
-        <BookingFormField
-          id="source"
-          label="Source / referrer"
-          required
-          error={getFieldError('source')}
-        >
-          <Controller
-            control={form.control}
-            name="source"
-            render={({ field }) => (
-              <EnumSelect
-                id={field.name}
-                value={field.value}
-                onValueChange={field.onChange}
-                values={bookingSourceOptions}
-                placeholder="Select source"
-                className={inputClassName}
-              />
-            )}
-          />
-        </BookingFormField>
-        <BookingFormField id="referrerName" label="Referrer name">
-          <Input
-            id="referrerName"
-            {...form.register('referrerName')}
-            className={inputClassName}
-          />
-        </BookingFormField>
-        <BookingFormField
-          id="numberOfPeople"
-          label="Total participants"
-          required
-          error={getFieldError('numberOfPeople')}
-        >
-          <Input
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <BookingFormField id="source" label="Source / referrer" required>
+            <Controller
+              control={form.control}
+              name="source"
+              render={({ field }) => (
+                <EnumSelect
+                  id={field.name}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  values={bookingSourceOptions}
+                  placeholder="Select source"
+                  className={inputClassName}
+                />
+              )}
+            />
+          </BookingFormField>
+          <BookingFormField id="referrerName" label="Referrer name">
+            <Input
+              id="referrerName"
+              {...form.register('referrerName')}
+              className={inputClassName}
+            />
+          </BookingFormField>
+          {sourceError ? (
+            <p
+              className="text-sm text-destructive md:col-span-2"
+              role="alert"
+            >
+              {sourceError}
+            </p>
+          ) : null}
+        </div>
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+          <BookingFormField
             id="numberOfPeople"
-            type="number"
-            min="1"
-            step="1"
-            {...form.register('numberOfPeople')}
-            className={inputClassName}
-          />
-        </BookingFormField>
+            label="Total participants"
+            required
+          >
+            <Input
+              id="numberOfPeople"
+              type="number"
+              min="1"
+              step="1"
+              {...form.register('numberOfPeople')}
+              className={inputClassName}
+            />
+          </BookingFormField>
+          {numberOfPeopleError ? (
+            <p
+              className="text-sm text-destructive md:col-span-2"
+              role="alert"
+            >
+              {numberOfPeopleError}
+            </p>
+          ) : null}
+        </div>
         <BookingFormField
           id="internalNotes"
           label="Internal notes"

@@ -303,7 +303,7 @@ export function BookingForm(props: BookingFormProps) {
                   Review and save your changes
                 </p>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-2">
                 <BookingFormActions
                   mode="edit"
                   layout="rail"
