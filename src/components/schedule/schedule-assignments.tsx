@@ -2,8 +2,16 @@
 
 import { Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useId, useMemo, useState, useTransition } from 'react';
+import {
+  FormEvent,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 
+import { PendingButton } from '@/components/common/pending-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -204,9 +212,11 @@ function ScheduleAssignmentRow({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const pendingActionRef = useRef(false);
   const [error, setError] = useState<string>();
   const roleSelectId = useId();
   const isCompactLayout = variant === 'compact' || variant === 'dialog';
+  const isActionPending = isPending || pendingActionRef.current;
 
   /**
    * Updates the assignment role through the schedule assignment server action.
@@ -214,10 +224,19 @@ function ScheduleAssignmentRow({
    * @param role - New schedule assignment role selected by the manager.
    */
   function handleRoleChange(role: ScheduleAssignmentRoleValue) {
+    if (pendingActionRef.current) {
+      return;
+    }
+
+    pendingActionRef.current = true;
     setError(undefined);
     startTransition(async () => {
-      const result = await updateScheduleAssignmentRole(assignment.id, role);
-      handleAssignmentActionResult(result, router.refresh, setError);
+      try {
+        const result = await updateScheduleAssignmentRole(assignment.id, role);
+        handleAssignmentActionResult(result, router.refresh, setError);
+      } finally {
+        pendingActionRef.current = false;
+      }
     });
   }
 
@@ -225,10 +244,19 @@ function ScheduleAssignmentRow({
    * Removes the current staff assignment through the server action.
    */
   function handleRemoveAssignment() {
+    if (pendingActionRef.current) {
+      return;
+    }
+
+    pendingActionRef.current = true;
     setError(undefined);
     startTransition(async () => {
-      const result = await removeScheduleAssignment(assignment.id);
-      handleAssignmentActionResult(result, router.refresh, setError);
+      try {
+        const result = await removeScheduleAssignment(assignment.id);
+        handleAssignmentActionResult(result, router.refresh, setError);
+      } finally {
+        pendingActionRef.current = false;
+      }
     });
   }
 
@@ -284,7 +312,7 @@ function ScheduleAssignmentRow({
               Assignment role
             </Label>
             <Select
-              disabled={isPending}
+              disabled={isActionPending}
               onValueChange={handleRoleChange}
               value={assignment.role}
             >
@@ -310,7 +338,7 @@ function ScheduleAssignmentRow({
                 ? 'justify-self-start sm:justify-self-end'
                 : undefined
             }
-            disabled={isPending}
+            disabled={isActionPending}
             onClick={handleRemoveAssignment}
             size="icon-sm"
             type="button"
@@ -341,6 +369,7 @@ export function ScheduleAssignmentForm({
 }: ScheduleAssignmentFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const pendingActionRef = useRef(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ScheduleAssignmentRoleValue>(
     ScheduleAssignmentRole.STAFF,
@@ -352,6 +381,7 @@ export function ScheduleAssignmentForm({
     () => getAvailableAssignableStaff(assignableStaff, assignments),
     [assignableStaff, assignments],
   );
+  const isActionPending = isPending || pendingActionRef.current;
 
   /**
    * Adds the selected staff user to the schedule item.
@@ -360,6 +390,11 @@ export function ScheduleAssignmentForm({
    */
   function handleAddAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (pendingActionRef.current) {
+      return;
+    }
+
     setError(undefined);
 
     if (!selectedUserId) {
@@ -367,18 +402,23 @@ export function ScheduleAssignmentForm({
       return;
     }
 
+    pendingActionRef.current = true;
     startTransition(async () => {
-      const result = await addScheduleAssignment(
-        scheduleItemId,
-        selectedUserId,
-        selectedRole,
-      );
+      try {
+        const result = await addScheduleAssignment(
+          scheduleItemId,
+          selectedUserId,
+          selectedRole,
+        );
 
-      if (result.success) {
-        setSelectedUserId('');
+        if (result.success) {
+          setSelectedUserId('');
+        }
+
+        handleAssignmentActionResult(result, router.refresh, setError);
+      } finally {
+        pendingActionRef.current = false;
       }
-
-      handleAssignmentActionResult(result, router.refresh, setError);
     });
   }
 
@@ -405,7 +445,7 @@ export function ScheduleAssignmentForm({
             Staff
           </Label>
           <Select
-            disabled={isPending || availableStaff.length === 0}
+            disabled={isActionPending || availableStaff.length === 0}
             onValueChange={setSelectedUserId}
             value={selectedUserId}
           >
@@ -436,7 +476,7 @@ export function ScheduleAssignmentForm({
             Role
           </Label>
           <Select
-            disabled={isPending}
+            disabled={isActionPending}
             onValueChange={(role) =>
               setSelectedRole(role as ScheduleAssignmentRoleValue)
             }
@@ -456,19 +496,17 @@ export function ScheduleAssignmentForm({
         </div>
 
         <div className="flex items-end">
-          <Button
-            disabled={isPending || availableStaff.length === 0}
+          <PendingButton
+            disabled={availableStaff.length === 0}
+            pending={isActionPending}
+            pendingLabel="Adding..."
             type="submit"
           >
-            {variant === 'dialog' && !isPending ? (
+            {variant === 'dialog' ? (
               <Plus className="h-4 w-4" />
             ) : null}
-            {isPending
-              ? 'Adding...'
-              : variant === 'dialog'
-                ? 'Add'
-                : 'Add assignment'}
-          </Button>
+            {variant === 'dialog' ? 'Add' : 'Add assignment'}
+          </PendingButton>
         </div>
       </div>
 

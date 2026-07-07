@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, useWatch, type FieldPath } from 'react-hook-form';
 
 import {
@@ -70,6 +70,8 @@ export function BookingForm(props: BookingFormProps) {
   const [submitIntent, setSubmitIntent] = useState<SubmitIntent>(
     isEdit ? 'edit' : 'draft',
   );
+  const [pendingIntent, setPendingIntent] = useState<SubmitIntent | null>(null);
+  const pendingIntentRef = useRef<SubmitIntent | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const form = useForm<BookingFormValues>({
     defaultValues: editProps?.initialValues ?? bookingFormDefaultValues,
@@ -101,10 +103,30 @@ export function BookingForm(props: BookingFormProps) {
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
   );
 
+  /**
+   * Reads one field's current validation error from react-hook-form state.
+   *
+   * @param path - Booking form field path to inspect.
+   * @returns The current validation message for the field, when present.
+   */
   function getFieldError(path: FieldPath<BookingFormValues>) {
     return form.getFieldState(path, form.formState).error?.message;
   }
 
+  /**
+   * Releases the client-side action lock after validation or action failure.
+   */
+  function releasePendingIntent() {
+    pendingIntentRef.current = null;
+    setPendingIntent(null);
+  }
+
+  /**
+   * Applies validation errors returned by client or server-side booking checks.
+   *
+   * @param fieldErrors - Field-specific validation messages keyed by form path.
+   * @param nextFormErrors - Form-level errors shown in the readiness/action rail.
+   */
   function showValidationErrors(
     fieldErrors: BookingIntakeFieldErrors,
     nextFormErrors: string[],
@@ -122,6 +144,12 @@ export function BookingForm(props: BookingFormProps) {
     setFormErrors(nextFormErrors);
   }
 
+  /**
+   * Validates and persists the booking according to the requested workflow action.
+   *
+   * @param values - Current booking form values.
+   * @param intent - Workflow action the user started.
+   */
   async function submitBooking(
     values: BookingFormValues,
     intent: SubmitIntent,
@@ -141,24 +169,36 @@ export function BookingForm(props: BookingFormProps) {
     );
     if (!validation.success) {
       showValidationErrors(validation.fieldErrors, validation.formErrors);
+      releasePendingIntent();
       return;
     }
 
-    const result = isEdit
-      ? intent === 'submit'
-        ? await submitEditedBookingForApproval(editProps!.bookingId, values)
-        : intent === 'resubmit'
-          ? await resubmitEditedBookingForApproval(editProps!.bookingId, values)
-          : await updateBooking(editProps!.bookingId, values)
-      : intent === 'draft'
-        ? await createBookingDraft(values)
-        : await submitBookingForApproval(values);
+    const result = await (async () => {
+      try {
+        return isEdit
+          ? intent === 'submit'
+            ? await submitEditedBookingForApproval(editProps!.bookingId, values)
+            : intent === 'resubmit'
+              ? await resubmitEditedBookingForApproval(
+                  editProps!.bookingId,
+                  values,
+                )
+              : await updateBooking(editProps!.bookingId, values)
+          : intent === 'draft'
+            ? await createBookingDraft(values)
+            : await submitBookingForApproval(values);
+      } catch (error) {
+        releasePendingIntent();
+        throw error;
+      }
+    })();
 
     if (!result.success) {
       showValidationErrors(
         result.fieldErrors,
         result.formError ? [result.formError] : [],
       );
+      releasePendingIntent();
       return;
     }
 
@@ -166,10 +206,24 @@ export function BookingForm(props: BookingFormProps) {
     router.push(result.redirectTo);
   }
 
+  /**
+   * Starts one booking form action and ignores competing actions while pending.
+   *
+   * @param intent - Workflow action requested by the clicked button or form submit.
+   */
   function submitCurrentForm(intent: SubmitIntent) {
+    if (pendingIntentRef.current) {
+      return;
+    }
+
+    pendingIntentRef.current = intent;
+    setPendingIntent(intent);
     setSubmitIntent(intent);
     showValidationErrors({}, []);
-    void form.handleSubmit((values) => submitBooking(values, intent))();
+    void form.handleSubmit(
+      (values) => submitBooking(values, intent),
+      releasePendingIntent,
+    )();
   }
 
   const isPaidDeposit =
@@ -181,6 +235,8 @@ export function BookingForm(props: BookingFormProps) {
       ...collectBookingFormErrorMessages(form.formState.errors),
     ]),
   ];
+  const isActionPending = pendingIntent !== null || isSubmitting;
+  const activeSubmitIntent = pendingIntent ?? submitIntent;
   const createReadinessItems = buildCreateReadinessItems({
     activities,
     amount,
@@ -196,10 +252,12 @@ export function BookingForm(props: BookingFormProps) {
       mode="create"
       layout="rail"
       errorMessages={[]}
-      isSubmitting={isSubmitting}
-      submitIntent={submitIntent === 'edit' ? 'draft' : submitIntent}
+      isSubmitting={isActionPending}
+      submitIntent={
+        activeSubmitIntent === 'edit' ? 'draft' : activeSubmitIntent
+      }
       onSaveDraft={() => submitCurrentForm('draft')}
-      onSubmitForApproval={() => setSubmitIntent('submit')}
+      onSubmitForApproval={() => submitCurrentForm('submit')}
       clearAutosave={clearAutosave}
     />
   );
@@ -250,9 +308,9 @@ export function BookingForm(props: BookingFormProps) {
                   mode="edit"
                   layout="rail"
                   errorMessages={errorMessages}
-                  isSubmitting={isSubmitting}
+                  isSubmitting={isActionPending}
                   initialStatus={editProps!.initialStatus}
-                  submitIntent={submitIntent}
+                  submitIntent={activeSubmitIntent}
                   cancelHref={`/bookings/${editProps!.bookingId}`}
                   onSaveChanges={() => submitCurrentForm('edit')}
                   onSubmitForApproval={() => submitCurrentForm('submit')}
