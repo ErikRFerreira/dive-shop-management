@@ -641,12 +641,13 @@ export async function markBookingNeedsMoreInfo(
 
 /**
  * Cancels a booking request without deleting any related booking, customer,
- * diver, or deposit records.
+ * diver, deposit, schedule, or assignment records.
  *
  * Pending Approval and Needs More Info bookings are removed from the review
- * workflow with a status update. Scheduled bookings are unpublished from the
- * internal schedule in the same transaction as the status change, so a booking
- * cannot remain scheduled after its ScheduleItem is removed.
+ * workflow with a status update. Scheduled bookings are unpublished from active
+ * schedule and assignment views by setting the booking status to `CANCELLED`;
+ * stale ScheduleItem and ScheduleAssignment rows are preserved for historical
+ * context and remain excluded by official schedule queries.
  *
  * @param _previousState - Previous form action state supplied by React.
  * @param formData - Form payload containing the `bookingId` to cancel.
@@ -723,41 +724,6 @@ export async function cancelBooking(
     status: BookingStatus.CANCELLED,
     ...(adminNotes !== null ? { adminNotes } : {}),
   };
-
-  if (booking.status === BookingStatus.SCHEDULED) {
-    const transactionError = await db.$transaction(async (transaction) => {
-      const result = await transaction.bookingRequest.updateMany({
-        where: {
-          id: booking.id,
-          status: BookingStatus.SCHEDULED,
-        },
-        data: updateData,
-      });
-
-      if (result.count !== 1) {
-        return {
-          formError:
-            'This booking was updated by another user. Refresh and try again.',
-        };
-      }
-
-      await transaction.scheduleItem.deleteMany({
-        where: {
-          bookingRequestId: booking.id,
-        },
-      });
-
-      return null;
-    });
-
-    if (transactionError) {
-      return transactionError;
-    }
-
-    revalidateBookingWorkflowPaths(booking.id);
-    revalidateSchedulePath();
-    redirect(`/bookings/${booking.id}`);
-  }
 
   const result = await db.bookingRequest.updateMany({
     where: {

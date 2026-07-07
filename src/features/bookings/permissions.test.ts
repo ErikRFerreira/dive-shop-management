@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 
 import {
   canApproveBookingRequest,
+  canCancelBooking,
   canEditBooking,
   canReviewBooking,
   canViewBooking,
@@ -63,6 +64,19 @@ test('allows only admin and manager users to approve bookings', () => {
     false,
   );
   expect(canApproveBookingRequest({ role: UserRole.INSTRUCTOR })).toBe(false);
+});
+
+test.each([
+  [UserRole.ADMIN, BookingStatus.SCHEDULED, true],
+  [UserRole.MANAGER, BookingStatus.SCHEDULED, true],
+  [UserRole.ADMIN, BookingStatus.PENDING_APPROVAL, true],
+  [UserRole.MANAGER, BookingStatus.NEEDS_MORE_INFO, true],
+  [UserRole.CUSTOMER_SERVICE, BookingStatus.SCHEDULED, false],
+  [UserRole.INSTRUCTOR, BookingStatus.SCHEDULED, false],
+  [UserRole.ADMIN, BookingStatus.DRAFT, false],
+  [UserRole.MANAGER, BookingStatus.CANCELLED, false],
+] as const)('allows cancellation for %s on %s: %s', (role, status, expected) => {
+  expect(canCancelBooking({ role }, status)).toBe(expected);
 });
 
 test('allows only the owner in Customer Service to resubmit a booking', () => {
@@ -129,6 +143,26 @@ test.each([
   [
     { id: 'instructor', role: UserRole.INSTRUCTOR },
     { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    [],
+  ],
+  [
+    { id: 'admin', role: UserRole.ADMIN },
+    { createdById: 'owner', status: BookingStatus.SCHEDULED },
+    ['view', 'cancel'],
+  ],
+  [
+    { id: 'manager', role: UserRole.MANAGER },
+    { createdById: 'owner', status: BookingStatus.SCHEDULED },
+    ['view', 'cancel'],
+  ],
+  [
+    { id: 'owner', role: UserRole.CUSTOMER_SERVICE },
+    { createdById: 'owner', status: BookingStatus.SCHEDULED },
+    ['view'],
+  ],
+  [
+    { id: 'instructor', role: UserRole.INSTRUCTOR },
+    { createdById: 'owner', status: BookingStatus.SCHEDULED },
     [],
   ],
 ] as const)(

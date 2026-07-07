@@ -11,7 +11,7 @@ import type { CurrentUser } from '@/lib/current-user';
 
 import { canTransitionBookingStatus } from './status';
 
-export type BookingRowAction = 'view' | 'edit' | 'review';
+export type BookingRowAction = 'view' | 'edit' | 'review' | 'cancel';
 
 type BookingRowPermissionSubject = {
   createdById: string;
@@ -116,6 +116,29 @@ export function canApproveBookingRequest(
 ) {
   return (
     currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
+  );
+}
+
+/**
+ * Determines whether the current user may cancel a booking in its current state.
+ *
+ * Cancellation is an administrative workflow decision. Admin and Manager users
+ * may cancel only statuses that are valid transitions to `CANCELLED`; Customer
+ * Service and Instructor users are intentionally excluded even if they can view
+ * the booking row.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @param status - The booking status being cancelled.
+ * @returns `true` when the user's role and booking status permit cancellation.
+ */
+export function canCancelBooking(
+  currentUser: Pick<CurrentUser, 'role'>,
+  status: BookingStatus,
+) {
+  return (
+    (currentUser.role === UserRole.ADMIN ||
+      currentUser.role === UserRole.MANAGER) &&
+    canTransitionBookingStatus(status, BookingStatus.CANCELLED)
   );
 }
 
@@ -231,6 +254,13 @@ export function getAvailableBookingRowActions(
 
   if (canReviewBooking(currentUser, booking.status)) {
     actions.push('review');
+  }
+
+  if (
+    booking.status === BookingStatus.SCHEDULED &&
+    canCancelBooking(currentUser, booking.status)
+  ) {
+    actions.push('cancel');
   }
 
   return actions;
