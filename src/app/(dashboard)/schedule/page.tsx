@@ -1,5 +1,5 @@
 import { ScheduleCalendar } from '@/components/schedule/schedule-calendar';
-import { ScheduleFilters } from '@/components/schedule/schedule-filters';
+import { SchedulePageShell } from '@/components/schedule/schedule-page-shell';
 import {
   Card,
   CardDescription,
@@ -52,21 +52,21 @@ async function SchedulePage({
         description="Approved bookings and scheduled activities for daily operations."
       />
 
-      <ScheduleFilters
+      <SchedulePageShell
         assignableStaff={assignableStaff}
         filters={scheduleFilters}
-      />
+      >
+        {scheduleEvents.length === 0 ? (
+          <ScheduleEmptyState filters={scheduleFilters} />
+        ) : null}
 
-      {scheduleEvents.length === 0 ? (
-        <ScheduleEmptyState filters={scheduleFilters} />
-      ) : null}
-
-      <ScheduleCalendar
-        assignableStaff={canManageAssignments ? assignableStaff : []}
-        canManageAssignments={canManageAssignments}
-        canViewBookingDetails={canViewBookingDetails}
-        events={scheduleEvents}
-      />
+        <ScheduleCalendar
+          assignableStaff={canManageAssignments ? assignableStaff : []}
+          canManageAssignments={canManageAssignments}
+          canViewBookingDetails={canViewBookingDetails}
+          events={scheduleEvents}
+        />
+      </SchedulePageShell>
     </div>
   );
 }

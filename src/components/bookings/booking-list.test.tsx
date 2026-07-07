@@ -15,6 +15,7 @@ import {
   UserRole,
 } from '@/generated/prisma/enums';
 import { BookingList } from './booking-list';
+import { BookingListPendingSkeleton } from './list/booking-list-loading';
 
 afterEach(() => {
   cleanup();
@@ -437,6 +438,22 @@ test('renders empty state without count label or pagination', () => {
   });
 
   expect(screen.getByText('No bookings found')).not.toBeNull();
+  expect(screen.queryByText(/Showing \d+ of \d+ bookings/)).toBeNull();
+  expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
+});
+
+test('renders pending feedback with a table-shaped bookings skeleton', () => {
+  render(<BookingListPendingSkeleton />);
+
+  expect(screen.getByRole('status').textContent).toBe('Updating results...');
+  expect(screen.getByRole('columnheader', { name: 'Status' })).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Booking' })).not.toBeNull();
+  expect(
+    screen.getByRole('columnheader', { name: 'Activity / Schedule' }),
+  ).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Updated' })).not.toBeNull();
+  expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
   expect(screen.queryByText(/Showing \d+ of \d+ bookings/)).toBeNull();
   expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
 });
