@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { PendingButton } from '@/components/common/pending-button';
 import { Button } from '@/components/ui/button';
 import { BookingStatus } from '@/generated/prisma/enums';
 import { cn } from '@/lib/utils';
@@ -94,82 +95,101 @@ export function BookingFormActions({
       <div className={actionsClassName}>
         {props.mode === 'edit' ? (
           <>
-            <Button asChild type="button" variant="outline">
-              <Link href={props.cancelHref} onClick={props.clearAutosave}>
+            {isSubmitting ? (
+              <Button disabled type="button" variant="outline">
                 Cancel
-              </Link>
-            </Button>
-            <Button
-              disabled={isSubmitting}
+              </Button>
+            ) : (
+              <Button asChild type="button" variant="outline">
+                <Link href={props.cancelHref} onClick={props.clearAutosave}>
+                  Cancel
+                </Link>
+              </Button>
+            )}
+            <PendingButton
               onClick={props.onSaveChanges}
+              pending={isSubmitting && props.submitIntent === 'edit'}
+              pendingLabel="Saving..."
               type="button"
             >
-              {isSubmitting && props.submitIntent === 'edit'
-                ? 'Saving...'
-                : 'Save Changes'}
-            </Button>
+              Save Changes
+            </PendingButton>
             {props.initialStatus === BookingStatus.DRAFT ? (
-              <Button
+              <PendingButton
                 disabled={isSubmitting}
                 onClick={props.onSubmitForApproval}
+                pending={isSubmitting && props.submitIntent === 'submit'}
+                pendingLabel="Submitting..."
                 type="button"
               >
                 <Send />
-                {isSubmitting && props.submitIntent === 'submit'
-                  ? 'Submitting...'
-                  : 'Submit for Approval'}
-              </Button>
+                Submit for Approval
+              </PendingButton>
             ) : null}
             {props.initialStatus === BookingStatus.NEEDS_MORE_INFO ? (
-              <Button
+              <PendingButton
                 disabled={isSubmitting}
                 onClick={props.onResubmitForApproval}
+                pending={isSubmitting && props.submitIntent === 'resubmit'}
+                pendingLabel="Resubmitting..."
                 type="button"
               >
                 <Send />
-                {isSubmitting && props.submitIntent === 'resubmit'
-                  ? 'Resubmitting...'
-                  : 'Resubmit for Approval'}
-              </Button>
+                Resubmit for Approval
+              </PendingButton>
             ) : null}
           </>
         ) : (
           <>
-            <Button
-              type="submit"
+            <PendingButton
+              type="button"
               disabled={isSubmitting}
               onClick={props.onSubmitForApproval}
               className={buttonClassName}
+              pending={isSubmitting && props.submitIntent === 'submit'}
+              pendingLabel="Submitting..."
             >
               <Send />
-              {isSubmitting && props.submitIntent === 'submit'
-                ? 'Submitting...'
-                : 'Submit for Approval'}
-            </Button>
-            <Button
+              Submit for Approval
+            </PendingButton>
+            <PendingButton
               type="button"
               variant="outline"
               disabled={isSubmitting}
               onClick={props.onSaveDraft}
               className={buttonClassName}
+              pending={isSubmitting && props.submitIntent === 'draft'}
+              pendingLabel="Saving draft..."
             >
-              {isSubmitting && props.submitIntent === 'draft'
-                ? 'Saving...'
-                : 'Save Draft'}
-            </Button>
-            <Button
-              asChild
-              type="button"
-              variant={isRailLayout ? 'ghost' : 'outline'}
-              className={cn(
-                buttonClassName,
-                isRailLayout && 'text-muted-foreground',
-              )}
-            >
-              <Link href="/bookings" onClick={props.clearAutosave}>
+              Save Draft
+            </PendingButton>
+            {isSubmitting ? (
+              <Button
+                disabled
+                type="button"
+                variant={isRailLayout ? 'ghost' : 'outline'}
+                className={cn(
+                  buttonClassName,
+                  isRailLayout && 'text-muted-foreground',
+                )}
+              >
                 Cancel
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                type="button"
+                variant={isRailLayout ? 'ghost' : 'outline'}
+                className={cn(
+                  buttonClassName,
+                  isRailLayout && 'text-muted-foreground',
+                )}
+              >
+                <Link href="/bookings" onClick={props.clearAutosave}>
+                  Cancel
+                </Link>
+              </Button>
+            )}
           </>
         )}
       </div>

@@ -90,6 +90,11 @@ export function ScheduleEventDialogContent({
               value={event.hotel ?? 'No hotel / pickup location recorded'}
             />
             <SummaryField
+              icon={FileText}
+              label="Source"
+              value={formatSourceSummary(event)}
+            />
+            <SummaryField
               icon={Users}
               label="Customers"
               value={<CustomersSummary customers={event.customers} />}
@@ -130,7 +135,7 @@ export function ScheduleEventDialogContent({
             type="button"
             variant="outline"
           >
-            {isManagingAssignments ? 'Close assignments' : 'Manage assignments'}
+            {isManagingAssignments ? 'Done managing' : 'Manage assignments'}
           </Button>
         ) : null}
         {canViewBookingDetails ? (
@@ -325,7 +330,29 @@ function getActivityCategoryLabel(activityType: ActivityType) {
  * @returns Staff-facing date with time range, start time, or TBD label.
  */
 function formatDateTimeSummary(event: SerializedScheduleCalendarEvent) {
-  return `${formatDisplayDate(new Date(event.date))} · ${formatEventTimeLabel(event)}`;
+  const date = formatDisplayDate(new Date(event.date));
+
+  if (event.isTimeTbd) {
+    return `${date} / time TBD`;
+  }
+
+  return `${date} / ${formatEventTimeLabel(event)}`;
+}
+
+/**
+ * Formats booking source and referrer details for the schedule event dialog.
+ *
+ * @param event - Selected schedule event with source and referrer metadata.
+ * @returns Source/referrer summary, or a calm missing-data label.
+ */
+function formatSourceSummary(event: SerializedScheduleCalendarEvent) {
+  if (!event.source) {
+    return 'No source recorded';
+  }
+
+  const source = formatEnumLabel(event.source);
+
+  return event.referrerName ? `${source} / ${event.referrerName}` : source;
 }
 
 /**

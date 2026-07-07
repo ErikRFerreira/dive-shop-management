@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { PendingButton } from '@/components/common/pending-button';
 import { Textarea } from '@/components/ui/textarea';
 import { approveBooking } from '@/features/bookings/actions';
 
@@ -55,10 +55,14 @@ export function ApproveBookingForm({
         />
       </div>
       <ActionError message={state.formError} />
-      <Button disabled={pending} type="submit">
+      <PendingButton
+        pending={pending}
+        pendingLabel="Approving..."
+        type="submit"
+      >
         <CalendarCheck />
-        {pending ? 'Approving...' : 'Approve & Schedule'}
-      </Button>
+        Approve & Schedule
+      </PendingButton>
     </form>
   );
 }

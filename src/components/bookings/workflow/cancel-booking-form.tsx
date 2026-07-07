@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 
 import { AlertTriangle, XCircle } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { PendingButton } from '@/components/common/pending-button';
 import { Textarea } from '@/components/ui/textarea';
 import { cancelBooking } from '@/features/bookings/actions';
 import { BookingStatus } from '@/generated/prisma/enums';
@@ -60,19 +60,16 @@ export function CancelBookingForm({
         />
       </div>
       <ActionError message={state.formError} />
-      <Button
+      <PendingButton
         className="border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20"
-        disabled={pending}
+        pending={pending}
+        pendingLabel="Cancelling..."
         type="submit"
         variant="outline"
       >
         <XCircle className="h-4 w-4" />
-        {pending
-          ? 'Cancelling...'
-          : isScheduled
-            ? 'Cancel Scheduled Booking'
-            : 'Cancel / Reject'}
-      </Button>
+        {isScheduled ? 'Cancel Scheduled Booking' : 'Cancel / Reject'}
+      </PendingButton>
     </form>
   );
 }
