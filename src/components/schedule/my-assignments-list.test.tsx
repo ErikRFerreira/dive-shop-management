@@ -1,7 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import type { MyScheduleAssignment } from '@/features/schedule/types';
+import type {
+  MyScheduleAssignment,
+  MyScheduleAssignmentBriefing,
+} from '@/features/schedule/types';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -19,150 +22,302 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test('renders a whole-page empty state when there are no assignments', () => {
-  render(<MyAssignmentsList assignments={[]} />);
-
-  expect(
-    screen.getByText('You have no assigned activities today or upcoming'),
-  ).not.toBeNull();
-  expect(
-    screen.getByText(
-      'Assigned activities will appear here after a manager adds you to the schedule.',
-    ),
-  ).not.toBeNull();
-});
-
-test('renders assignments grouped into today tomorrow and upcoming sections', () => {
+test('renders summary counts and next assignment metadata', () => {
   render(
     <MyAssignmentsList
-      assignments={[
-        assignment({
-          scheduleItemId: 'today',
-          date: new Date('2026-06-28T00:00:00.000Z'),
-          primaryCustomerName: 'Today Customer',
-        }),
-        assignment({
-          scheduleItemId: 'tomorrow',
-          bookingId: 'booking-2',
-          date: new Date('2026-06-29T00:00:00.000Z'),
-          primaryCustomerName: 'Tomorrow Customer',
-          startTime: null,
-          endTime: null,
-          isTimeTbd: true,
-        }),
-        assignment({
-          scheduleItemId: 'upcoming',
-          bookingId: 'booking-3',
-          date: new Date('2026-07-02T00:00:00.000Z'),
-          primaryCustomerName: 'Upcoming Customer',
-        }),
-      ]}
+      briefing={briefing({
+        todayAssignments: [
+          assignment({
+            scheduleItemId: 'today',
+            primaryCustomerName: 'Today Customer',
+          }),
+        ],
+        tomorrowAssignments: [
+          assignment({
+            scheduleItemId: 'tomorrow',
+            bookingId: 'booking-2',
+            date: new Date('2026-06-29T00:00:00.000Z'),
+            primaryCustomerName: 'Tomorrow Customer',
+          }),
+        ],
+        upcomingAssignments: [
+          assignment({
+            scheduleItemId: 'upcoming',
+            bookingId: 'booking-3',
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            primaryCustomerName: 'Upcoming Customer',
+          }),
+        ],
+        summary: {
+          todayCount: 1,
+          tomorrowCount: 1,
+          upcomingCount: 3,
+          nextAssignment: {
+            date: new Date('2026-06-28T00:00:00.000Z'),
+            activitySummary: 'Fun Dive',
+          },
+        },
+      })}
     />,
   );
 
-  expect(screen.getByRole('heading', { name: 'Today' })).not.toBeNull();
-  expect(screen.getByRole('heading', { name: 'Tomorrow' })).not.toBeNull();
-  expect(screen.getByRole('heading', { name: 'Upcoming' })).not.toBeNull();
-  expect(screen.getByText('Today Customer')).not.toBeNull();
-  expect(screen.getByText('Tomorrow Customer')).not.toBeNull();
+  expect(screen.getAllByText('Today').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Tomorrow').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Upcoming').length).toBeGreaterThan(0);
+  expect(screen.getByText('Next assignment')).not.toBeNull();
+  expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByText('3')).not.toBeNull();
+  expect(screen.getAllByText('28 Jun 2026').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
+});
+
+test('renders today and tomorrow assignment cards with compact empty states', () => {
+  render(
+    <MyAssignmentsList
+      briefing={briefing({
+        upcomingAssignments: [
+          assignment({
+            scheduleItemId: 'upcoming',
+            bookingId: 'booking-3',
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            primaryCustomerName: 'Upcoming Customer',
+            customers: [
+              {
+                name: 'Upcoming Customer',
+                chineseName: null,
+                isPrimaryContact: true,
+                role: BookingCustomerRole.PRIMARY_CONTACT,
+              },
+            ],
+          }),
+        ],
+        summary: {
+          todayCount: 0,
+          tomorrowCount: 0,
+          upcomingCount: 1,
+          nextAssignment: {
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            activitySummary: 'Fun Dive',
+          },
+        },
+      })}
+    />,
+  );
+
+  expect(screen.getByText('No assigned activities today.')).not.toBeNull();
+  expect(screen.getByText('No assigned activities tomorrow.')).not.toBeNull();
   expect(screen.getByText('Upcoming Customer')).not.toBeNull();
 });
 
-test('renders assignment card details without edit or booking links', () => {
+test('renders upcoming assignments in a scalable table', () => {
   render(
     <MyAssignmentsList
-      assignments={[
-        assignment({
-          scheduleItemId: 'schedule-1',
-          date: new Date('2026-06-28T00:00:00.000Z'),
-          startTime: '08:00',
-          endTime: '12:30',
-          isTimeTbd: false,
-          activitySummary: 'Fun Dive + Snorkeling',
-          primaryCustomerName: 'Maria Santos',
-          customers: [
-            {
-              name: 'Maria Santos',
-              chineseName: null,
-              isPrimaryContact: true,
-              role: BookingCustomerRole.PRIMARY_CONTACT,
-            },
-            {
-              name: 'Participant Diver',
-              chineseName: null,
-              isPrimaryContact: false,
-              role: BookingCustomerRole.PARTICIPANT,
-            },
-            {
-              name: 'Second Diver',
-              chineseName: null,
-              isPrimaryContact: false,
-              role: BookingCustomerRole.PARTICIPANT,
-            },
-            {
-              name: 'Third Diver / 第三位',
-              chineseName: '第三位',
-              isPrimaryContact: false,
-              role: BookingCustomerRole.PARTICIPANT,
-            },
-          ],
-          numberOfPeople: 3,
-          hotel: 'Primary Booking Hotel',
-          scheduleNotes: 'Meet at the shop.',
-          assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
-        }),
-      ]}
+      briefing={briefing({
+        upcomingAssignments: [
+          assignment({
+            scheduleItemId: 'upcoming',
+            bookingId: 'booking-3',
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            primaryCustomerName: 'Upcoming Customer',
+            customers: [
+              {
+                name: 'Upcoming Customer',
+                chineseName: null,
+                isPrimaryContact: true,
+                role: BookingCustomerRole.PRIMARY_CONTACT,
+              },
+              {
+                name: 'Second Diver',
+                chineseName: null,
+                isPrimaryContact: false,
+                role: BookingCustomerRole.PARTICIPANT,
+              },
+            ],
+            hotel: 'Harbor Hotel',
+            scheduleNotes: null,
+            assignmentRole: ScheduleAssignmentRole.ASSISTANT_INSTRUCTOR,
+          }),
+        ],
+        summary: {
+          todayCount: 0,
+          tomorrowCount: 0,
+          upcomingCount: 1,
+          nextAssignment: {
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            activitySummary: 'Fun Dive',
+          },
+        },
+      })}
     />,
   );
 
-  expect(screen.getByText('Fun Dive + Snorkeling')).not.toBeNull();
-  expect(screen.getAllByText('Maria Santos')).toHaveLength(2);
-  expect(screen.getByText('28 Jun 2026')).not.toBeNull();
-  expect(screen.getByText('08:00 - 12:30')).not.toBeNull();
-  expect(screen.getByText('Customers/divers')).not.toBeNull();
+  const table = screen.getByRole('table');
+  expect(within(table).getByText('Date / Time')).not.toBeNull();
+  expect(within(table).getByText('Activity')).not.toBeNull();
+  expect(within(table).getByText('Customer / Divers')).not.toBeNull();
+  expect(within(table).getByText('Location')).not.toBeNull();
+  expect(within(table).getByText('Role')).not.toBeNull();
+  expect(within(table).getByText('Notes')).not.toBeNull();
+  expect(within(table).getByText('Actions')).not.toBeNull();
+  expect(within(table).getByText('02 Jul 2026')).not.toBeNull();
+  expect(within(table).getByText('Upcoming Customer')).not.toBeNull();
+  expect(within(table).getByText('Second Diver')).not.toBeNull();
+  expect(within(table).getByText('Hotel / pickup: Harbor Hotel')).not.toBeNull();
+  expect(within(table).getByText('Assistant Instructor')).not.toBeNull();
+  expect(within(table).getByText('No notes')).not.toBeNull();
+  expect(within(table).getByText('Read-only')).not.toBeNull();
+});
+
+test('renders capped upcoming footer copy', () => {
+  render(
+    <MyAssignmentsList
+      briefing={briefing({
+        upcomingAssignments: Array.from({ length: 20 }, (_, index) =>
+          assignment({
+            scheduleItemId: `upcoming-${index}`,
+            bookingId: `booking-${index}`,
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            primaryCustomerName: `Upcoming Customer ${index}`,
+          }),
+        ),
+        summary: {
+          todayCount: 0,
+          tomorrowCount: 0,
+          upcomingCount: 42,
+          nextAssignment: {
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            activitySummary: 'Fun Dive',
+          },
+        },
+      })}
+    />,
+  );
+
+  expect(screen.getByText('Showing next 20 assignments')).not.toBeNull();
+});
+
+test('renders personal assignment details without edit or booking actions', () => {
+  render(
+    <MyAssignmentsList
+      briefing={briefing({
+        todayAssignments: [
+          assignment({
+            scheduleItemId: 'schedule-1',
+            startTime: '08:00',
+            endTime: '12:30',
+            isTimeTbd: false,
+            activitySummary: 'Fun Dive + Snorkeling',
+            primaryCustomerName: 'Maria Santos',
+            customers: [
+              {
+                name: 'Maria Santos',
+                chineseName: null,
+                isPrimaryContact: true,
+                role: BookingCustomerRole.PRIMARY_CONTACT,
+              },
+              {
+                name: 'Participant Diver',
+                chineseName: null,
+                isPrimaryContact: false,
+                role: BookingCustomerRole.PARTICIPANT,
+              },
+              {
+                name: 'Second Diver',
+                chineseName: null,
+                isPrimaryContact: false,
+                role: BookingCustomerRole.PARTICIPANT,
+              },
+            ],
+            numberOfPeople: 3,
+            hotel: 'Primary Booking Hotel',
+            scheduleNotes: 'Meet at the shop.',
+            assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          }),
+        ],
+        summary: {
+          todayCount: 1,
+          tomorrowCount: 0,
+          upcomingCount: 0,
+          nextAssignment: {
+            date: new Date('2026-06-28T00:00:00.000Z'),
+            activitySummary: 'Fun Dive + Snorkeling',
+          },
+        },
+      })}
+    />,
+  );
+
+  expect(screen.getAllByText('Maria Santos').length).toBeGreaterThan(0);
   expect(screen.getByText('Participant Diver')).not.toBeNull();
   expect(screen.getByText('Second Diver')).not.toBeNull();
-  expect(screen.getByText('Third Diver / 第三位')).not.toBeNull();
-  expect(screen.getByText('Primary')).not.toBeNull();
-  expect(screen.queryByText('3 people/divers')).toBeNull();
-  expect(screen.getByText('Primary Booking Hotel')).not.toBeNull();
-  expect(screen.getByText('Fun Dive')).not.toBeNull();
-  expect(screen.getByText('Snorkeling')).not.toBeNull();
-  expect(
-    screen.queryByText(/Other customers\/divers:|\+ 1 more/),
-  ).toBeNull();
+  expect(screen.getByText('Hotel / pickup: Primary Booking Hotel')).not.toBeNull();
+  expect(screen.getAllByText('28 Jun 2026').length).toBeGreaterThan(0);
+  expect(screen.getByText('08:00 - 12:30')).not.toBeNull();
+  expect(screen.getAllByText('Fun Dive + Snorkeling').length).toBeGreaterThan(0);
   expect(screen.getByText('Meet at the shop.')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
   expect(screen.queryByRole('link')).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
   expect(screen.queryByText('Edit booking')).toBeNull();
+  expect(screen.queryByText('Review booking')).toBeNull();
+  expect(screen.queryByText('Approve booking')).toBeNull();
   expect(screen.queryByText('Cancel booking')).toBeNull();
-  expect(screen.queryByText('Add assignment')).toBeNull();
+  expect(screen.queryByText('Manage assignments')).toBeNull();
 });
 
-test('renders TBD time and section empty states when only one bucket has work', () => {
+test('renders missing hotel pickup and time fallback safely', () => {
   render(
     <MyAssignmentsList
-      assignments={[
-        assignment({
-          scheduleItemId: 'tomorrow',
-          date: new Date('2026-06-29T00:00:00.000Z'),
-          startTime: null,
-          endTime: null,
-          isTimeTbd: true,
-        }),
-      ]}
+      briefing={briefing({
+        todayAssignments: [
+          assignment({
+            scheduleItemId: 'schedule-1',
+            startTime: null,
+            endTime: null,
+            isTimeTbd: false,
+            hotel: null,
+          }),
+        ],
+        summary: {
+          todayCount: 1,
+          tomorrowCount: 0,
+          upcomingCount: 0,
+          nextAssignment: {
+            date: new Date('2026-06-28T00:00:00.000Z'),
+            activitySummary: 'Fun Dive',
+          },
+        },
+      })}
     />,
   );
 
-  expect(
-    screen.getByText('You have no assigned activities today.'),
-  ).not.toBeNull();
-  expect(
-    screen.getByText('You have no upcoming assigned activities.'),
-  ).not.toBeNull();
-  expect(screen.getByText('TBD')).not.toBeNull();
+  expect(screen.getByText('Time TBD')).not.toBeNull();
+  expect(screen.getByText('Hotel / pickup: Not recorded')).not.toBeNull();
 });
+
+/**
+ * Builds a complete briefing payload for My Assignments component tests.
+ *
+ * @param overrides - Briefing fields to replace for a specific assertion.
+ * @returns A My Assignments briefing suitable for rendering tests.
+ */
+function briefing(
+  overrides: Partial<MyScheduleAssignmentBriefing> = {},
+): MyScheduleAssignmentBriefing {
+  return {
+    todayAssignments: [],
+    tomorrowAssignments: [],
+    upcomingAssignments: [],
+    upcomingLimit: 20,
+    summary: {
+      todayCount: 0,
+      tomorrowCount: 0,
+      upcomingCount: 0,
+      nextAssignment: null,
+    },
+    ...overrides,
+  };
+}
 
 /**
  * Builds a complete personal assignment record for component tests.

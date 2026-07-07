@@ -16,6 +16,7 @@ import {
   DepositStatus,
   PreferredLanguage,
 } from '@/generated/prisma/enums';
+import { hasPersistableBookingCustomer } from './form-mappers';
 import { primaryContactMethodError } from './validation-messages';
 import type { NormalizedBookingFormValues } from './types';
 
@@ -145,12 +146,7 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
  * @returns - True if there is at least one meaningful customer; otherwise, false.
  */
 function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
-  return values.customers.some((customer) =>
-    Object.entries(customer).some(
-      ([field, value]) =>
-        field !== 'role' && value !== null && value !== undefined,
-    ),
-  );
+  return values.customers.some(hasPersistableBookingCustomer);
 }
 
 /**

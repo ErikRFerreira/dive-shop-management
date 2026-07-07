@@ -10,6 +10,7 @@ import {
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
+  count: vi.fn(),
   findMany: vi.fn(),
   findManyUsers: vi.fn(),
 }));
@@ -19,6 +20,7 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/lib/db', () => ({
   db: {
     scheduleItem: {
+      count: mocks.count,
       findMany: mocks.findMany,
     },
     user: {
@@ -30,6 +32,7 @@ vi.mock('@/lib/db', () => ({
 import {
   buildSchedulePageWhere,
   getAssignableStaff,
+  getMyScheduleAssignmentBriefing,
   getMyScheduleAssignments,
   getScheduleItemsForCalendar,
   getScheduledBookingsForSchedulePage,
@@ -132,8 +135,10 @@ function scheduleCalendarQueryItem(
 }
 
 beforeEach(() => {
+  mocks.count.mockReset();
   mocks.findMany.mockReset();
   mocks.findManyUsers.mockReset();
+  vi.useRealTimers();
 });
 
 test('queries only official scheduled bookings in sorted order', async () => {
@@ -485,6 +490,8 @@ test('queries active instructors and divemasters as assignable staff', async () 
 });
 
 test('queries my assignments with scheduled status and current user assignment filter', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
   mocks.findMany.mockResolvedValue([]);
 
   await getMyScheduleAssignments(instructorUser);
@@ -494,6 +501,9 @@ test('queries my assignments with scheduled status and current user assignment f
       where: {
         bookingRequest: {
           status: BookingStatus.SCHEDULED,
+        },
+        date: {
+          gte: new Date('2026-07-14T00:00:00.000Z'),
         },
         assignments: {
           some: {
@@ -511,6 +521,8 @@ test('queries my assignments with scheduled status and current user assignment f
 });
 
 test('queries divemaster assignments with the current user assignment filter', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
   mocks.findMany.mockResolvedValue([]);
 
   await getMyScheduleAssignments(divemasterUser);
@@ -520,6 +532,9 @@ test('queries divemaster assignments with the current user assignment filter', a
       where: {
         bookingRequest: {
           status: BookingStatus.SCHEDULED,
+        },
+        date: {
+          gte: new Date('2026-07-14T00:00:00.000Z'),
         },
         assignments: {
           some: {
@@ -682,6 +697,168 @@ test('maps my assignments with the current user role from multiple assignments',
       assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
     },
   ]);
+});
+
+test('queries my assignment briefing with date buckets, upcoming cap, and total count', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
+  const todayItem = scheduleCalendarQueryItem({
+    id: 'today-schedule',
+    date: new Date('2026-07-14T00:00:00.000Z'),
+    assignments: [
+      {
+        id: 'assignment-current',
+        userId: instructorUser.id,
+        role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+        notes: null,
+        user: {
+          id: instructorUser.id,
+          name: 'Inez Instructor',
+          email: 'inez@example.test',
+          role: UserRole.INSTRUCTOR,
+        },
+      },
+    ],
+  });
+  const tomorrowItem = scheduleCalendarQueryItem({
+    id: 'tomorrow-schedule',
+    date: new Date('2026-07-15T00:00:00.000Z'),
+    assignments: [
+      {
+        id: 'assignment-current',
+        userId: instructorUser.id,
+        role: ScheduleAssignmentRole.ASSISTANT_INSTRUCTOR,
+        notes: null,
+        user: {
+          id: instructorUser.id,
+          name: 'Inez Instructor',
+          email: 'inez@example.test',
+          role: UserRole.INSTRUCTOR,
+        },
+      },
+    ],
+  });
+  const upcomingItem = scheduleCalendarQueryItem({
+    id: 'upcoming-schedule',
+    date: new Date('2026-07-16T00:00:00.000Z'),
+    assignments: [
+      {
+        id: 'assignment-current',
+        userId: instructorUser.id,
+        role: ScheduleAssignmentRole.DIVEMASTER,
+        notes: null,
+        user: {
+          id: instructorUser.id,
+          name: 'Inez Instructor',
+          email: 'inez@example.test',
+          role: UserRole.INSTRUCTOR,
+        },
+      },
+    ],
+  });
+
+  mocks.findMany
+    .mockResolvedValueOnce([todayItem])
+    .mockResolvedValueOnce([tomorrowItem])
+    .mockResolvedValueOnce([upcomingItem]);
+  mocks.count.mockResolvedValue(8);
+
+  await expect(getMyScheduleAssignmentBriefing(instructorUser)).resolves.toEqual({
+    todayAssignments: [expect.objectContaining({ scheduleItemId: 'today-schedule' })],
+    tomorrowAssignments: [
+      expect.objectContaining({ scheduleItemId: 'tomorrow-schedule' }),
+    ],
+    upcomingAssignments: [
+      expect.objectContaining({ scheduleItemId: 'upcoming-schedule' }),
+    ],
+    upcomingLimit: 20,
+    summary: {
+      todayCount: 1,
+      tomorrowCount: 1,
+      upcomingCount: 8,
+      nextAssignment: {
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        activitySummary: 'Fun Dive',
+      },
+    },
+  });
+
+  expect(mocks.findMany).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({
+      where: expect.objectContaining({
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        date: {
+          gte: new Date('2026-07-14T00:00:00.000Z'),
+          lt: new Date('2026-07-15T00:00:00.000Z'),
+        },
+        assignments: {
+          some: {
+            userId: instructorUser.id,
+          },
+        },
+      }),
+    }),
+  );
+  expect(mocks.findMany).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({
+      where: expect.objectContaining({
+        date: {
+          gte: new Date('2026-07-15T00:00:00.000Z'),
+          lt: new Date('2026-07-16T00:00:00.000Z'),
+        },
+      }),
+    }),
+  );
+  expect(mocks.findMany).toHaveBeenNthCalledWith(
+    3,
+    expect.objectContaining({
+      take: 20,
+      where: expect.objectContaining({
+        date: {
+          gte: new Date('2026-07-16T00:00:00.000Z'),
+        },
+      }),
+    }),
+  );
+  expect(mocks.count).toHaveBeenCalledWith({
+    where: expect.objectContaining({
+      bookingRequest: {
+        status: BookingStatus.SCHEDULED,
+      },
+      date: {
+        gte: new Date('2026-07-16T00:00:00.000Z'),
+      },
+      assignments: {
+        some: {
+          userId: instructorUser.id,
+        },
+      },
+    }),
+  });
+});
+
+test('does not query my assignment briefing for unauthorized users', async () => {
+  await expect(
+    getMyScheduleAssignmentBriefing(customerServiceUser),
+  ).resolves.toEqual({
+    todayAssignments: [],
+    tomorrowAssignments: [],
+    upcomingAssignments: [],
+    upcomingLimit: 20,
+    summary: {
+      todayCount: 0,
+      tomorrowCount: 0,
+      upcomingCount: 0,
+      nextAssignment: null,
+    },
+  });
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+  expect(mocks.count).not.toHaveBeenCalled();
 });
 
 test('scopes customer service schedule rows to their own bookings', () => {

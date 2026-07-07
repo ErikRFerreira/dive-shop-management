@@ -16,6 +16,7 @@ import { ScheduleSection } from './sections/schedule-section';
 type Props = {
   assignableStaff: AssignableStaff[];
   booking: BookingDetailsItem;
+  canCancel: boolean;
   canEdit: boolean;
   canManageAssignments: boolean;
   canShowManagerAssignmentAvailabilityCopy: boolean;
@@ -32,6 +33,7 @@ type Props = {
 function BookingDetails({
   assignableStaff,
   booking,
+  canCancel,
   canEdit,
   canManageAssignments,
   canShowManagerAssignmentAvailabilityCopy,
@@ -61,6 +63,7 @@ function BookingDetails({
             actions={actions}
             activities={activities}
             booking={booking}
+            canCancel={canCancel}
             canResubmit={canResubmit}
           />
         }

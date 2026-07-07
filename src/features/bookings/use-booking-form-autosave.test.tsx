@@ -263,6 +263,80 @@ test('retries draft edit submission after fixing the primary contact method', as
   });
 });
 
+test('unlocks incomplete linked customers after submit validation errors', async () => {
+  vi.mocked(submitEditedBookingForApproval).mockResolvedValue({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      initialStatus={BookingStatus.DRAFT}
+      initialValues={{
+        ...bookingFormDefaultValues,
+        activities: [
+          {
+            ...bookingFormDefaultValues.activities[0],
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            requestedDate: '2026-07-14',
+          },
+        ],
+        numberOfPeople: '1',
+        source: BookingSource.EMAIL,
+        customers: [
+          {
+            ...bookingFormDefaultValues.customers[0],
+            customerId: 'customer-1',
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+          },
+        ],
+      }}
+    />,
+  );
+
+  expect(screen.getByText('Linked existing customer')).not.toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
+
+  expect(
+    await screen.findByText(
+      'Customer name is required before submitting for approval.',
+    ),
+  ).not.toBeNull();
+  await waitFor(() => {
+    expect(screen.queryByText('Linked existing customer')).toBeNull();
+  });
+
+  const customerNameInput = screen.getByLabelText(
+    /Customer name/,
+  ) as HTMLInputElement;
+  expect(customerNameInput.readOnly).toBe(false);
+  expect(customerNameInput.getAttribute('aria-readonly')).toBeNull();
+
+  fireEvent.change(customerNameInput, {
+    target: { value: 'Maria Santos' },
+  });
+  fireEvent.change(screen.getByLabelText('Email'), {
+    target: { value: 'maria@example.com' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
+
+  await waitFor(() => {
+    expect(submitEditedBookingForApproval).toHaveBeenCalledTimes(1);
+  });
+  expect(submitEditedBookingForApproval).toHaveBeenCalledWith(
+    'booking-1',
+    expect.objectContaining({
+      customers: [
+        expect.not.objectContaining({
+          customerId: 'customer-1',
+        }),
+      ],
+    }),
+  );
+});
+
 test('shows resubmit action only for editable Needs More Info bookings', () => {
   render(
     <BookingForm

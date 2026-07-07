@@ -7,6 +7,7 @@
 
 import { BookingStatus } from '@/generated/prisma/enums';
 import {
+  filterPersistableBookingCustomers,
   hasMeaningfulDeposit,
   normalizeBookingFormValues,
 } from '@/features/bookings/form-mappers';
@@ -121,6 +122,8 @@ async function replaceActivities(
 
 /**
  * Replaces the booking customer links for a booking request.
+ * Blank/default rows are ignored so draft saves do not create anonymous
+ * customer records or placeholder booking links.
  *
  * @param transaction - The database transaction object.
  * @param bookingRequestId - The ID of the booking request.
@@ -131,20 +134,22 @@ async function replaceBookingCustomers(
   bookingRequestId: string,
   bookingValues: NormalizedBookingFormValues,
 ) {
+  const persistableBookingValues =
+    filterPersistableBookingCustomers(bookingValues);
   const customerIds = await resolveBookingCustomerIds(
     transaction,
-    bookingValues,
+    persistableBookingValues,
   );
 
   await transaction.bookingCustomer.deleteMany({
     where: { bookingRequestId },
   });
 
-  if (bookingValues.customers.length > 0) {
+  if (persistableBookingValues.customers.length > 0) {
     await transaction.bookingCustomer.createMany({
       data: mapBookingCustomerCreateManyData(
         bookingRequestId,
-        bookingValues.customers,
+        persistableBookingValues.customers,
         customerIds,
       ),
     });

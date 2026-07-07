@@ -1,6 +1,5 @@
 import { Menu } from 'lucide-react';
 
-import AppSearch from '../common/app-search';
 import { ModeToggle } from '../common/mode-toggle';
 import { useMobileMenu } from '@/components/layout/mobile-menu-provider';
 import { Button } from '@/components/ui/button';

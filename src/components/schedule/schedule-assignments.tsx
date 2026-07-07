@@ -213,10 +213,11 @@ function ScheduleAssignmentRow({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const pendingActionRef = useRef(false);
+  const [isActionInFlight, setIsActionInFlight] = useState(false);
   const [error, setError] = useState<string>();
   const roleSelectId = useId();
   const isCompactLayout = variant === 'compact' || variant === 'dialog';
-  const isActionPending = isPending || pendingActionRef.current;
+  const isActionPending = isPending || isActionInFlight;
 
   /**
    * Updates the assignment role through the schedule assignment server action.
@@ -224,11 +225,12 @@ function ScheduleAssignmentRow({
    * @param role - New schedule assignment role selected by the manager.
    */
   function handleRoleChange(role: ScheduleAssignmentRoleValue) {
-    if (pendingActionRef.current) {
+    if (pendingActionRef.current || isActionPending) {
       return;
     }
 
     pendingActionRef.current = true;
+    setIsActionInFlight(true);
     setError(undefined);
     startTransition(async () => {
       try {
@@ -236,6 +238,7 @@ function ScheduleAssignmentRow({
         handleAssignmentActionResult(result, router.refresh, setError);
       } finally {
         pendingActionRef.current = false;
+        setIsActionInFlight(false);
       }
     });
   }
@@ -244,11 +247,12 @@ function ScheduleAssignmentRow({
    * Removes the current staff assignment through the server action.
    */
   function handleRemoveAssignment() {
-    if (pendingActionRef.current) {
+    if (pendingActionRef.current || isActionPending) {
       return;
     }
 
     pendingActionRef.current = true;
+    setIsActionInFlight(true);
     setError(undefined);
     startTransition(async () => {
       try {
@@ -256,6 +260,7 @@ function ScheduleAssignmentRow({
         handleAssignmentActionResult(result, router.refresh, setError);
       } finally {
         pendingActionRef.current = false;
+        setIsActionInFlight(false);
       }
     });
   }
@@ -370,6 +375,7 @@ export function ScheduleAssignmentForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const pendingActionRef = useRef(false);
+  const [isActionInFlight, setIsActionInFlight] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ScheduleAssignmentRoleValue>(
     ScheduleAssignmentRole.STAFF,
@@ -381,7 +387,7 @@ export function ScheduleAssignmentForm({
     () => getAvailableAssignableStaff(assignableStaff, assignments),
     [assignableStaff, assignments],
   );
-  const isActionPending = isPending || pendingActionRef.current;
+  const isActionPending = isPending || isActionInFlight;
 
   /**
    * Adds the selected staff user to the schedule item.
@@ -391,7 +397,7 @@ export function ScheduleAssignmentForm({
   function handleAddAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (pendingActionRef.current) {
+    if (pendingActionRef.current || isActionPending) {
       return;
     }
 
@@ -403,6 +409,7 @@ export function ScheduleAssignmentForm({
     }
 
     pendingActionRef.current = true;
+    setIsActionInFlight(true);
     startTransition(async () => {
       try {
         const result = await addScheduleAssignment(
@@ -418,6 +425,7 @@ export function ScheduleAssignmentForm({
         handleAssignmentActionResult(result, router.refresh, setError);
       } finally {
         pendingActionRef.current = false;
+        setIsActionInFlight(false);
       }
     });
   }

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { BookingDetailAction } from './booking-detail-actions';
 import type { BookingActivityDisplay } from './booking-detail-display';
+import { CancelScheduledBookingAction } from './cancel-scheduled-booking-action';
 import {
   formatCustomerName,
   getPrimaryBookingCustomer,
@@ -31,6 +32,7 @@ type BookingDetailsRailProps = {
   actions: BookingDetailAction[];
   activities: BookingActivityDisplay[];
   booking: BookingDetailsItem;
+  canCancel: boolean;
   canResubmit: boolean;
 };
 
@@ -243,10 +245,12 @@ function getStatusDescription(status: BookingStatus) {
 function BookingStatusRailCard({
   actions,
   booking,
+  canCancel,
   canResubmit,
 }: {
   actions: BookingDetailAction[];
   booking: BookingDetailsItem;
+  canCancel: boolean;
   canResubmit: boolean;
 }) {
   return (
@@ -271,6 +275,9 @@ function BookingStatusRailCard({
           </div>
         ) : null}
         <BookingDetailActions actions={actions} />
+        {canCancel ? (
+          <CancelScheduledBookingAction bookingId={booking.id} />
+        ) : null}
         {canResubmit ? (
           <ResubmitBookingForApprovalForm bookingId={booking.id} />
         ) : null}
@@ -342,6 +349,7 @@ export function BookingDetailsRail({
   actions,
   activities,
   booking,
+  canCancel,
   canResubmit,
 }: BookingDetailsRailProps) {
   const reviewReadinessItems = buildReviewReadinessItems(booking, activities);
@@ -351,6 +359,7 @@ export function BookingDetailsRail({
       <BookingStatusRailCard
         actions={actions}
         booking={booking}
+        canCancel={canCancel}
         canResubmit={canResubmit}
       />
       {booking.status !== BookingStatus.CANCELLED && (

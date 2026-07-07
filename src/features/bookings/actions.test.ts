@@ -565,7 +565,7 @@ test('stores trimmed admin notes when cancelling a pending booking', async () =>
 });
 
 test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
-  'allows %s to cancel a scheduled booking and remove its schedule item',
+  'allows %s to cancel a scheduled booking while preserving schedule history',
   async (role) => {
     mocks.requireCurrentUser.mockResolvedValue({
       id: `${role.toLowerCase()}-1`,
@@ -583,8 +583,7 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
       ),
     ).rejects.toThrow('redirect:/bookings/booking-1');
 
-    expect(mocks.transactionRunner).toHaveBeenCalledTimes(1);
-    expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith({
+    expect(mocks.updateMany).toHaveBeenCalledWith({
       where: {
         id: 'booking-1',
         status: BookingStatus.SCHEDULED,
@@ -594,11 +593,8 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
         adminNotes: 'Customer cancelled after scheduling.',
       },
     });
-    expect(mocks.transaction.scheduleItem.deleteMany).toHaveBeenCalledWith({
-      where: {
-        bookingRequestId: 'booking-1',
-      },
-    });
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+    expect(mocks.transaction.scheduleItem.deleteMany).not.toHaveBeenCalled();
     expect(mocks.transaction.bookingActivity.deleteMany).not.toHaveBeenCalled();
     expect(mocks.transaction.bookingCustomer.deleteMany).not.toHaveBeenCalled();
     expect(mocks.transaction.deposit.delete).not.toHaveBeenCalled();
@@ -611,6 +607,8 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
       '/bookings/booking-1/edit',
     );
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
   },
 );
 
@@ -628,7 +626,7 @@ test('preserves existing admin notes when cancelling a scheduled booking without
     ),
   ).rejects.toThrow('redirect:/bookings/booking-1');
 
-  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+  expect(mocks.updateMany).toHaveBeenCalledWith(
     expect.objectContaining({
       data: {
         status: BookingStatus.CANCELLED,
@@ -760,7 +758,7 @@ test('does not remove a schedule item when a scheduled cancellation update is st
     role: UserRole.ADMIN,
   });
   mocks.findUnique.mockResolvedValue(scheduledBooking());
-  mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 0 });
+  mocks.updateMany.mockResolvedValue({ count: 0 });
 
   await expect(
     cancelBooking(
@@ -770,6 +768,7 @@ test('does not remove a schedule item when a scheduled cancellation update is st
   ).resolves.toEqual({
     formError: 'This booking was updated by another user. Refresh and try again.',
   });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
   expect(mocks.transaction.scheduleItem.deleteMany).not.toHaveBeenCalled();
 });
 
@@ -1099,6 +1098,57 @@ test('creates a draft with a selected existing customer without duplicating the 
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
     data: [expect.objectContaining({ customerId: 'customer-1' })],
   });
+});
+
+test('creates a raw-text draft without persisting the default empty customer row', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+
+  await expect(
+    createBookingDraft({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer asked for course options but gave no details.',
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings',
+  });
+
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+});
+
+test('removes existing booking customer links when edit form only has an empty row', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.DRAFT,
+    createdById: 'customer-service-1',
+    customers: [{ customerId: 'blank-customer-1' }],
+    deposits: [],
+  });
+
+  await expect(
+    updateBooking('booking-1', {
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Keep the booking draft but remove blank customer data.',
+    }),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  expect(mocks.transaction.bookingCustomer.deleteMany).toHaveBeenCalledWith({
+    where: { bookingRequestId: 'booking-1' },
+  });
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
 });
 
 test('creates mixed existing and new booking customers in one transaction', async () => {

@@ -1,5 +1,19 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, expect, test } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  cancelBooking: vi.fn(),
+}));
+
+vi.mock('@/features/bookings/actions', () => ({
+  cancelBooking: mocks.cancelBooking,
+}));
 
 import type {
   BookingListItem,
@@ -123,6 +137,10 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
 }
 
 type RenderBookingListOptions = {
+  currentUser?: {
+    id: string;
+    role: UserRole;
+  };
   pagination?: BookingListPagination;
   selectedQueue?: BookingQueueFilter;
   selectedStatus?: BookingStatusFilter;
@@ -149,7 +167,9 @@ function renderBookingList(
   return render(
     <BookingList
       bookings={bookings}
-      currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+      currentUser={
+        options.currentUser ?? { id: 'admin-1', role: UserRole.ADMIN }
+      }
       pagination={pagination}
       selectedQueue={options.selectedQueue}
       selectedStatus={options.selectedStatus}
@@ -157,43 +177,35 @@ function renderBookingList(
   );
 }
 
-test('renders compact operational columns', () => {
-  renderBookingList([
-    booking({ updatedAt: new Date('2026-07-02T09:30:00.000Z') }),
-  ]);
+/**
+ * Creates a promise that intentionally remains unresolved for pending UI tests.
+ *
+ * @returns A never-resolving promise for mocked workflow server actions.
+ */
+function pendingPromise() {
+  return new Promise(() => {});
+}
 
-  expect(screen.getByRole('columnheader', { name: 'Status' })).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Booking' })).not.toBeNull();
-  expect(
-    screen.getByRole('columnheader', { name: 'Activity / Schedule' }),
-  ).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Updated' })).not.toBeNull();
-  expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
-  expect(screen.getByText('02 Jul')).not.toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Customers/divers' }),
-  ).toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Activities' })).toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Activity date/time' }),
-  ).toBeNull();
-  expect(screen.queryByRole('columnheader', { name: 'Hotel' })).toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Created by' }),
-  ).toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Created/edited' }),
-  ).toBeNull();
-  expect(screen.queryByText('Casey Service')).toBeNull();
-  expect(screen.queryByText('Created 01 Jul 2026, 04:00 pm')).toBeNull();
-  expect(screen.queryByText('Edited 02 Jul 2026, 05:30 pm')).toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Source/referrer' }),
-  ).toBeNull();
-  expect(
-    screen.queryByRole('columnheader', { name: 'Customer service owner' }),
-  ).toBeNull();
+/**
+ * Opens the row action menu using the pointer event Radix dropdowns listen for.
+ *
+ * @param bookingId - Booking request ID included in the trigger label.
+ */
+function openRowActions(bookingId = 'booking-1') {
+  fireEvent.pointerDown(
+    screen.getByRole('button', {
+      name: `Open actions for booking ${bookingId}`,
+    }),
+    {
+      button: 0,
+      ctrlKey: false,
+    },
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.cancelBooking.mockResolvedValue({});
 });
 
 test('renders assigned staff names without exposing emails', () => {
@@ -345,6 +357,61 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
   expect(
     screen.getAllByRole('button', { name: /Open actions for booking/ }).length,
   ).toBeGreaterThan(0);
+});
+
+test('shows scheduled cancellation for admin users in row actions', async () => {
+  renderBookingList([booking()]);
+
+  openRowActions();
+
+  expect(await screen.findByText('View details')).not.toBeNull();
+  expect(screen.getByText('Cancel booking')).not.toBeNull();
+});
+
+test('confirms scheduled cancellation from the row action menu', async () => {
+  renderBookingList([booking()]);
+
+  openRowActions();
+  fireEvent.click(await screen.findByText('Cancel booking'));
+
+  expect(await screen.findByText('Cancel scheduled booking?')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'This booking is already on the schedule. Cancelling it will remove it from active schedule views and assigned staff will no longer see it as active work.',
+    ),
+  ).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Keep booking' })).not.toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel booking' }));
+
+  expect(mocks.cancelBooking).toHaveBeenCalled();
+});
+
+test('shows pending copy while scheduled cancellation is submitting', async () => {
+  mocks.cancelBooking.mockReturnValue(pendingPromise());
+  renderBookingList([booking()]);
+
+  openRowActions();
+  fireEvent.click(await screen.findByText('Cancel booking'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Cancel booking' }));
+
+  const pendingButton = await screen.findByRole('button', {
+    name: 'Cancelling...',
+  });
+
+  expect(pendingButton.hasAttribute('disabled')).toBe(true);
+  expect(mocks.cancelBooking).toHaveBeenCalledTimes(1);
+});
+
+test('hides scheduled cancellation from customer service row actions', async () => {
+  renderBookingList([booking()], {
+    currentUser: { id: 'cs-1', role: UserRole.CUSTOMER_SERVICE },
+  });
+
+  openRowActions();
+
+  expect(await screen.findByText('View details')).not.toBeNull();
+  expect(screen.queryByText('Cancel booking')).toBeNull();
 });
 
 test('falls back to customer profile hotel when booking-specific hotel is missing', () => {

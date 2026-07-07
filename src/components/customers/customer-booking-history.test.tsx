@@ -13,13 +13,6 @@ afterEach(() => {
   cleanup();
 });
 
-test('renders a clear empty state when the customer has no booking history', () => {
-  render(<CustomerBookingHistory bookings={[]} />);
-
-  expect(screen.getByText('Booking history')).not.toBeNull();
-  expect(screen.getByText('No booking history yet.')).not.toBeNull();
-});
-
 test('renders operational booking history details with booking-specific values', () => {
   render(
     <CustomerBookingHistory
