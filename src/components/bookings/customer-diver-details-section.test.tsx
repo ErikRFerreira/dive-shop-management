@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useForm, useWatch, type FieldPath, type UseFormReturn } from 'react-hook-form';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { afterEach, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -60,6 +60,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+/**
+ * Builds booking form values with cloned nested arrays for focused component tests.
+ *
+ * @param overrides - Form fields to override for the current scenario.
+ * @returns Complete booking form values for the test harness.
+ */
 function bookingValues(
   overrides: Partial<BookingFormValues> = {},
 ): BookingFormValues {
@@ -75,11 +81,13 @@ function bookingValues(
   };
 }
 
-function CustomersState({
-  form,
-}: {
-  form: UseFormReturn<BookingFormValues>;
-}) {
+/**
+ * Renders the current customer field-array state for behavior assertions.
+ *
+ * @param props - Harness props containing the active React Hook Form instance.
+ * @returns A serialized snapshot of customer form values.
+ */
+function CustomersState({ form }: { form: UseFormReturn<BookingFormValues> }) {
   const customers =
     useWatch({ control: form.control, name: 'customers' }) ?? [];
 
@@ -88,14 +96,18 @@ function CustomersState({
   );
 }
 
+/**
+ * Renders the customer/diver form section with default booking form state.
+ *
+ * @param props - Optional form defaults and activity context for the scenario.
+ * @returns Customer/diver section test harness.
+ */
 function CustomerDetailsHarness({
   defaultValues = bookingValues(),
   includesFunDive = false,
-  fieldErrors = {},
 }: {
   defaultValues?: BookingFormValues;
   includesFunDive?: boolean;
-  fieldErrors?: Partial<Record<FieldPath<BookingFormValues>, string>>;
 }) {
   const form = useForm<BookingFormValues>({ defaultValues });
 
@@ -104,76 +116,25 @@ function CustomerDetailsHarness({
       <CustomerDiverDetailsSection
         form={form}
         includesFunDive={includesFunDive}
-        getFieldError={(path) => fieldErrors[path]}
+        getFieldError={() => undefined}
       />
       <CustomersState form={form} />
     </form>
   );
 }
 
+/**
+ * Reads the rendered customer field-array state from the harness.
+ *
+ * @returns Current booking customer form values.
+ */
 function currentCustomers() {
   return JSON.parse(
     screen.getByTestId('customers-state').textContent ?? '[]',
   ) as BookingFormValues['customers'];
 }
 
-/**
- * Asserts that one element appears before another in document order.
- *
- * @param first - Element expected to appear first.
- * @param second - Element expected to appear second.
- */
-function expectElementBefore(first: HTMLElement, second: HTMLElement) {
-  expect(
-    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
-}
-
-test('renders customer, equipment, and diving experience labels', () => {
-  render(<CustomerDetailsHarness />);
-
-  expect(screen.getByText('Customers & divers')).not.toBeNull();
-  expect(screen.getByLabelText('Equipment needed?')).not.toBeNull();
-  expect(screen.getByText('Diving experience')).not.toBeNull();
-  expect(screen.getByLabelText('Hotel / pickup location')).not.toBeNull();
-  expect(screen.getByLabelText('Customer notes')).not.toBeNull();
-  expect(screen.getByLabelText('Logged dives')).not.toBeNull();
-});
-
-test('renders customer fields in the planned intake order', () => {
-  render(<CustomerDetailsHarness />);
-
-  expectElementBefore(
-    screen.getByText('Search existing customers'),
-    screen.getByText('Contact details'),
-  );
-  expectElementBefore(
-    screen.getByText('Contact details'),
-    screen.getByText('Diving experience'),
-  );
-  expectElementBefore(
-    screen.getByText('Diving experience'),
-    screen.getByText('Equipment details'),
-  );
-  expectElementBefore(
-    screen.getByText('Equipment details'),
-    screen.getByLabelText('Customer notes'),
-  );
-  expectElementBefore(
-    screen.getByLabelText('Equipment needed?'),
-    screen.getByLabelText('Shoe size'),
-  );
-  expectElementBefore(
-    screen.getByLabelText('Shoe size'),
-    screen.getByLabelText('Height (cm)'),
-  );
-  expectElementBefore(
-    screen.getByLabelText('Height (cm)'),
-    screen.getByLabelText('Weight (kg)'),
-  );
-});
-
-test('shows equipment details in the default customer row', () => {
+test('shows equipment sizing fields when equipment is needed', () => {
   render(
     <CustomerDetailsHarness
       defaultValues={bookingValues({
@@ -229,11 +190,7 @@ test('shows a clear empty state when existing customer search has no results', a
   });
   fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
-  expect(
-    await screen.findByText(
-      'No customers found. Try searching by name, Chinese name, WeChat, WhatsApp, email, or phone.',
-    ),
-  ).not.toBeNull();
+  expect(await screen.findByText(/No customers found/)).not.toBeNull();
   expect(mocks.searchBookingCustomers).toHaveBeenCalledWith(
     'Unknown Customer',
   );

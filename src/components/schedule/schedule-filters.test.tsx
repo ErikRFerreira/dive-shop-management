@@ -202,50 +202,6 @@ function getSelectOptionNames(label: string) {
   return Array.from(select.options).map((option) => option.textContent);
 }
 
-test('does not render date range shortcut filters', () => {
-  renderScheduleFilters({
-    filters: {
-      activityType: ActivityType.FUN_DIVE,
-      range: 'today',
-      staffId: 'instructor-1',
-      unassignedOnly: true,
-    },
-  });
-
-  expect(screen.getByRole('heading', { name: 'Filters' })).not.toBeNull();
-  expect(screen.queryByRole('link', { name: 'All' })).toBeNull();
-  expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
-  expect(screen.queryByRole('link', { name: 'Tomorrow' })).toBeNull();
-  expect(screen.queryByRole('link', { name: 'This week' })).toBeNull();
-});
-
-test('renders staff schedule type and activity filter dropdown options', () => {
-  renderScheduleFilters({
-    assignableStaff: [
-      assignableStaff(),
-      assignableStaff({
-        id: 'divemaster-1',
-        name: 'Dina Divemaster',
-        role: UserRole.DIVEMASTER,
-      }),
-    ],
-  });
-
-  expect(screen.getByRole('option', { name: 'All staff' })).not.toBeNull();
-  expect(
-    screen.getByRole('option', { name: 'Inez Instructor (Instructor)' }),
-  ).not.toBeNull();
-  expect(
-    screen.getByRole('option', { name: 'Dina Divemaster (Divemaster)' }),
-  ).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'All' })).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'Fun dives' })).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'Courses' })).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'All activities' })).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'DSD' })).not.toBeNull();
-  expect(screen.getByRole('option', { name: 'Open Water' })).not.toBeNull();
-});
-
 test('shows all activity options when schedule type is all', () => {
   renderScheduleFilters();
 

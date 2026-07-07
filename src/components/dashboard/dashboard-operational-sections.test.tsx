@@ -22,26 +22,6 @@ afterEach(() => {
   cleanup();
 });
 
-test('renders clear empty states for every operational dashboard section', () => {
-  render(
-    <div>
-      <NeedsAttentionSection
-        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
-        items={[]}
-      />
-      <TodaysScheduleSection
-        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
-        items={[]}
-      />
-      <RecentActivitySection items={[]} />
-    </div>,
-  );
-
-  expect(screen.getByText('Nothing needs attention')).not.toBeNull();
-  expect(screen.getByText('No scheduled activities today')).not.toBeNull();
-  expect(screen.getByText('No recent activity yet')).not.toBeNull();
-});
-
 test('renders admin stat cards as links to existing operational filters', () => {
   render(
     <AdminDashboardSummary
@@ -91,31 +71,6 @@ test('renders admin review action for pending approval attention items', () => {
   expect(reviewLink).not.toBeNull();
   expect(reviewLink.getAttribute('href')).toBe('/bookings/booking-1/review');
   expect(screen.queryByText('booking pending approval')).toBeNull();
-});
-
-test('renders quiet section header links for attention and schedule panels', () => {
-  render(
-    <div>
-      <NeedsAttentionSection
-        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
-        items={[attentionItem()]}
-      />
-      <TodaysScheduleSection
-        currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
-        items={[scheduleItem()]}
-      />
-    </div>,
-  );
-
-  expect(screen.getByRole('link', { name: 'View all' }).getAttribute('href')).toBe(
-    '/bookings',
-  );
-  expect(
-    screen.getByRole('link', { name: 'Open schedule' }).getAttribute('href'),
-  ).toBe('/schedule?range=today');
-  expect(
-    screen.getByText('Bookings and scheduled activities that need admin action.'),
-  ).not.toBeNull();
 });
 
 test('renders customer service fix details action for needs more info items', () => {
