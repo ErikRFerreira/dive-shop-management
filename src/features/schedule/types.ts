@@ -77,6 +77,29 @@ export type MyScheduleAssignment = {
   assignmentRole: ScheduleAssignmentRole;
 };
 
+/** Compact metadata for the next assignment summary card. */
+export type MyScheduleAssignmentNextAssignment = {
+  date: Date;
+  activitySummary: string;
+};
+
+/** Summary counts shown at the top of the staff My Assignments briefing. */
+export type MyScheduleAssignmentSummary = {
+  todayCount: number;
+  tomorrowCount: number;
+  upcomingCount: number;
+  nextAssignment: MyScheduleAssignmentNextAssignment | null;
+};
+
+/** Bounded staff briefing payload for the My Assignments page. */
+export type MyScheduleAssignmentBriefing = {
+  todayAssignments: MyScheduleAssignment[];
+  tomorrowAssignments: MyScheduleAssignment[];
+  upcomingAssignments: MyScheduleAssignment[];
+  upcomingLimit: number;
+  summary: MyScheduleAssignmentSummary;
+};
+
 /** Supported personal assignment buckets for the My Assignments page. */
 export type MyScheduleAssignmentGroupKey = 'today' | 'tomorrow' | 'upcoming';
 

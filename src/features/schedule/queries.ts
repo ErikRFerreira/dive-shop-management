@@ -15,18 +15,27 @@ import {
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { getShopDateOnlyRange } from '@/lib/operational-date';
 import { getScheduleDateRangeForFilter } from './date-ranges';
 import { getActivityTypesForScheduleType } from './filters';
 import { canViewMyScheduleAssignments } from './permissions';
 import type {
   AssignableStaff,
   MyScheduleAssignment,
+  MyScheduleAssignmentBriefing,
   ScheduleAssignmentDetail,
   ScheduleCalendarEvent,
   ScheduleFilters,
   SchedulePageItem,
 } from './types';
 import { formatScheduleActivityLabel } from './utils';
+
+const MY_ASSIGNMENTS_UPCOMING_LIMIT = 20;
+const scheduleAssignmentOrderBy = [
+  { date: 'asc' },
+  { startTime: 'asc' },
+  { createdAt: 'asc' },
+] satisfies Prisma.ScheduleItemOrderByWithRelationInput[];
 
 const schedulePageItemArgs = {
   select: {
@@ -386,13 +395,107 @@ export async function getMyScheduleAssignments(
 
   const scheduleItems = await db.scheduleItem.findMany({
     ...myScheduleAssignmentArgs,
-    where: buildMyScheduleAssignmentsWhere(currentUser),
-    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    where: buildMyScheduleAssignmentsWhere(currentUser, {
+      gte: getShopDateOnlyRange(new Date()).start,
+    }),
+    orderBy: scheduleAssignmentOrderBy,
   });
 
   return scheduleItems.map((scheduleItem) =>
     mapScheduleItemToMyScheduleAssignment(scheduleItem, currentUser.id),
   );
+}
+
+/**
+ * Returns a bounded staff briefing for the current user's personal assignments.
+ *
+ * The briefing separates today and tomorrow from future work, excludes past
+ * assignments, and caps the upcoming table so the page remains scalable for
+ * instructors with many future scheduled activities.
+ *
+ * @param currentUser - The authenticated instructor or divemaster.
+ * @returns Date-bucketed assignments plus summary counts for the briefing UI.
+ */
+export async function getMyScheduleAssignmentBriefing(
+  currentUser: CurrentUser,
+): Promise<MyScheduleAssignmentBriefing> {
+  const emptyBriefing = createEmptyMyScheduleAssignmentBriefing();
+
+  if (!canViewMyScheduleAssignments(currentUser)) {
+    return emptyBriefing;
+  }
+
+  const todayRange = getShopDateOnlyRange(new Date());
+  const tomorrowRange = getShopDateOnlyRange(new Date(), 1);
+  const upcomingDateFilter: Prisma.DateTimeFilter<'ScheduleItem'> = {
+    gte: tomorrowRange.end,
+  };
+
+  const [
+    todayScheduleItems,
+    tomorrowScheduleItems,
+    upcomingScheduleItems,
+    upcomingCount,
+  ] = await Promise.all([
+    db.scheduleItem.findMany({
+      ...myScheduleAssignmentArgs,
+      where: buildMyScheduleAssignmentsWhere(currentUser, {
+        gte: todayRange.start,
+        lt: todayRange.end,
+      }),
+      orderBy: scheduleAssignmentOrderBy,
+    }),
+    db.scheduleItem.findMany({
+      ...myScheduleAssignmentArgs,
+      where: buildMyScheduleAssignmentsWhere(currentUser, {
+        gte: tomorrowRange.start,
+        lt: tomorrowRange.end,
+      }),
+      orderBy: scheduleAssignmentOrderBy,
+    }),
+    db.scheduleItem.findMany({
+      ...myScheduleAssignmentArgs,
+      where: buildMyScheduleAssignmentsWhere(currentUser, upcomingDateFilter),
+      orderBy: scheduleAssignmentOrderBy,
+      take: MY_ASSIGNMENTS_UPCOMING_LIMIT,
+    }),
+    db.scheduleItem.count({
+      where: buildMyScheduleAssignmentsWhere(currentUser, upcomingDateFilter),
+    }),
+  ]);
+
+  const todayAssignments = mapScheduleItemsToMyScheduleAssignments(
+    todayScheduleItems,
+    currentUser.id,
+  );
+  const tomorrowAssignments = mapScheduleItemsToMyScheduleAssignments(
+    tomorrowScheduleItems,
+    currentUser.id,
+  );
+  const upcomingAssignments = mapScheduleItemsToMyScheduleAssignments(
+    upcomingScheduleItems,
+    currentUser.id,
+  );
+  const nextAssignment =
+    todayAssignments[0] ?? tomorrowAssignments[0] ?? upcomingAssignments[0] ?? null;
+
+  return {
+    todayAssignments,
+    tomorrowAssignments,
+    upcomingAssignments,
+    upcomingLimit: MY_ASSIGNMENTS_UPCOMING_LIMIT,
+    summary: {
+      todayCount: todayAssignments.length,
+      tomorrowCount: tomorrowAssignments.length,
+      upcomingCount,
+      nextAssignment: nextAssignment
+        ? {
+            date: nextAssignment.date,
+            activitySummary: nextAssignment.activitySummary,
+          }
+        : null,
+    },
+  };
 }
 
 /**
@@ -532,17 +635,55 @@ function mapScheduleItemToCalendarEvent(
  */
 function buildMyScheduleAssignmentsWhere(
   currentUser: Pick<CurrentUser, 'id'>,
+  date?: Prisma.DateTimeFilter<'ScheduleItem'>,
 ): Prisma.ScheduleItemWhereInput {
   return {
     bookingRequest: {
       status: BookingStatus.SCHEDULED,
     },
+    ...(date ? { date } : {}),
     assignments: {
       some: {
         userId: currentUser.id,
       },
     },
   };
+}
+
+/**
+ * Creates an empty briefing payload for roles without personal assignment access.
+ *
+ * @returns Empty assignment buckets and zeroed summary counts.
+ */
+function createEmptyMyScheduleAssignmentBriefing(): MyScheduleAssignmentBriefing {
+  return {
+    todayAssignments: [],
+    tomorrowAssignments: [],
+    upcomingAssignments: [],
+    upcomingLimit: MY_ASSIGNMENTS_UPCOMING_LIMIT,
+    summary: {
+      todayCount: 0,
+      tomorrowCount: 0,
+      upcomingCount: 0,
+      nextAssignment: null,
+    },
+  };
+}
+
+/**
+ * Maps selected schedule items into personal assignment rows for one user.
+ *
+ * @param scheduleItems - Schedule items fetched with My Assignments relations.
+ * @param currentUserId - Authenticated user id used to resolve assignment role.
+ * @returns Display-ready personal assignment rows in query order.
+ */
+function mapScheduleItemsToMyScheduleAssignments(
+  scheduleItems: ScheduleItemForMyAssignments[],
+  currentUserId: string,
+) {
+  return scheduleItems.map((scheduleItem) =>
+    mapScheduleItemToMyScheduleAssignment(scheduleItem, currentUserId),
+  );
 }
 
 /**

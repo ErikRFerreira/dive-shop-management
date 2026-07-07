@@ -1,5 +1,6 @@
+import PageHeader from '@/components/common/page-header';
 import { MyAssignmentsList } from '@/components/schedule/my-assignments-list';
-import { getMyScheduleAssignments } from '@/features/schedule/queries';
+import { getMyScheduleAssignmentBriefing } from '@/features/schedule/queries';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
@@ -11,20 +12,16 @@ import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-acces
 async function AssignmentPage() {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'assignments');
-  const assignments = await getMyScheduleAssignments(currentUser);
+  const briefing = await getMyScheduleAssignmentBriefing(currentUser);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          My Assignments
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Activities assigned to you.
-        </p>
-      </div>
+      <PageHeader
+        title="My Assignments"
+        description="Activities assigned to you."
+      />
 
-      <MyAssignmentsList assignments={assignments} />
+      <MyAssignmentsList briefing={briefing} />
     </div>
   );
 }
