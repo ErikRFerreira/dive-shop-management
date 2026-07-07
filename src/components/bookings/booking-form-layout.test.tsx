@@ -1,4 +1,10 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import { BookingForm } from '@/components/bookings/booking-form';
@@ -60,6 +66,19 @@ test('renders create booking sections and readiness rail in the planned order', 
   expect(
     screen.getByTestId('booking-readiness-card').parentElement?.className,
   ).toContain('lg:sticky');
+
+  expect(screen.getByTestId('booking-readiness-card').className).toContain(
+    'lg:max-h-[calc(100svh-3rem)]',
+  );
+  expect(screen.getByTestId('booking-readiness-card').className).toContain(
+    'lg:overflow-hidden',
+  );
+  expect(
+    screen.getByTestId('booking-readiness-scroll-region').className,
+  ).toContain('min-h-0');
+  expect(
+    screen.getByTestId('booking-readiness-scroll-region').className,
+  ).toContain('lg:overflow-y-auto');
 });
 
 test('renders create actions inside the booking readiness card', () => {
@@ -77,4 +96,24 @@ test('renders create actions inside the booking readiness card', () => {
   expect(within(readiness).getByText('Booking readiness')).not.toBeNull();
   expectElementBefore(submit, saveDraft);
   expectElementBefore(saveDraft, cancel);
+});
+
+test('keeps create validation feedback in the single scroll region above rail actions', async () => {
+  render(<BookingForm mode="create" />);
+
+  const readiness = screen.getByTestId('booking-readiness-card');
+  const scrollRegion = within(readiness).getByTestId(
+    'booking-readiness-scroll-region',
+  );
+  const submit = within(readiness).getByRole('button', {
+    name: 'Submit for Approval',
+  });
+
+  fireEvent.click(submit);
+
+  const alert = await within(scrollRegion).findByRole('alert');
+
+  expect(alert.className).not.toContain('max-h-44');
+  expect(alert.className).not.toContain('overflow-y-auto');
+  expectElementBefore(alert, submit);
 });

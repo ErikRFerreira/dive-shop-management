@@ -36,6 +36,39 @@ type BookingFormActionsProps =
   | CreateBookingFormActionsProps
   | EditBookingFormActionsProps;
 
+type BookingFormValidationFeedbackProps = {
+  errorMessages: string[];
+};
+
+/**
+ * Renders booking form validation feedback in the parent layout's available
+ * space without imposing its own nested scroll behavior.
+ *
+ * @param props - Validation messages collected from client and server checks.
+ * @returns A validation summary alert, or null when there are no errors.
+ */
+export function BookingFormValidationFeedback({
+  errorMessages,
+}: BookingFormValidationFeedbackProps) {
+  if (errorMessages.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+      role="alert"
+    >
+      <p>Please fix the following before continuing:</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5">
+        {errorMessages.map((message) => (
+          <li key={message}>{message}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * Renders validation feedback and workflow actions for booking intake forms.
  *
@@ -56,19 +89,7 @@ export function BookingFormActions({
 
   return (
     <>
-      {errorMessages.length > 0 ? (
-        <div
-          className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          <p>Please fix the following before continuing:</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {errorMessages.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <BookingFormValidationFeedback errorMessages={errorMessages} />
 
       <div className={actionsClassName}>
         {props.mode === 'edit' ? (

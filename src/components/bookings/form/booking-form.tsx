@@ -4,7 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm, useWatch, type FieldPath } from 'react-hook-form';
 
-import { BookingFormActions } from '@/components/bookings/form/booking-form-actions';
+import {
+  BookingFormActions,
+  BookingFormValidationFeedback,
+} from '@/components/bookings/form/booking-form-actions';
 import { collectBookingFormErrorMessages } from '@/components/bookings/form/booking-form-controls';
 import { buildCreateReadinessItems } from '@/components/bookings/form/booking-form-readiness';
 import { BookingReadinessCard } from '@/components/bookings/form/booking-readiness-card';
@@ -192,7 +195,7 @@ export function BookingForm(props: BookingFormProps) {
     <BookingFormActions
       mode="create"
       layout="rail"
-      errorMessages={errorMessages}
+      errorMessages={[]}
       isSubmitting={isSubmitting}
       submitIntent={submitIntent === 'edit' ? 'draft' : submitIntent}
       onSaveDraft={() => submitCurrentForm('draft')}
@@ -265,7 +268,12 @@ export function BookingForm(props: BookingFormProps) {
       ) : (
         <StickyRailLayout
           rail={
-            <BookingReadinessCard items={createReadinessItems}>
+            <BookingReadinessCard
+              feedback={
+                <BookingFormValidationFeedback errorMessages={errorMessages} />
+              }
+              items={createReadinessItems}
+            >
               {createActions}
             </BookingReadinessCard>
           }
