@@ -8,6 +8,7 @@ import {
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   DepositStatus,
 } from '@/generated/prisma/enums';
@@ -37,6 +38,7 @@ function makeBooking(
       {
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         certificationLevel: null,
         lastDiveAt: null,
         divesLogged: null,
@@ -77,7 +79,6 @@ test('requires core booking details and one primary contact', () => {
   const warnings = getMissingBookingReviewInformation(
     makeBooking({
       activities: [],
-      numberOfPeople: 0,
       source: null,
       customers: [],
     }),
@@ -85,9 +86,26 @@ test('requires core booking details and one primary contact', () => {
 
   expect(warnings).toEqual([
     'Add at least one activity.',
-    'Total participants must be at least 1.',
     'Booking source is required.',
-    'Add at least one customer or diver.',
+    'Add at least one active customer or diver.',
+    'Select exactly one primary contact.',
+  ]);
+});
+
+test('does not count inactive participants for review missing information', () => {
+  const warnings = getMissingBookingReviewInformation(
+    makeBooking({
+      customers: [
+        {
+          ...makeBooking().customers[0],
+          participationStatus: BookingParticipantStatus.DROPPED_OUT,
+        },
+      ],
+    }),
+  );
+
+  expect(warnings).toEqual([
+    'Add at least one active customer or diver.',
     'Select exactly one primary contact.',
   ]);
 });
@@ -194,6 +212,7 @@ test('marks required readiness items as missing when review data is incomplete',
         {
           customerId: 'customer-1',
           role: BookingCustomerRole.PRIMARY_CONTACT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           certificationLevel: null,
           lastDiveAt: null,
           divesLogged: null,
@@ -246,6 +265,7 @@ test('marks fun-dive experience, paid deposit info, and requested equipment sizi
         {
           customerId: 'customer-1',
           role: BookingCustomerRole.PRIMARY_CONTACT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           certificationLevel: null,
           lastDiveAt: null,
           divesLogged: null,
@@ -301,6 +321,7 @@ test('marks equipment sizing as not required when customers clearly do not need 
         {
           customerId: 'customer-1',
           role: BookingCustomerRole.PRIMARY_CONTACT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           certificationLevel: null,
           lastDiveAt: null,
           divesLogged: null,

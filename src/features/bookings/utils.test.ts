@@ -11,6 +11,7 @@ import {
 } from '@/features/bookings/utils';
 import {
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
@@ -63,8 +64,16 @@ test('uses the primary contact as the display customer', () => {
 
   expect(
     resolveDisplayCustomer([
-      { role: BookingCustomerRole.PARTICIPANT, customer: firstCustomer },
-      { role: BookingCustomerRole.PRIMARY_CONTACT, customer: primaryCustomer },
+      {
+        role: BookingCustomerRole.PARTICIPANT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+        customer: firstCustomer,
+      },
+      {
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+        customer: primaryCustomer,
+      },
     ]),
   ).toBe(primaryCustomer);
 });
@@ -75,7 +84,11 @@ test('falls back to the first booking customer or null', () => {
 
   expect(
     resolveDisplayCustomer([
-      { role: BookingCustomerRole.PARTICIPANT, customer: firstCustomer },
+      {
+        role: BookingCustomerRole.PARTICIPANT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+        customer: firstCustomer,
+      },
     ]),
   ).toBe(firstCustomer);
   expect(resolveDisplayCustomer([])).toBeNull();

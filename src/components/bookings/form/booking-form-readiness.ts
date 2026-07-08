@@ -17,13 +17,33 @@ function hasText(value: string | undefined) {
 }
 
 /**
- * Checks whether the participant count is a valid positive number.
+ * Checks whether a browser numeric form value is a valid positive number.
  *
- * @param value - Browser string value for total participants.
- * @returns True when the value represents at least one participant.
+ * @param value - Browser string value to validate.
+ * @returns True when the value represents a positive number.
  */
-function hasValidParticipantCount(value: string | undefined) {
+function hasPositiveNumber(value: string | undefined) {
   return Number(value) >= 1;
+}
+
+/**
+ * Checks whether a customer/diver row can represent a booking participant.
+ *
+ * @param customer - Browser customer/diver form row.
+ * @returns True when the row links an existing customer or includes identity/contact data.
+ */
+function hasParticipantIdentity(
+  customer: BookingFormValues['customers'][number] | undefined,
+) {
+  return Boolean(
+    customer?.customerId ||
+      hasText(customer?.customerName) ||
+      hasText(customer?.chineseName) ||
+      hasText(customer?.weChatId) ||
+      hasText(customer?.whatsAppNumber) ||
+      hasText(customer?.email) ||
+      hasText(customer?.phone),
+  );
 }
 
 /**
@@ -38,7 +58,6 @@ export function buildCreateReadinessItems(values: {
   currency: BookingFormValues['currency'] | undefined;
   customers: BookingFormValues['customers'];
   depositStatus: DepositStatus | undefined;
-  numberOfPeople: string | undefined;
   paidTo: string | undefined;
   source: BookingFormValues['source'] | undefined;
 }): BookingReadinessItem[] {
@@ -59,8 +78,8 @@ export function buildCreateReadinessItems(values: {
       complete: Boolean(values.source),
     },
     {
-      label: 'Total participants',
-      complete: hasValidParticipantCount(values.numberOfPeople),
+      label: 'At least one customer/diver',
+      complete: values.customers.some(hasParticipantIdentity),
     },
     {
       label: 'At least one activity',
@@ -104,7 +123,7 @@ export function buildCreateReadinessItems(values: {
         values.customers.every(
           (customer) =>
             hasText(customer.certificationLevel) &&
-            hasValidParticipantCount(customer.divesLogged),
+            hasPositiveNumber(customer.divesLogged),
         ),
       helperText: includesFunDive
         ? 'Recommended for course activities'

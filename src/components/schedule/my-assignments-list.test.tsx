@@ -66,8 +66,7 @@ test('renders summary counts and next assignment metadata', () => {
   expect(screen.getAllByText('Upcoming').length).toBeGreaterThan(0);
   expect(screen.getByText('Next assignment')).not.toBeNull();
   expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2);
-  expect(screen.getByText('3')).not.toBeNull();
-  expect(screen.getAllByText('28 Jun 2026').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('3').length).toBeGreaterThan(0);
   expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
 });
 
@@ -154,21 +153,20 @@ test('renders upcoming assignments in a scalable table', () => {
   const table = screen.getByRole('table');
   expect(within(table).getByText('Date / Time')).not.toBeNull();
   expect(within(table).getByText('Activity')).not.toBeNull();
-  expect(within(table).getByText('Customer / Divers')).not.toBeNull();
+  expect(within(table).getByText('Active participants')).not.toBeNull();
   expect(within(table).getByText('Location')).not.toBeNull();
   expect(within(table).getByText('Role')).not.toBeNull();
   expect(within(table).getByText('Notes')).not.toBeNull();
-  expect(within(table).getByText('Actions')).not.toBeNull();
   expect(within(table).getByText('02 Jul 2026')).not.toBeNull();
+  expect(within(table).getByText('2 active participants')).not.toBeNull();
   expect(within(table).getByText('Upcoming Customer')).not.toBeNull();
   expect(within(table).getByText('Second Diver')).not.toBeNull();
   expect(within(table).getByText('Hotel / pickup: Harbor Hotel')).not.toBeNull();
   expect(within(table).getByText('Assistant Instructor')).not.toBeNull();
   expect(within(table).getByText('No notes')).not.toBeNull();
-  expect(within(table).getByText('Read-only')).not.toBeNull();
 });
 
-test('renders capped upcoming footer copy', () => {
+test('renders capped upcoming assignments without action controls', () => {
   render(
     <MyAssignmentsList
       briefing={briefing({
@@ -193,7 +191,8 @@ test('renders capped upcoming footer copy', () => {
     />,
   );
 
-  expect(screen.getByText('Showing next 20 assignments')).not.toBeNull();
+  expect(screen.getAllByText('2 active participants')).toHaveLength(20);
+  expect(screen.queryByText('Read-only')).toBeNull();
 });
 
 test('renders personal assignment details without edit or booking actions', () => {
@@ -248,11 +247,12 @@ test('renders personal assignment details without edit or booking actions', () =
   );
 
   expect(screen.getAllByText('Maria Santos').length).toBeGreaterThan(0);
+  expect(screen.getByText('3 active participants')).not.toBeNull();
   expect(screen.getByText('Participant Diver')).not.toBeNull();
   expect(screen.getByText('Second Diver')).not.toBeNull();
   expect(screen.getByText('Hotel / pickup: Primary Booking Hotel')).not.toBeNull();
-  expect(screen.getAllByText('28 Jun 2026').length).toBeGreaterThan(0);
-  expect(screen.getByText('08:00 - 12:30')).not.toBeNull();
+  expect(screen.getByText(hasTextContent('28 Jun 2026'))).not.toBeNull();
+  expect(screen.getByText(hasTextContent('08:00 - 12:30'))).not.toBeNull();
   expect(screen.getAllByText('Fun Dive + Snorkeling').length).toBeGreaterThan(0);
   expect(screen.getByText('Meet at the shop.')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
@@ -291,9 +291,27 @@ test('renders missing hotel pickup and time fallback safely', () => {
     />,
   );
 
-  expect(screen.getByText('Time TBD')).not.toBeNull();
+  expect(screen.getByText(hasTextContent('Time TBD'))).not.toBeNull();
   expect(screen.getByText('Hotel / pickup: Not recorded')).not.toBeNull();
 });
+
+/**
+ * Matches any element whose rendered text contains the requested fragment.
+ *
+ * @param text - Text fragment expected in the element's content.
+ * @returns Testing Library text matcher.
+ */
+function hasTextContent(text: string) {
+  return (_content: string, element: Element | null) => {
+    if (!element?.textContent?.includes(text)) {
+      return false;
+    }
+
+    return Array.from(element.children).every(
+      (child) => !child.textContent?.includes(text),
+    );
+  };
+}
 
 /**
  * Builds a complete briefing payload for My Assignments component tests.

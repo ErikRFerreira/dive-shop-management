@@ -1,4 +1,5 @@
 import type { BookingListItem } from '@/features/bookings/queries';
+import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import type { BookingSource } from '@/generated/prisma/client';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 import { SHOP_TIME_ZONE } from '@/lib/operational-date';
@@ -54,12 +55,13 @@ export function formatBookingSource(source: BookingSource | null | undefined) {
  * @returns Booking-specific hotel, customer hotel fallback, or the empty placeholder.
  */
 export function formatBookingHotel(booking: BookingListItem) {
+  const activeCustomers = getActiveBookingParticipants(booking.customers);
   const displayCustomerId = booking.displayCustomer?.id;
   const bookingCustomer =
-    booking.customers.find(
+    activeCustomers.find(
       (customer) => customer.customerId === displayCustomerId,
     ) ??
-    booking.customers[0] ??
+    activeCustomers[0] ??
     null;
   const hotel =
     bookingCustomer?.hotelAtBooking?.trim() ||

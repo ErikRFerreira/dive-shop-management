@@ -24,6 +24,7 @@ import type {
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
   BookingSource,
   UserRole,
@@ -100,6 +101,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
         bookingRequestId: 'booking-1',
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         hotelAtBooking: 'Booking Hotel',
         equipmentNeeded: null,
         notes: null,
@@ -132,6 +134,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
     createdAt,
     updatedAt: createdAt,
     displayCustomer: primaryCustomer,
+    activeParticipantCount: 1,
     ...overrides,
   } as BookingListItem;
 }
@@ -284,6 +287,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
           bookingRequestId: 'booking-1',
           customerId: 'customer-2',
           role: BookingCustomerRole.PARTICIPANT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           hotelAtBooking: null,
           equipmentNeeded: null,
           notes: null,
@@ -299,6 +303,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
           customer: participantCustomer,
         },
       ],
+      activeParticipantCount: 2,
       activities: [
         ...(booking().activities ?? []),
         {
@@ -323,6 +328,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
           bookingRequestId: 'booking-missing-customer',
           customerId: 'customer-3',
           role: BookingCustomerRole.PRIMARY_CONTACT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           hotelAtBooking: null,
           equipmentNeeded: null,
           notes: null,
@@ -357,6 +363,59 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
   expect(
     screen.getAllByRole('button', { name: /Open actions for booking/ }).length,
   ).toBeGreaterThan(0);
+});
+
+test('shows only active participants in compact booking rows', () => {
+  const createdAt = new Date('2026-07-01T08:00:00.000Z');
+  const inactiveCustomer = {
+    id: 'customer-inactive',
+    fullName: 'Dropped Diver',
+    firstName: null,
+    lastName: null,
+    chineseName: null,
+    weChatId: null,
+    whatsAppNumber: null,
+    email: null,
+    phone: null,
+    hotel: 'Inactive Hotel',
+    preferredLanguage: null,
+    notes: null,
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  renderBookingList([
+    booking({
+      customers: [
+        ...booking().customers,
+        {
+          bookingRequestId: 'booking-1',
+          customerId: 'customer-inactive',
+          role: BookingCustomerRole.PARTICIPANT,
+          participationStatus: BookingParticipantStatus.DROPPED_OUT,
+          hotelAtBooking: 'Inactive Booking Hotel',
+          equipmentNeeded: null,
+          notes: null,
+          certificationAgency: null,
+          certificationLevel: null,
+          lastDiveAt: null,
+          heightCm: null,
+          weightKg: null,
+          shoeSize: null,
+          divesLogged: null,
+          createdAt,
+          updatedAt: createdAt,
+          customer: inactiveCustomer,
+        },
+      ],
+      activeParticipantCount: 1,
+    }),
+  ]);
+
+  expect(screen.getByText('Maria Santos')).not.toBeNull();
+  expect(screen.getByText('Active participants: 1')).not.toBeNull();
+  expect(screen.queryByText('Dropped Diver')).toBeNull();
+  expect(screen.queryByText('Hotel: Inactive Booking Hotel')).toBeNull();
 });
 
 test('shows scheduled cancellation for admin users in row actions', async () => {

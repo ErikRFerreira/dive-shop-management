@@ -4,6 +4,7 @@ import type { BookingDetailsItem } from '@/features/bookings/queries';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
 } from '@/generated/prisma/enums';
 import {
   UNSCHEDULED_ASSIGNMENT_SUMMARY,
@@ -59,10 +60,12 @@ test('prefers the primary booking customer and falls back to the first customer'
   const firstCustomer = {
     customerId: 'customer-1',
     role: BookingCustomerRole.PARTICIPANT,
+    participationStatus: BookingParticipantStatus.ACTIVE,
   };
   const primaryCustomer = {
     customerId: 'customer-2',
     role: BookingCustomerRole.PRIMARY_CONTACT,
+    participationStatus: BookingParticipantStatus.ACTIVE,
   };
 
   expect(

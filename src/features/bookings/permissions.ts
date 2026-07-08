@@ -143,6 +143,28 @@ export function canCancelBooking(
 }
 
 /**
+ * Determines whether a user may update participant statuses after scheduling.
+ *
+ * Participant status changes preserve historical booking/customer join rows
+ * while changing operational headcount, so only Admin and Manager users may
+ * manage them and only while the booking remains officially scheduled.
+ *
+ * @param currentUser - The authenticated user's role.
+ * @param status - The current status of the booking request.
+ * @returns `true` when the user can manage scheduled participant statuses.
+ */
+export function canManageScheduledBookingParticipants(
+  currentUser: Pick<CurrentUser, 'role'>,
+  status: BookingStatus,
+) {
+  return (
+    (currentUser.role === UserRole.ADMIN ||
+      currentUser.role === UserRole.MANAGER) &&
+    status === BookingStatus.SCHEDULED
+  );
+}
+
+/**
  * Determines whether the current user may perform a booking status transition.
  *
  * Future Server Actions must call this after loading the booking's current

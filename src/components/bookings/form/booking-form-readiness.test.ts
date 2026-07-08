@@ -37,7 +37,6 @@ function readinessValues(overrides: Partial<BookingFormValues> = {}) {
       },
     ],
     depositStatus: DepositStatus.UNKNOWN,
-    numberOfPeople: '1',
     paidTo: '',
     source: BookingSource.WECHAT,
     ...overrides,
@@ -80,14 +79,16 @@ test('marks core create-booking requirements incomplete when intake values are m
         ...bookingFormDefaultValues.customers[0],
         role: BookingCustomerRole.PRIMARY_CONTACT,
         customerName: '',
+        email: '',
       },
     ],
-    numberOfPeople: '0',
     source: '' as BookingSource,
   });
 
   expect(readinessItem('Source / referrer', emptyValues).complete).toBe(false);
-  expect(readinessItem('Total participants', emptyValues).complete).toBe(false);
+  expect(readinessItem('At least one customer/diver', emptyValues).complete).toBe(
+    false,
+  );
   expect(readinessItem('At least one activity', emptyValues).complete).toBe(
     false,
   );

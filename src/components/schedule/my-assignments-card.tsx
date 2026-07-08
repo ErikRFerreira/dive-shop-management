@@ -91,6 +91,7 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
           <AssignmentCustomersSection
             customers={assignment.customers}
             icon={Users}
+            numberOfPeople={assignment.numberOfPeople}
           />
 
           <AssignmentDetail
@@ -122,17 +123,19 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
 }
 
 /**
- * Renders the customer/diver list for a personal assignment card.
+ * Renders the active customer/diver list for a personal assignment card.
  *
  * @param props - Customer/diver rows attached to the scheduled booking.
- * @returns A compact uppercase-labeled customer/diver section.
+ * @returns A compact uppercase-labeled active participant section.
  */
 function AssignmentCustomersSection({
   customers,
   icon: Icon,
+  numberOfPeople,
 }: {
   customers: MyScheduleAssignment['customers'];
   icon: React.ComponentType<{ className?: string }>;
+  numberOfPeople: MyScheduleAssignment['numberOfPeople'];
 }) {
   return (
     <div className="space-y-1">
@@ -141,7 +144,10 @@ function AssignmentCustomersSection({
           className="mt-0.5 size-4 shrink-0 text-muted-foreground"
           aria-hidden
         />
-        Customers/divers
+        Active participants
+      </p>
+      <p className="pl-6 text-xs text-muted-foreground">
+        {formatActiveParticipantSummary(numberOfPeople)}
       </p>
       {customers.length > 0 ? (
         <ul className="space-y-1.5 text-sm pl-6">
@@ -161,11 +167,27 @@ function AssignmentCustomersSection({
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">
-          No customers/divers recorded
+          No active participants recorded
         </p>
       )}
     </div>
   );
+}
+
+/**
+ * Formats the active participant count shown in assignment cards.
+ *
+ * @param count - Active participant count mapped from booking/customer rows.
+ * @returns Compact active participant copy.
+ */
+function formatActiveParticipantSummary(count: number | null) {
+  if (count === null) {
+    return 'Active participants: TBD';
+  }
+
+  const label = count === 1 ? 'participant' : 'participants';
+
+  return `${count} active ${label}`;
 }
 
 /**

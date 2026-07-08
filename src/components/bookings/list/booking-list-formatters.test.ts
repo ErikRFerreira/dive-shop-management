@@ -4,6 +4,7 @@ import type { BookingListItem } from '@/features/bookings/queries';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
 } from '@/generated/prisma/enums';
 import {
@@ -49,6 +50,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
         bookingRequestId: 'booking-1',
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         hotelAtBooking: 'Booking Hotel',
         equipmentNeeded: null,
         notes: null,

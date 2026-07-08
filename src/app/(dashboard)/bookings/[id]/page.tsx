@@ -4,6 +4,7 @@ import {
   canCancelBooking,
   canReviewBooking,
   canEditBooking,
+  canManageScheduledBookingParticipants,
   canResubmitBookingForApproval,
 } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
@@ -19,7 +20,7 @@ type Props = {
 };
 
 /**
- * Renders the booking detail page with workflow and schedule assignment context.
+ * Renders the booking detail page with workflow, schedule assignment, and participant management context.
  *
  * @param props - Route params containing the booking request ID.
  * @returns The booking detail view, or a not-found response when inaccessible.
@@ -49,6 +50,10 @@ async function BookingDetailsPage({ params }: Props) {
         canCancelBooking(currentUser, booking.status)
       }
       canManageAssignments={canManageAssignments}
+      canManageParticipantStatus={canManageScheduledBookingParticipants(
+        currentUser,
+        booking.status,
+      )}
       canShowManagerAssignmentAvailabilityCopy={canApproveBookingRequest(
         currentUser,
       )}

@@ -8,6 +8,7 @@
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   Currency,
   DepositStatus,
@@ -177,6 +178,22 @@ export function filterPersistableBookingCustomers(
 }
 
 /**
+ * Counts normalized customer rows that will be persisted as active participants.
+ *
+ * @param customers - Normalized booking customer rows from the intake form.
+ * @returns Number of persistable rows whose participation status is active.
+ */
+function getDerivedActiveParticipantCount(
+  customers: NormalizedBookingFormValues['customers'],
+) {
+  return customers.filter(
+    (customer) =>
+      customer.participationStatus === BookingParticipantStatus.ACTIVE &&
+      hasPersistableBookingCustomer(customer),
+  ).length;
+}
+
+/**
  * Normalizes the booking form values into a shape suitable for backend processing.
  *
  * @param values - The booking form values to normalize.
@@ -185,6 +202,34 @@ export function filterPersistableBookingCustomers(
 export function normalizeBookingFormValues(
   values: BookingFormValues,
 ): NormalizedBookingFormValues {
+  const customers = values.customers.map((customer) => ({
+    customerId: nullableText(customer.customerId ?? '') ?? undefined,
+    role:
+      enumValue(BookingCustomerRole, customer.role) ??
+      BookingCustomerRole.PARTICIPANT,
+    participationStatus: BookingParticipantStatus.ACTIVE,
+    customerName: nullableText(customer.customerName),
+    chineseName: nullableText(customer.chineseName),
+    weChatId: nullableText(customer.weChatId),
+    whatsAppNumber: nullableText(customer.whatsAppNumber),
+    email: nullableText(customer.email),
+    phone: nullableText(customer.phone),
+    hotelAtBooking: nullableText(customer.hotelAtBooking),
+    equipmentNeeded: normalizedEquipmentNeeded(customer.equipmentNeeded),
+    customerNotes: nullableText(customer.customerNotes),
+    preferredLanguage: enumValue(
+      PreferredLanguage,
+      customer.preferredLanguage,
+    ),
+    heightCm: nullableInteger(customer.heightCm),
+    weightKg: nullableNumber(customer.weightKg),
+    shoeSize: nullableNumber(customer.shoeSize),
+    certificationLevel: nullableText(customer.certificationLevel),
+    certificationAgency: nullableText(customer.certificationAgency),
+    lastDiveDate: nullableDate(customer.lastDiveDate),
+    divesLogged: nullableInteger(customer.divesLogged),
+  }));
+
   return {
     rawBookingText: nullableText(values.rawBookingText),
     activities: values.activities.map((activity) => ({
@@ -194,36 +239,11 @@ export function normalizeBookingFormValues(
       requestedTime: nullableText(activity.requestedTime),
       notes: nullableText(activity.notes),
     })),
-    numberOfPeople: nullableInteger(values.numberOfPeople),
+    numberOfPeople: getDerivedActiveParticipantCount(customers),
     source: enumValue(BookingSource, values.source),
     referrerName: nullableText(values.referrerName),
     internalNotes: nullableText(values.internalNotes),
-    customers: values.customers.map((customer) => ({
-      customerId: nullableText(customer.customerId ?? '') ?? undefined,
-      role:
-        enumValue(BookingCustomerRole, customer.role) ??
-        BookingCustomerRole.PARTICIPANT,
-      customerName: nullableText(customer.customerName),
-      chineseName: nullableText(customer.chineseName),
-      weChatId: nullableText(customer.weChatId),
-      whatsAppNumber: nullableText(customer.whatsAppNumber),
-      email: nullableText(customer.email),
-      phone: nullableText(customer.phone),
-      hotelAtBooking: nullableText(customer.hotelAtBooking),
-      equipmentNeeded: normalizedEquipmentNeeded(customer.equipmentNeeded),
-      customerNotes: nullableText(customer.customerNotes),
-      preferredLanguage: enumValue(
-        PreferredLanguage,
-        customer.preferredLanguage,
-      ),
-      heightCm: nullableInteger(customer.heightCm),
-      weightKg: nullableNumber(customer.weightKg),
-      shoeSize: nullableNumber(customer.shoeSize),
-      certificationLevel: nullableText(customer.certificationLevel),
-      certificationAgency: nullableText(customer.certificationAgency),
-      lastDiveDate: nullableDate(customer.lastDiveDate),
-      divesLogged: nullableInteger(customer.divesLogged),
-    })),
+    customers,
     depositStatus:
       enumValue(DepositStatus, values.depositStatus) ?? DepositStatus.UNKNOWN,
     amount: nullableNumber(values.amount),
@@ -361,7 +381,6 @@ export function mapBookingToFormValues(
       requestedTime: activity.requestedTime ?? '',
       notes: activity.notes ?? '',
     })),
-    numberOfPeople: formNumber(booking.numberOfPeople),
     source: booking.source ?? '',
     referrerName: booking.referrerName ?? '',
     internalNotes: booking.internalNotes ?? '',

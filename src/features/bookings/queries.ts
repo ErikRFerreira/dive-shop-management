@@ -15,6 +15,7 @@ import {
   type BookingQueueFilter,
   type BookingStatusFilter,
 } from './types';
+import { getActiveParticipantCount } from './participants';
 import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
 
 /**
@@ -143,10 +144,12 @@ type BookingRequestDetailWithRelations = Prisma.BookingRequestGetPayload<
 /**
  * A booking-list row with the preferred customer selected for display.
  *
- * @remarks `displayCustomer` is derived from `customers`; it prefers the
- * primary contact and falls back to the first linked customer.
+ * @remarks `displayCustomer` and `activeParticipantCount` are derived from
+ * active booking/customer join rows. Historical participants remain attached in
+ * `customers` but do not drive operational headcount.
  */
 export type BookingListItem = BookingRequestWithRelations & {
+  activeParticipantCount: number;
   displayCustomer:
     | BookingRequestWithRelations['customers'][number]['customer']
     | null;
@@ -174,6 +177,7 @@ export type PaginatedBookingList = {
 
 /** A visible booking request with all relations required by the detail view. */
 export type BookingDetailsItem = BookingRequestDetailWithRelations & {
+  activeParticipantCount: number;
   displayCustomer:
     | BookingRequestDetailWithRelations['customers'][number]['customer']
     | null;
@@ -230,6 +234,9 @@ export async function getBookingRequests(
   return {
     bookings: bookingRequests.map((bookingRequest) => ({
       ...bookingRequest,
+      activeParticipantCount: getActiveParticipantCount(
+        bookingRequest.customers,
+      ),
       displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
     })),
     pagination: {
@@ -265,6 +272,7 @@ export async function getBookingRequestById(
 
   return {
     ...bookingRequest,
+    activeParticipantCount: getActiveParticipantCount(bookingRequest.customers),
     displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
   };
 }

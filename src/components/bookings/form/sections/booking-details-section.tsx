@@ -45,7 +45,6 @@ export function BookingDetailsSection({
   getFieldError,
 }: BookingDetailsSectionProps) {
   const sourceError = getFieldError('source');
-  const numberOfPeopleError = getFieldError('numberOfPeople');
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'activities',
@@ -80,26 +79,6 @@ export function BookingDetailsSection({
           </BookingFormField>
           <BookingFormFieldError
             error={sourceError}
-            className="md:col-span-2"
-          />
-        </div>
-        <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
-          <BookingFormField
-            id="numberOfPeople"
-            label="Total participants"
-            required
-          >
-            <Input
-              id="numberOfPeople"
-              type="number"
-              min="1"
-              step="1"
-              {...form.register('numberOfPeople')}
-              className={inputClassName}
-            />
-          </BookingFormField>
-          <BookingFormFieldError
-            error={numberOfPeopleError}
             className="md:col-span-2"
           />
         </div>

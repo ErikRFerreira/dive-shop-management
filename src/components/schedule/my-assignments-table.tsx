@@ -38,7 +38,7 @@ export function UpcomingAssignmentsTable({
   briefing,
 }: UpcomingAssignmentsTableProps) {
   const assignments = briefing.upcomingAssignments;
-  console.log(assignments);
+
   return (
     <section className="space-y-3">
       <AssignmentSectionHeader
@@ -60,7 +60,7 @@ export function UpcomingAssignmentsTable({
                       Activity
                     </AssignmentTableHead>
                     <AssignmentTableHead className="w-[20%]">
-                      Customer / Divers
+                      Active participants
                     </AssignmentTableHead>
                     <AssignmentTableHead className="w-[16%]">
                       Location
@@ -195,10 +195,10 @@ function AssignmentActivitySummary({
 }
 
 /**
- * Renders primary customer and additional divers for an upcoming table row.
+ * Renders primary active participant and additional active divers for an upcoming table row.
  *
  * @param props - Assignment whose customer rows should be summarized.
- * @returns Compact customer/diver display with missing-data fallback.
+ * @returns Compact active participant display with missing-data fallback.
  */
 function AssignmentCustomerSummary({
   assignment,
@@ -215,12 +215,15 @@ function AssignmentCustomerSummary({
 
   if (!primaryCustomer) {
     return (
-      <p className="text-muted-foreground">No customers/divers recorded</p>
+      <p className="text-muted-foreground">No active participants recorded</p>
     );
   }
 
   return (
     <div className="space-y-1.5">
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        {formatActiveParticipantSummary(assignment.numberOfPeople)}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-medium">{primaryCustomer.name}</p>
         {primaryCustomer.isPrimaryContact ? (
@@ -240,4 +243,20 @@ function AssignmentCustomerSummary({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Formats an active participant count for assignment table rows.
+ *
+ * @param count - Active operational participant count mapped from the schedule query.
+ * @returns Compact count copy for assignment displays.
+ */
+function formatActiveParticipantSummary(count: number | null) {
+  if (count === null) {
+    return 'Active participants: TBD';
+  }
+
+  const label = count === 1 ? 'participant' : 'participants';
+
+  return `${count} active ${label}`;
 }

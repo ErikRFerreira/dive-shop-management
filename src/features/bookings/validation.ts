@@ -11,6 +11,7 @@ import { z } from 'zod';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   Currency,
   DepositStatus,
@@ -80,6 +81,13 @@ export const updateBookingSchema = z.object({
   bookingId: z.string().trim().min(1, 'Booking ID is required.'),
 });
 
+/** Validates an admin participant status update for a scheduled booking. */
+export const updateBookingParticipantStatusSchema = z.object({
+  bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+  customerId: z.string().trim().min(1, 'Customer ID is required.'),
+  participationStatus: z.enum(BookingParticipantStatus),
+});
+
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
@@ -91,6 +99,7 @@ const activitySchema = z.object({
 const customerSchema = z.object({
   customerId: z.string().trim().min(1).optional(),
   role: z.enum(BookingCustomerRole),
+  participationStatus: z.enum(BookingParticipantStatus),
   customerName: z.string().nullable(),
   chineseName: z.string().nullable(),
   weChatId: z.string().nullable(),
@@ -147,6 +156,24 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
  */
 function hasMeaningfulCustomer(values: NormalizedBookingFormValues) {
   return values.customers.some(hasPersistableBookingCustomer);
+}
+
+/**
+ * Returns active booking customer rows that identify a real customer record.
+ *
+ * @param values - The normalized booking form values to inspect.
+ * @returns Active customer entries with their original form indexes.
+ */
+function getActivePersistableCustomerEntries(
+  values: NormalizedBookingFormValues,
+) {
+  return values.customers
+    .map((customer, index) => ({ customer, index }))
+    .filter(
+      ({ customer }) =>
+        customer.participationStatus === BookingParticipantStatus.ACTIVE &&
+        hasPersistableBookingCustomer(customer),
+    );
 }
 
 /**
@@ -221,7 +248,6 @@ export const draftBookingIntakeSchema =
   normalizedBookingIntakeSchema.superRefine((values, context) => {
     const hasMeaningfulValue =
       values.rawBookingText !== null ||
-      values.numberOfPeople !== null ||
       values.source !== null ||
       values.referrerName !== null ||
       values.internalNotes !== null ||
@@ -243,6 +269,7 @@ export const draftBookingIntakeSchema =
 export const submitBookingIntakeSchema =
   normalizedBookingIntakeSchema.superRefine((values, context) => {
     validatePaidDeposit(values, context);
+    const activeCustomerEntries = getActivePersistableCustomerEntries(values);
 
     if (values.activities.length === 0) {
       context.addIssue({
@@ -281,14 +308,6 @@ export const submitBookingIntakeSchema =
       }
     });
 
-    if (values.numberOfPeople === null || values.numberOfPeople < 1) {
-      context.addIssue({
-        code: 'custom',
-        path: ['numberOfPeople'],
-        message: 'Total participants must be at least 1 before submitting.',
-      });
-    }
-
     if (values.source === null) {
       context.addIssue({
         code: 'custom',
@@ -297,15 +316,15 @@ export const submitBookingIntakeSchema =
       });
     }
 
-    if (values.customers.length === 0) {
+    if (activeCustomerEntries.length === 0) {
       context.addIssue({
         code: 'custom',
         path: ['customers'],
-        message: 'Add at least one customer or diver before submitting.',
+        message: 'Add at least one active customer or diver before submitting.',
       });
     }
 
-    values.customers.forEach((customer, index) => {
+    activeCustomerEntries.forEach(({ customer, index }) => {
       if (customer.customerName === null) {
         context.addIssue({
           code: 'custom',
@@ -315,8 +334,8 @@ export const submitBookingIntakeSchema =
       }
     });
 
-    const primaryContacts = values.customers.filter(
-      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
+    const primaryContacts = activeCustomerEntries.filter(
+      ({ customer }) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
     );
 
     if (primaryContacts.length !== 1) {
@@ -326,7 +345,7 @@ export const submitBookingIntakeSchema =
         message: 'Select exactly one primary contact before submitting.',
       });
     } else {
-      const primaryContact = primaryContacts[0];
+      const primaryContact = primaryContacts[0].customer;
       if (
         primaryContact.weChatId === null &&
         primaryContact.whatsAppNumber === null &&
@@ -346,7 +365,7 @@ export const submitBookingIntakeSchema =
         (activity) => activity.activityType === ActivityType.FUN_DIVE,
       )
     ) {
-      values.customers.forEach((customer, index) => {
+      activeCustomerEntries.forEach(({ customer, index }) => {
         const requirements: Array<{
           field: 'certificationLevel' | 'lastDiveDate' | 'divesLogged';
           label: string;

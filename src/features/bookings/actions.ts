@@ -8,7 +8,10 @@
 
 import { redirect } from 'next/navigation';
 
-import { BookingStatus } from '@/generated/prisma/enums';
+import {
+  BookingParticipantStatus,
+  BookingStatus,
+} from '@/generated/prisma/enums';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
@@ -33,6 +36,7 @@ import {
   canApproveBookingRequest,
   canCreateBookingRequest,
   canEditBooking,
+  canManageScheduledBookingParticipants,
   canPerformBookingStatusTransition,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
@@ -45,6 +49,7 @@ import {
   cancelBookingSchema,
   markBookingNeedsMoreInfoSchema,
   resubmitBookingForApprovalSchema,
+  updateBookingParticipantStatusSchema,
   updateBookingSchema,
   validateBookingIntake,
 } from './validation';
@@ -55,6 +60,14 @@ export type {
   UpdateBookingActionResult,
 } from './action-results';
 
+export type BookingParticipantStatusActionResult =
+  | { success: true }
+  | {
+      success: false;
+      fieldErrors?: Record<string, string[]>;
+      formError?: string;
+    };
+
 /**
  * Persists one booking request and its related intake records atomically.
  *
@@ -63,6 +76,32 @@ export type {
  */
 function getEditSaveValidationIntent(status: BookingStatus) {
   return status === BookingStatus.PENDING_APPROVAL ? 'submit' : 'draft';
+}
+
+/**
+ * Converts participant status validation failures into the shared action shape.
+ *
+ * @param error - Zod validation error from the participant status schema.
+ * @returns Field and form errors consumable by the booking detail controls.
+ */
+function getBookingParticipantStatusValidationErrors(error: {
+  flatten: () => {
+    fieldErrors: Record<string, string[] | undefined>;
+    formErrors: string[];
+  };
+}): BookingParticipantStatusActionResult {
+  const flattened = error.flatten();
+  const fieldErrors = Object.fromEntries(
+    Object.entries(flattened.fieldErrors).filter(
+      (entry): entry is [string, string[]] => entry[1] !== undefined,
+    ),
+  );
+
+  return {
+    success: false,
+    fieldErrors,
+    formError: flattened.formErrors[0],
+  };
 }
 
 type UpdateEditableBookingOptions = {
@@ -341,6 +380,109 @@ export async function updateBooking(
   values: BookingFormValues,
 ): Promise<UpdateBookingActionResult> {
   return updateEditableBooking(bookingId, values);
+}
+
+/**
+ * Updates the operational participation status for one scheduled booking participant.
+ *
+ * The mutation updates only the BookingCustomer join row. Historical
+ * participation remains attached to the booking and customer record, while
+ * active headcount is recalculated by existing query mappers after revalidation.
+ *
+ * @param bookingId - Scheduled booking containing the participant.
+ * @param customerId - Customer linked to the booking participant row.
+ * @param participationStatus - New participant status selected by an Admin or Manager.
+ * @returns Success or validation/authorization/business-rule errors.
+ */
+export async function updateBookingParticipantStatus(
+  bookingId: string,
+  customerId: string,
+  participationStatus: BookingParticipantStatus,
+): Promise<BookingParticipantStatusActionResult> {
+  const validation = updateBookingParticipantStatusSchema.safeParse({
+    bookingId,
+    customerId,
+    participationStatus,
+  });
+
+  if (!validation.success) {
+    return getBookingParticipantStatusValidationErrors(validation.error);
+  }
+
+  const currentUser = await requireCurrentUser();
+
+  if (
+    !canManageScheduledBookingParticipants(currentUser, BookingStatus.SCHEDULED)
+  ) {
+    return {
+      success: false,
+      formError: 'You do not have permission to manage booking participants.',
+    };
+  }
+
+  const participant = await db.bookingCustomer.findUnique({
+    where: {
+      bookingRequestId_customerId: {
+        bookingRequestId: validation.data.bookingId,
+        customerId: validation.data.customerId,
+      },
+    },
+    select: {
+      bookingRequestId: true,
+      customerId: true,
+      bookingRequest: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!participant) {
+    return {
+      success: false,
+      formError: 'Booking participant not found. Refresh and try again.',
+    };
+  }
+
+  if (
+    !canManageScheduledBookingParticipants(
+      currentUser,
+      participant.bookingRequest.status,
+    )
+  ) {
+    return {
+      success: false,
+      formError: 'Only scheduled bookings can have participant statuses changed.',
+    };
+  }
+
+  const updateResult = await db.bookingCustomer.updateMany({
+    where: {
+      bookingRequestId: participant.bookingRequestId,
+      customerId: participant.customerId,
+      bookingRequest: {
+        status: BookingStatus.SCHEDULED,
+      },
+    },
+    data: {
+      participationStatus: validation.data.participationStatus,
+      participationStatusChangedAt: new Date(),
+    },
+  });
+
+  if (updateResult.count !== 1) {
+    return {
+      success: false,
+      formError:
+        'This booking was updated by another user. Refresh and try again.',
+    };
+  }
+
+  revalidateBookingWorkflowPaths(participant.bookingRequest.id);
+  revalidateSchedulePath();
+  return { success: true };
 }
 
 /**
