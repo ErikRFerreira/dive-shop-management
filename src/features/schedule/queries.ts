@@ -12,6 +12,11 @@ import {
   BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
+import {
+  getActiveBookingParticipants,
+  getActiveParticipantCount,
+  getPrimaryActiveBookingCustomer,
+} from '@/features/bookings/participants';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
@@ -70,7 +75,6 @@ const schedulePageItemArgs = {
         id: true,
         status: true,
         createdById: true,
-        numberOfPeople: true,
         source: true,
         referrerName: true,
         endAt: true,
@@ -92,6 +96,7 @@ const schedulePageItemArgs = {
         customers: {
           select: {
             role: true,
+            participationStatus: true,
             hotelAtBooking: true,
             createdAt: true,
             customer: {
@@ -140,7 +145,6 @@ const myScheduleAssignmentArgs = {
       select: {
         id: true,
         status: true,
-        numberOfPeople: true,
         endAt: true,
         activities: {
           select: {
@@ -159,6 +163,7 @@ const myScheduleAssignmentArgs = {
         customers: {
           select: {
             role: true,
+            participationStatus: true,
             hotelAtBooking: true,
             createdAt: true,
             customer: {
@@ -508,13 +513,9 @@ export function mapScheduleItemForSchedulePage(
   scheduleItem: ScheduleItemForSchedulePage,
 ): SchedulePageItem {
   const booking = scheduleItem.bookingRequest;
-  const displayBookingCustomer =
-    booking.customers.find(
-      (bookingCustomer) =>
-        bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
-    ) ??
-    booking.customers[0] ??
-    null;
+  const displayBookingCustomer = getPrimaryActiveBookingCustomer(
+    booking.customers,
+  );
 
   return {
     scheduleItemId: scheduleItem.id,
@@ -525,7 +526,7 @@ export function mapScheduleItemForSchedulePage(
     primaryCustomerName: formatCustomerName(
       displayBookingCustomer?.customer ?? null,
     ),
-    numberOfPeople: booking.numberOfPeople,
+    numberOfPeople: getActiveParticipantCount(booking.customers),
     hotel:
       displayBookingCustomer?.hotelAtBooking?.trim() ||
       displayBookingCustomer?.customer.hotel?.trim() ||
@@ -560,13 +561,9 @@ function mapScheduleItemToCalendarEvent(
   scheduleItem: ScheduleItemForSchedulePage,
 ): ScheduleCalendarEvent {
   const booking = scheduleItem.bookingRequest;
-  const displayBookingCustomer =
-    booking.customers.find(
-      (bookingCustomer) =>
-        bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
-    ) ??
-    booking.customers[0] ??
-    null;
+  const displayBookingCustomer = getPrimaryActiveBookingCustomer(
+    booking.customers,
+  );
   const primaryCustomerName = formatCustomerName(
     displayBookingCustomer?.customer ?? null,
   );
@@ -587,7 +584,7 @@ function mapScheduleItemToCalendarEvent(
       activitySummary,
       assignments,
       customerName: primaryCustomerName,
-      numberOfPeople: booking.numberOfPeople,
+      numberOfPeople: getActiveParticipantCount(booking.customers),
     }),
     start: startTime ? `${dateKey}T${startTime}:00` : dateKey,
     end: startTime && endTime ? `${dateKey}T${endTime}:00` : null,
@@ -614,7 +611,7 @@ function mapScheduleItemToCalendarEvent(
     })),
     primaryCustomerName,
     customers: mapBookingCustomersForDisplay(booking.customers),
-    numberOfPeople: booking.numberOfPeople,
+    numberOfPeople: getActiveParticipantCount(booking.customers),
     hotel:
       displayBookingCustomer?.hotelAtBooking?.trim() ||
       displayBookingCustomer?.customer.hotel?.trim() ||
@@ -698,13 +695,9 @@ function mapScheduleItemToMyScheduleAssignment(
   currentUserId: string,
 ): MyScheduleAssignment {
   const booking = scheduleItem.bookingRequest;
-  const displayBookingCustomer =
-    booking.customers.find(
-      (bookingCustomer) =>
-        bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
-    ) ??
-    booking.customers[0] ??
-    null;
+  const displayBookingCustomer = getPrimaryActiveBookingCustomer(
+    booking.customers,
+  );
   const primaryCustomerName = formatCustomerName(
     displayBookingCustomer?.customer ?? null,
   );
@@ -743,7 +736,7 @@ function mapScheduleItemToMyScheduleAssignment(
     })),
     primaryCustomerName,
     customers: mapBookingCustomersForDisplay(booking.customers),
-    numberOfPeople: booking.numberOfPeople,
+    numberOfPeople: getActiveParticipantCount(booking.customers),
     hotel:
       displayBookingCustomer?.hotelAtBooking?.trim() ||
       displayBookingCustomer?.customer.hotel?.trim() ||
@@ -777,17 +770,17 @@ function mapScheduleAssignments(
 }
 
 /**
- * Maps booking customer links into compact schedule customer display rows.
+ * Maps active booking customer links into compact schedule customer display rows.
  *
  * @param customers - Booking customer rows selected with each schedule item.
- * @returns Customer/diver rows in query order with safe display names.
+ * @returns Active customer/diver rows in query order with safe display names.
  */
 function mapBookingCustomersForDisplay(
   customers:
     | ScheduleItemForSchedulePage['bookingRequest']['customers']
     | ScheduleItemForMyAssignments['bookingRequest']['customers'],
 ) {
-  return customers.map((bookingCustomer) => {
+  return getActiveBookingParticipants(customers).map((bookingCustomer) => {
     const chineseName = bookingCustomer.customer.chineseName?.trim() || null;
 
     return {
@@ -873,7 +866,7 @@ function formatCustomerEnglishName(
  * Builds a calendar event title that is useful across FullCalendar views.
  *
  * @param input - Event title ingredients derived from the schedule item.
- * @returns A compact operational title with staff, activity, party size, and customer.
+ * @returns A compact operational title with staff, activity, active headcount, and customer.
  */
 function buildScheduleCalendarEventTitle(input: {
   activitySummary: string;
@@ -919,10 +912,10 @@ function formatScheduleStaffName(assignment: ScheduleAssignmentDetail) {
 }
 
 /**
- * Formats the number of people for compact calendar event titles.
+ * Formats the active participant count for compact calendar event titles.
  *
- * @param numberOfPeople - The stored booking party size.
- * @returns A compact people count, using TBD when party size is unknown.
+ * @param numberOfPeople - The active operational participant count.
+ * @returns A compact people count.
  */
 function formatPeopleCountLabel(numberOfPeople: number | null) {
   return `x${numberOfPeople ?? 'TBD'}`;

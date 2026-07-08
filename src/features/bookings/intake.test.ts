@@ -14,6 +14,7 @@ import type { BookingDetailsItem } from '@/features/bookings/queries';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   BookingStatus,
   Currency,
@@ -75,7 +76,6 @@ test('normalizes nested activity and customer values for persistence', () => {
         notes: '  Morning boat  ',
       },
     ],
-    numberOfPeople: ' 3 ',
     source: BookingSource.WECHAT,
     customers: [
       {
@@ -98,7 +98,7 @@ test('normalizes nested activity and customer values for persistence', () => {
 
   expect(values).toMatchObject({
     rawBookingText: 'Customer message',
-    numberOfPeople: 3,
+    numberOfPeople: 1,
     source: BookingSource.WECHAT,
     amount: 1200.5,
     currency: Currency.PESOS,
@@ -113,6 +113,7 @@ test('normalizes nested activity and customer values for persistence', () => {
     customers: [
       {
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         customerName: 'Maria Santos',
         preferredLanguage: PreferredLanguage.CHINESE,
         hotelAtBooking: 'Sea View Hotel',
@@ -126,6 +127,35 @@ test('normalizes nested activity and customer values for persistence', () => {
   });
   expect(values.activities[0].requestedDate?.toISOString()).toBe('2026-07-14T00:00:00.000Z');
   expect(values.customers[0].lastDiveDate?.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+});
+
+test('derives active participant count from persistable customer rows', () => {
+  const values = normalizeBookingFormValues({
+    ...bookingFormDefaultValues,
+    customers: [
+      {
+        ...bookingCustomerDefaultValues,
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        customerName: 'Maria Santos',
+      },
+      {
+        ...bookingCustomerDefaultValues,
+        customerName: 'Kai Chen',
+      },
+      {
+        ...bookingCustomerDefaultValues,
+        certificationLevel: 'Open Water',
+      },
+    ],
+  });
+
+  expect(values.numberOfPeople).toBe(2);
+});
+
+test('derives zero active participants from an empty draft customer row', () => {
+  const values = normalizeBookingFormValues(bookingFormDefaultValues);
+
+  expect(values.numberOfPeople).toBe(0);
 });
 
 test('normalizes legacy free-text equipment values to yes', () => {
@@ -186,6 +216,7 @@ test('maps persisted booking relations into editable browser form values', () =>
         bookingRequestId: 'booking-1',
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         hotelAtBooking: 'Sea View',
         equipmentNeeded: 'BCD',
         notes: 'Needs rental fins',
@@ -228,7 +259,6 @@ test('maps persisted booking relations into editable browser form values', () =>
 
   expect(mapBookingToFormValues(booking)).toMatchObject({
     rawBookingText: 'Original request',
-    numberOfPeople: '2',
     activities: [
       {
         activityType: ActivityType.FUN_DIVE,
@@ -269,6 +299,7 @@ test('maps blank linked customers to an editable empty row', () => {
           bookingRequestId: 'booking-1',
           customerId: 'blank-customer-1',
           role: BookingCustomerRole.PRIMARY_CONTACT,
+          participationStatus: BookingParticipantStatus.ACTIVE,
           hotelAtBooking: null,
           equipmentNeeded: null,
           notes: null,

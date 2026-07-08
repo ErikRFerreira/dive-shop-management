@@ -1,4 +1,5 @@
 import type { BookingListItem } from '@/features/bookings/queries';
+import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import {
   formatBookingHotel,
   formatBookingSchedule,
@@ -10,19 +11,46 @@ import {
 } from './booking-list-formatters';
 
 /**
- * Renders every customer/diver attached to a booking as visible line items.
+ * Returns active booking participants with the display customer first.
  *
  * @param booking - Booking list item with customer booking relations.
- * @returns A stacked customer list, or a safe fallback when no customers exist.
+ * @returns Active participants ordered for compact operational display.
  */
-function renderCustomerNames(booking: BookingListItem) {
-  if (booking.customers.length === 0) {
-    return 'No primary customer';
+function getOrderedActiveParticipants(booking: BookingListItem) {
+  const activeParticipants = getActiveBookingParticipants(booking.customers);
+  const displayCustomerId = booking.displayCustomer?.id;
+  const displayParticipant = activeParticipants.find(
+    (participant) => participant.customerId === displayCustomerId,
+  );
+
+  if (!displayParticipant) {
+    return activeParticipants;
+  }
+
+  return [
+    displayParticipant,
+    ...activeParticipants.filter(
+      (participant) => participant.customerId !== displayParticipant.customerId,
+    ),
+  ];
+}
+
+/**
+ * Renders active customers/divers attached to a booking as visible line items.
+ *
+ * @param booking - Booking list item with customer booking relations.
+ * @returns A stacked active participant list, or a safe fallback when none are active.
+ */
+function renderActiveCustomerNames(booking: BookingListItem) {
+  const activeParticipants = getOrderedActiveParticipants(booking);
+
+  if (activeParticipants.length === 0) {
+    return <p className="text-muted-foreground">No active participants</p>;
   }
 
   return (
     <div className="space-y-1">
-      {booking.customers.map((bookingCustomer) => (
+      {activeParticipants.map((bookingCustomer) => (
         <div key={bookingCustomer.customerId}>
           {formatCustomerName(bookingCustomer)}
         </div>
@@ -41,9 +69,10 @@ export function renderBookingSummary(booking: BookingListItem) {
   return (
     <div className="space-y-2">
       <div className="space-y-1 font-medium text-foreground">
-        {renderCustomerNames(booking)}
+        {renderActiveCustomerNames(booking)}
       </div>
       <div className="space-y-0.5 text-sm text-muted-foreground">
+        <div>Active participants: {booking.activeParticipantCount}</div>
         <div>Hotel: {formatBookingHotel(booking)}</div>
         <div>Source: {formatBookingSource(booking.source)}</div>
       </div>

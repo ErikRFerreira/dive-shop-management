@@ -3,6 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   BookingStatus,
   ScheduleAssignmentRole,
@@ -106,6 +107,7 @@ function scheduleCalendarQueryItem(
     customers: [
       {
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         hotelAtBooking: null,
         createdAt: new Date('2026-06-24T00:00:00.000Z'),
         customer: {
@@ -616,9 +618,10 @@ test('maps my assignments with the current user role from multiple assignments',
           },
         ],
         customers: [
-          {
-            role: BookingCustomerRole.PARTICIPANT,
-            hotelAtBooking: null,
+	          {
+	            role: BookingCustomerRole.PARTICIPANT,
+	            participationStatus: BookingParticipantStatus.ACTIVE,
+	            hotelAtBooking: null,
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: 'Participant Diver',
@@ -628,9 +631,10 @@ test('maps my assignments with the current user role from multiple assignments',
               hotel: 'Participant Hotel',
             },
           },
-          {
-            role: BookingCustomerRole.PRIMARY_CONTACT,
-            hotelAtBooking: 'Primary Booking Hotel',
+            {
+              role: BookingCustomerRole.PRIMARY_CONTACT,
+              participationStatus: BookingParticipantStatus.ACTIVE,
+              hotelAtBooking: 'Primary Booking Hotel',
             createdAt: new Date('2026-06-24T00:01:00.000Z'),
             customer: {
               fullName: 'Maria Santos',
@@ -638,6 +642,19 @@ test('maps my assignments with the current user role from multiple assignments',
               firstName: null,
               lastName: null,
               hotel: 'Customer Hotel',
+            },
+          },
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            participationStatus: BookingParticipantStatus.NO_SHOW,
+            hotelAtBooking: 'Inactive Hotel',
+            createdAt: new Date('2026-06-24T00:02:00.000Z'),
+            customer: {
+              fullName: 'Inactive Diver',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: 'Inactive Profile Hotel',
             },
           },
         ],
@@ -691,7 +708,7 @@ test('maps my assignments with the current user role from multiple assignments',
           role: BookingCustomerRole.PRIMARY_CONTACT,
         },
       ],
-      numberOfPeople: 3,
+	      numberOfPeople: 2,
       hotel: 'Primary Booking Hotel',
       scheduleNotes: 'Meet at the shop.',
       assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
@@ -936,9 +953,10 @@ test('maps schedule rows into schedule page items', async () => {
         referrerName: 'Lina',
         internalNotes: 'Customer prefers a morning slot.',
         customers: [
-          {
-            role: BookingCustomerRole.PARTICIPANT,
-            hotelAtBooking: null,
+	          {
+	            role: BookingCustomerRole.PARTICIPANT,
+	            participationStatus: BookingParticipantStatus.ACTIVE,
+	            hotelAtBooking: null,
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: 'Participant Diver',
@@ -948,9 +966,10 @@ test('maps schedule rows into schedule page items', async () => {
               hotel: 'Participant Hotel',
             },
           },
-          {
-            role: BookingCustomerRole.PRIMARY_CONTACT,
-            hotelAtBooking: 'Primary Booking Hotel',
+	          {
+	            role: BookingCustomerRole.PRIMARY_CONTACT,
+	            participationStatus: BookingParticipantStatus.ACTIVE,
+	            hotelAtBooking: 'Primary Booking Hotel',
             createdAt: new Date('2026-06-24T00:01:00.000Z'),
             customer: {
               fullName: 'Maria Santos',
@@ -1018,9 +1037,10 @@ test('falls back to booking internal notes and customer hotel', async () => {
         referrerName: null,
         internalNotes: 'Use the pool first.',
         customers: [
-          {
-            role: BookingCustomerRole.PRIMARY_CONTACT,
-            hotelAtBooking: null,
+	          {
+	            role: BookingCustomerRole.PRIMARY_CONTACT,
+	            participationStatus: BookingParticipantStatus.ACTIVE,
+	            hotelAtBooking: null,
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
               fullName: null,
@@ -1093,9 +1113,10 @@ test('maps timed schedule rows into calendar events', () => {
             },
           ],
           customers: [
-            {
-              role: BookingCustomerRole.PRIMARY_CONTACT,
-              hotelAtBooking: 'Primary Booking Hotel',
+	            {
+	              role: BookingCustomerRole.PRIMARY_CONTACT,
+	              participationStatus: BookingParticipantStatus.ACTIVE,
+	              hotelAtBooking: 'Primary Booking Hotel',
               createdAt: new Date('2026-06-24T00:01:00.000Z'),
               customer: {
                 fullName: 'Anchie',
@@ -1105,6 +1126,19 @@ test('maps timed schedule rows into calendar events', () => {
                 hotel: 'Customer Hotel',
               },
             },
+            {
+              role: BookingCustomerRole.PARTICIPANT,
+              participationStatus: BookingParticipantStatus.CANCELLED,
+              hotelAtBooking: 'Inactive Booking Hotel',
+              createdAt: new Date('2026-06-24T00:02:00.000Z'),
+              customer: {
+                fullName: 'Inactive Diver',
+                chineseName: null,
+                firstName: null,
+                lastName: null,
+                hotel: 'Inactive Hotel',
+              },
+            },
           ],
         },
       },
@@ -1112,7 +1146,7 @@ test('maps timed schedule rows into calendar events', () => {
   ).toEqual([
     {
       id: 'schedule-1',
-      title: '[Dina] Fun Dive x2 Anchie',
+	      title: '[Dina] Fun Dive x1 Anchie',
       start: '2026-07-14T08:00:00',
       end: '2026-07-14T12:30:00',
       allDay: false,
@@ -1145,7 +1179,7 @@ test('maps timed schedule rows into calendar events', () => {
           role: BookingCustomerRole.PRIMARY_CONTACT,
         },
       ],
-      numberOfPeople: 2,
+	      numberOfPeople: 1,
       hotel: 'Primary Booking Hotel',
       source: BookingSource.WECHAT,
       referrerName: 'Lina',
@@ -1194,9 +1228,10 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
           internalNotes: 'Use the pool first.',
           activities: [],
           customers: [
-            {
-              role: BookingCustomerRole.PRIMARY_CONTACT,
-              hotelAtBooking: null,
+	            {
+	              role: BookingCustomerRole.PRIMARY_CONTACT,
+	              participationStatus: BookingParticipantStatus.ACTIVE,
+	              hotelAtBooking: null,
               createdAt: new Date('2026-06-24T00:00:00.000Z'),
               customer: {
                 fullName: null,
@@ -1271,6 +1306,7 @@ test('maps multiple assigned staff into a compact calendar event title prefix', 
         customers: [
           {
             role: BookingCustomerRole.PRIMARY_CONTACT,
+            participationStatus: BookingParticipantStatus.ACTIVE,
             hotelAtBooking: null,
             createdAt: new Date('2026-06-24T00:00:00.000Z'),
             customer: {
@@ -1281,13 +1317,27 @@ test('maps multiple assigned staff into a compact calendar event title prefix', 
               hotel: null,
             },
           },
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            participationStatus: BookingParticipantStatus.DROPPED_OUT,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:01:00.000Z'),
+            customer: {
+              fullName: 'Dropped Diver',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
         ],
-        numberOfPeople: 1,
+        numberOfPeople: 7,
       },
     }),
   ]);
 
   expect(event?.title).toBe('[Mark/Erik] Rescue Diver Course x1 John Doe');
+  expect(event?.title).not.toContain('x7');
   expect(event?.title).not.toContain('example.test');
 });
 
@@ -1315,6 +1365,6 @@ test('falls back safely for blank staff names and unknown party size', () => {
     }),
   ]);
 
-  expect(event?.title).toBe('[Lead Instructor] Fun Dive xTBD Customer TBD');
+  expect(event?.title).toBe('[Lead Instructor] Fun Dive x0 Customer TBD');
   expect(event?.title).not.toContain('instructor@example.test');
 });

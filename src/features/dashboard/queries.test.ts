@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
   ScheduleAssignmentRole,
   UserRole,
@@ -423,6 +424,98 @@ describe("today's dashboard schedule", () => {
     );
   });
 
+  test('derives today schedule headcount and participants from active rows', async () => {
+    const activePrimaryCustomer =
+      scheduleRecordBase().bookingRequest.customers[0];
+    const activeParticipant = {
+      ...activePrimaryCustomer,
+      role: BookingCustomerRole.PARTICIPANT,
+      hotelAtBooking: null,
+      createdAt: new Date('2026-07-01T08:01:00.000Z'),
+      customer: {
+        ...activePrimaryCustomer.customer,
+        fullName: 'Kai Chen',
+        hotel: 'Kai Hotel',
+      },
+    };
+    const droppedOutParticipant = {
+      ...activePrimaryCustomer,
+      role: BookingCustomerRole.PARTICIPANT,
+      participationStatus: BookingParticipantStatus.DROPPED_OUT,
+      hotelAtBooking: 'Dropped Out Hotel',
+      createdAt: new Date('2026-07-01T08:02:00.000Z'),
+      customer: {
+        ...activePrimaryCustomer.customer,
+        fullName: 'Dropped Diver',
+        hotel: 'Dropped Customer Hotel',
+      },
+    };
+    const cancelledParticipant = {
+      ...activePrimaryCustomer,
+      role: BookingCustomerRole.PARTICIPANT,
+      participationStatus: BookingParticipantStatus.CANCELLED,
+      hotelAtBooking: 'Cancelled Hotel',
+      createdAt: new Date('2026-07-01T08:03:00.000Z'),
+      customer: {
+        ...activePrimaryCustomer.customer,
+        fullName: 'Cancelled Diver',
+        hotel: 'Cancelled Customer Hotel',
+      },
+    };
+    const noShowParticipant = {
+      ...activePrimaryCustomer,
+      role: BookingCustomerRole.PARTICIPANT,
+      participationStatus: BookingParticipantStatus.NO_SHOW,
+      hotelAtBooking: 'No Show Hotel',
+      createdAt: new Date('2026-07-01T08:04:00.000Z'),
+      customer: {
+        ...activePrimaryCustomer.customer,
+        fullName: 'No Show Diver',
+        hotel: 'No Show Customer Hotel',
+      },
+    };
+
+    mocks.scheduleItemFindMany.mockResolvedValueOnce([
+      scheduleRecord({
+        bookingRequest: {
+          ...scheduleRecordBase().bookingRequest,
+          numberOfPeople: 9,
+          customers: [
+            activePrimaryCustomer,
+            activeParticipant,
+            droppedOutParticipant,
+            cancelledParticipant,
+            noShowParticipant,
+          ],
+        },
+      }),
+    ]);
+
+    const [item] = await getTodaysScheduleItems(managerUser);
+
+    expect(item).toMatchObject({
+      numberOfPeople: 2,
+      hotel: 'Sea View',
+      customers: [
+        expect.objectContaining({ name: 'Ada Lovelace' }),
+        expect.objectContaining({ name: 'Kai Chen' }),
+      ],
+    });
+    expect(item?.customers).toHaveLength(2);
+    expect(item?.customers.map((customer) => customer.name)).not.toContain(
+      'Dropped Diver',
+    );
+    expect(item?.customers.map((customer) => customer.name)).not.toContain(
+      'Cancelled Diver',
+    );
+    expect(item?.customers.map((customer) => customer.name)).not.toContain(
+      'No Show Diver',
+    );
+    expect(item?.hotel).not.toBe('Dropped Out Hotel');
+    expect(item?.hotel).not.toBe('Cancelled Hotel');
+    expect(item?.hotel).not.toBe('No Show Hotel');
+  });
+
   test('uses the shop timezone for today schedule rows', async () => {
     vi.setSystemTime(new Date('2026-07-02T18:30:00.000Z'));
     mocks.scheduleItemFindMany.mockResolvedValueOnce([]);
@@ -644,9 +737,10 @@ function bookingRecordBase() {
       },
     ],
     customers: [
-      {
-        role: BookingCustomerRole.PRIMARY_CONTACT,
-        createdAt: updatedAt,
+	      {
+	        role: BookingCustomerRole.PRIMARY_CONTACT,
+	        participationStatus: BookingParticipantStatus.ACTIVE,
+	        createdAt: updatedAt,
         customer: {
           fullName: 'Ada Lovelace',
           firstName: null,
@@ -700,9 +794,10 @@ function scheduleRecordBase() {
         },
       ],
       customers: [
-        {
-          role: BookingCustomerRole.PRIMARY_CONTACT,
-          hotelAtBooking: 'Sea View',
+	        {
+	          role: BookingCustomerRole.PRIMARY_CONTACT,
+	          participationStatus: BookingParticipantStatus.ACTIVE,
+	          hotelAtBooking: 'Sea View',
           createdAt: updatedAt,
           customer: {
             fullName: 'Ada Lovelace',

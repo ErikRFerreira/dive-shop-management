@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   BookingStatus,
   Currency,
@@ -66,7 +67,6 @@ export type BookingCustomerFormValues = {
 export type BookingFormValues = {
   rawBookingText: string;
   activities: BookingActivityFormValues[];
-  numberOfPeople: string;
   source: BookingSource | '';
   referrerName: string;
   internalNotes: string;
@@ -90,6 +90,7 @@ export type NormalizedBookingActivityFormValues = {
 export type NormalizedBookingCustomerFormValues = {
   customerId?: string;
   role: BookingCustomerRole;
+  participationStatus: BookingParticipantStatus;
   customerName: string | null;
   chineseName: string | null;
   weChatId: string | null;

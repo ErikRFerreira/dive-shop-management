@@ -85,10 +85,7 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span>
-                        {item.numberOfPeople ?? 'TBD'}{' '}
-                        {item.numberOfPeople === 1 ? 'person' : 'people'}
-                      </span>
+                      <span>{formatActiveParticipantSummary(item)}</span>
                       {item.hotel ? <span>Hotel: {item.hotel}</span> : null}
                       {sourceReferrer ? (
                         <span>Source/referrer: {sourceReferrer}</span>
@@ -118,4 +115,20 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Formats active participant count copy for the simple schedule list.
+ *
+ * @param item - Schedule row containing the mapped active participant count.
+ * @returns A compact active participant count, or TBD when unavailable.
+ */
+function formatActiveParticipantSummary(item: SchedulePageItem) {
+  if (item.numberOfPeople === null) {
+    return 'Active participants: TBD';
+  }
+
+  const label = item.numberOfPeople === 1 ? 'participant' : 'participants';
+
+  return `${item.numberOfPeople} active ${label}`;
 }

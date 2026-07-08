@@ -3,6 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   BookingStatus,
   DepositStatus,
@@ -11,6 +12,8 @@ import {
 import { bookingFormDefaultValues } from './form-values';
 
 const mocks = vi.hoisted(() => ({
+  bookingCustomerFindUnique: vi.fn(),
+  bookingCustomerUpdateMany: vi.fn(),
   findUnique: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn(),
@@ -20,7 +23,7 @@ const mocks = vi.hoisted(() => ({
     bookingRequest: { create: vi.fn(), updateMany: vi.fn() },
     scheduleItem: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
     bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
-    customer: { update: vi.fn(), create: vi.fn() },
+    customer: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
     bookingCustomer: { deleteMany: vi.fn(), createMany: vi.fn() },
     deposit: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
   },
@@ -37,6 +40,10 @@ vi.mock('@/lib/db', () => ({
     },
     customer: {
       findMany: mocks.findManyCustomers,
+    },
+    bookingCustomer: {
+      findUnique: mocks.bookingCustomerFindUnique,
+      updateMany: mocks.bookingCustomerUpdateMany,
     },
   },
 }));
@@ -59,6 +66,7 @@ import {
   submitBookingForApproval,
   submitEditedBookingForApproval,
   updateBooking,
+  updateBookingParticipantStatus,
 } from './actions';
 
 const initialBookingWorkflowActionState = {};
@@ -82,7 +90,6 @@ function validSubmitValues(overrides = {}) {
         requestedDate: '2026-07-14',
       },
     ],
-    numberOfPeople: '1',
     source: BookingSource.EMAIL,
     customers: [
       {
@@ -124,6 +131,7 @@ function persistedSubmittableBooking(overrides = {}) {
       {
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
         hotelAtBooking: null,
         equipmentNeeded: null,
         notes: null,
@@ -178,6 +186,15 @@ beforeEach(() => {
   mocks.redirect.mockImplementation((url: string) => {
     throw new Error(`redirect:${url}`);
   });
+  mocks.bookingCustomerFindUnique.mockResolvedValue({
+    bookingRequestId: 'booking-1',
+    customerId: 'customer-1',
+    bookingRequest: {
+      id: 'booking-1',
+      status: BookingStatus.SCHEDULED,
+    },
+  });
+  mocks.bookingCustomerUpdateMany.mockResolvedValue({ count: 1 });
   mocks.updateMany.mockResolvedValue({ count: 1 });
   mocks.findManyCustomers.mockImplementation(
     async ({ where }: { where?: { id?: { in?: string[] } } }) =>
@@ -196,11 +213,195 @@ beforeEach(() => {
   mocks.transaction.bookingActivity.createMany.mockResolvedValue({ count: 1 });
   mocks.transaction.customer.update.mockResolvedValue({ id: 'customer-1' });
   mocks.transaction.customer.create.mockResolvedValue({ id: 'customer-new' });
+  mocks.transaction.customer.delete.mockResolvedValue({ id: 'customer-1' });
   mocks.transaction.bookingCustomer.deleteMany.mockResolvedValue({ count: 1 });
   mocks.transaction.bookingCustomer.createMany.mockResolvedValue({ count: 1 });
   mocks.transaction.deposit.update.mockResolvedValue({ id: 'deposit-1' });
   mocks.transaction.deposit.create.mockResolvedValue({ id: 'deposit-new' });
   mocks.transaction.deposit.delete.mockResolvedValue({ id: 'deposit-1' });
+});
+
+test.each([
+  [UserRole.ADMIN, BookingParticipantStatus.DROPPED_OUT],
+  [UserRole.MANAGER, BookingParticipantStatus.ACTIVE],
+] as const)(
+  'allows %s to update a scheduled booking participant to %s',
+  async (role, participationStatus) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+
+    await expect(
+      updateBookingParticipantStatus(
+        'booking-1',
+        'customer-1',
+        participationStatus,
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.bookingCustomerFindUnique).toHaveBeenCalledWith({
+      where: {
+        bookingRequestId_customerId: {
+          bookingRequestId: 'booking-1',
+          customerId: 'customer-1',
+        },
+      },
+      select: {
+        bookingRequestId: true,
+        customerId: true,
+        bookingRequest: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+    expect(mocks.bookingCustomerUpdateMany).toHaveBeenCalledWith({
+      where: {
+        bookingRequestId: 'booking-1',
+        customerId: 'customer-1',
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+      },
+      data: {
+        participationStatus,
+        participationStatusChangedAt: expect.any(Date),
+      },
+    });
+    expect(mocks.bookingCustomerUpdateMany).toHaveBeenCalledTimes(1);
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingCustomer.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+    expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+    expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+    expect(mocks.transaction.customer.delete).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/review',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/edit',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
+  },
+);
+
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
+  'does not allow %s to update a scheduled booking participant status',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+
+    await expect(
+      updateBookingParticipantStatus(
+        'booking-1',
+        'customer-1',
+        BookingParticipantStatus.NO_SHOW,
+      ),
+    ).resolves.toEqual({
+      success: false,
+      formError: 'You do not have permission to manage booking participants.',
+    });
+
+    expect(mocks.bookingCustomerFindUnique).not.toHaveBeenCalled();
+    expect(mocks.bookingCustomerUpdateMany).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects invalid participant status before loading a participant', async () => {
+  await expect(
+    updateBookingParticipantStatus(
+      'booking-1',
+      'customer-1',
+      'INVALID_STATUS' as BookingParticipantStatus,
+    ),
+  ).resolves.toEqual({
+    success: false,
+    fieldErrors: {
+      participationStatus: expect.any(Array),
+    },
+    formError: undefined,
+  });
+
+  expect(mocks.requireCurrentUser).not.toHaveBeenCalled();
+  expect(mocks.bookingCustomerFindUnique).not.toHaveBeenCalled();
+  expect(mocks.bookingCustomerUpdateMany).not.toHaveBeenCalled();
+});
+
+test('rejects participant status changes when the booking participant is missing', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.bookingCustomerFindUnique.mockResolvedValue(null);
+
+  await expect(
+    updateBookingParticipantStatus(
+      'booking-1',
+      'customer-1',
+      BookingParticipantStatus.CANCELLED,
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Booking participant not found. Refresh and try again.',
+  });
+
+  expect(mocks.bookingCustomerUpdateMany).not.toHaveBeenCalled();
+});
+
+test('rejects participant status changes for non-scheduled bookings', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.bookingCustomerFindUnique.mockResolvedValue({
+    bookingRequestId: 'booking-1',
+    customerId: 'customer-1',
+    bookingRequest: {
+      id: 'booking-1',
+      status: BookingStatus.PENDING_APPROVAL,
+    },
+  });
+
+  await expect(
+    updateBookingParticipantStatus(
+      'booking-1',
+      'customer-1',
+      BookingParticipantStatus.CANCELLED,
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have participant statuses changed.',
+  });
+
+  expect(mocks.bookingCustomerUpdateMany).not.toHaveBeenCalled();
+});
+
+test('returns a recoverable error when participant status update is stale', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.bookingCustomerUpdateMany.mockResolvedValue({ count: 0 });
+
+  await expect(
+    updateBookingParticipantStatus(
+      'booking-1',
+      'customer-1',
+      BookingParticipantStatus.DROPPED_OUT,
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'This booking was updated by another user. Refresh and try again.',
+  });
 });
 
 test('marks a pending booking as Needs More Info with a trimmed reason', async () => {
@@ -747,7 +948,37 @@ test('blocks standalone resubmit when the stored booking is missing submit detai
     'Booking is missing required information before resubmission.',
   );
   expect(result.fieldErrors?.customers).toContain(
-    'Add at least one customer or diver before submitting.',
+    'Add at least one active customer or diver before submitting.',
+  );
+  expect(mocks.updateMany).not.toHaveBeenCalled();
+});
+
+test('blocks standalone resubmit when stored participants are inactive only', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue(
+    persistedSubmittableBooking({
+      customers: [
+        {
+          ...persistedSubmittableBooking().customers[0],
+          participationStatus: BookingParticipantStatus.DROPPED_OUT,
+        },
+      ],
+    }),
+  );
+
+  const result = await resubmitBookingForApproval(
+    initialBookingWorkflowActionState,
+    formData({ bookingId: 'booking-1' }),
+  );
+
+  expect(result.formError).toBe(
+    'Booking is missing required information before resubmission.',
+  );
+  expect(result.fieldErrors?.customers).toContain(
+    'Add at least one active customer or diver before submitting.',
   );
   expect(mocks.updateMany).not.toHaveBeenCalled();
 });
@@ -917,6 +1148,7 @@ test('submits a draft edit with full submit validation in the same transaction',
       },
       data: expect.objectContaining({
         status: BookingStatus.PENDING_APPROVAL,
+        numberOfPeople: 1,
       }),
     }),
   );
@@ -974,6 +1206,7 @@ test('saves Needs More Info edits without clearing the stored reason', async () 
   const updateData =
     mocks.transaction.bookingRequest.updateMany.mock.calls[0][0].data;
   expect(updateData.status).toBeUndefined();
+  expect(updateData.numberOfPeople).toBe(0);
   expect(updateData).not.toHaveProperty('needsMoreInfoReason');
 });
 
@@ -1000,6 +1233,7 @@ test('resubmits Needs More Info edits with full submit validation', async () => 
   const updateData =
     mocks.transaction.bookingRequest.updateMany.mock.calls[0][0].data;
   expect(updateData.status).toBe(BookingStatus.PENDING_APPROVAL);
+  expect(updateData.numberOfPeople).toBe(1);
   expect(updateData).not.toHaveProperty('needsMoreInfoReason');
 });
 
@@ -1026,7 +1260,6 @@ test('updates related booking records in one transaction without changing status
         requestedDate: '2026-07-14',
       },
     ],
-    numberOfPeople: '1',
     source: BookingSource.EMAIL,
     customers: [
       {
@@ -1056,7 +1289,19 @@ test('updates related booking records in one transaction without changing status
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith(
     expect.objectContaining({
-      data: [expect.objectContaining({ customerId: 'customer-1' })],
+      data: [
+        expect.objectContaining({
+          customerId: 'customer-1',
+          participationStatus: BookingParticipantStatus.ACTIVE,
+        }),
+      ],
+    }),
+  );
+  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        numberOfPeople: 1,
+      }),
     }),
   );
   expect(mocks.transaction.deposit.delete).toHaveBeenCalledWith({
@@ -1096,7 +1341,17 @@ test('creates a draft with a selected existing customer without duplicating the 
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
-    data: [expect.objectContaining({ customerId: 'customer-1' })],
+    data: [
+      expect.objectContaining({
+        customerId: 'customer-1',
+        participationStatus: BookingParticipantStatus.ACTIVE,
+      }),
+    ],
+  });
+  expect(mocks.transaction.bookingRequest.create).toHaveBeenCalledWith({
+    data: expect.objectContaining({
+      numberOfPeople: 1,
+    }),
   });
 });
 
@@ -1119,6 +1374,11 @@ test('creates a raw-text draft without persisting the default empty customer row
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingRequest.create).toHaveBeenCalledWith({
+    data: expect.objectContaining({
+      numberOfPeople: 0,
+    }),
+  });
 });
 
 test('removes existing booking customer links when edit form only has an empty row', async () => {
@@ -1149,6 +1409,13 @@ test('removes existing booking customer links when edit form only has an empty r
   });
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        numberOfPeople: 0,
+      }),
+    }),
+  );
 });
 
 test('creates mixed existing and new booking customers in one transaction', async () => {
@@ -1185,9 +1452,20 @@ test('creates mixed existing and new booking customers in one transaction', asyn
   expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
     data: [
-      expect.objectContaining({ customerId: 'customer-1' }),
-      expect.objectContaining({ customerId: 'customer-new' }),
+      expect.objectContaining({
+        customerId: 'customer-1',
+        participationStatus: BookingParticipantStatus.ACTIVE,
+      }),
+      expect.objectContaining({
+        customerId: 'customer-new',
+        participationStatus: BookingParticipantStatus.ACTIVE,
+      }),
     ],
+  });
+  expect(mocks.transaction.bookingRequest.create).toHaveBeenCalledWith({
+    data: expect.objectContaining({
+      numberOfPeople: 2,
+    }),
   });
 });
 

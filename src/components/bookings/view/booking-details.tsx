@@ -19,6 +19,7 @@ type Props = {
   canCancel: boolean;
   canEdit: boolean;
   canManageAssignments: boolean;
+  canManageParticipantStatus: boolean;
   canShowManagerAssignmentAvailabilityCopy: boolean;
   canReview: boolean;
   canResubmit: boolean;
@@ -27,7 +28,7 @@ type Props = {
 /**
  * Renders the internal booking detail page content.
  *
- * @param props - Booking detail data plus workflow and assignment permissions.
+ * @param props - Booking detail data plus workflow, assignment, and participant permissions.
  * @returns The booking detail UI with optional schedule assignment controls.
  */
 function BookingDetails({
@@ -36,6 +37,7 @@ function BookingDetails({
   canCancel,
   canEdit,
   canManageAssignments,
+  canManageParticipantStatus,
   canShowManagerAssignmentAvailabilityCopy,
   canReview,
   canResubmit,
@@ -86,6 +88,7 @@ function BookingDetails({
             ) : null
           }
           booking={booking}
+          canManageParticipantStatus={canManageParticipantStatus}
           includesFunDive={includesFunDive}
           internalNotesVariant="details"
           summaryTitle="Booking summary"

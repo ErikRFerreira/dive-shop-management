@@ -9,6 +9,7 @@ import type { BookingFormValues } from '@/features/bookings/types';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingSource,
   Currency,
   DepositStatus,
@@ -32,7 +33,6 @@ function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
         notes: '',
       },
     ],
-    numberOfPeople: '2',
     source: BookingSource.EMAIL,
     customers: [
       {
@@ -187,7 +187,6 @@ test('requires an activity and its requested date for submission', () => {
 test('uses booking summary labels in submit validation errors', () => {
   const result = validateBookingIntake(
     validSubmitValues({
-      numberOfPeople: '',
       source: '',
     }),
     'submit',
@@ -196,15 +195,58 @@ test('uses booking summary labels in submit validation errors', () => {
   expect(result).toMatchObject({
     success: false,
     fieldErrors: {
-      numberOfPeople: [
-        'Total participants must be at least 1 before submitting.',
-      ],
       source: [
         'Source / referrer is required before submitting for approval.',
       ],
     },
   });
 });
+
+test('requires at least one active customer or diver for submission', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({
+      customers: [
+        {
+          ...bookingCustomerDefaultValues,
+          role: BookingCustomerRole.PRIMARY_CONTACT,
+        },
+      ],
+    }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      customers: expect.arrayContaining([
+        'Add at least one active customer or diver before submitting.',
+      ]),
+    },
+  });
+});
+
+test.each([
+  BookingParticipantStatus.DROPPED_OUT,
+  BookingParticipantStatus.CANCELLED,
+  BookingParticipantStatus.NO_SHOW,
+] as const)(
+  'does not count %s customers or divers for submission',
+  (participationStatus) => {
+    const values = validSubmitValues();
+    values.customers[0].participationStatus = participationStatus;
+
+    const result = validateBookingIntake(values, 'submit');
+
+    expect(result).toMatchObject({
+      success: false,
+      fieldErrors: {
+        customers: expect.arrayContaining([
+          'Add at least one active customer or diver before submitting.',
+        ]),
+      },
+    });
+  },
+);
 
 test('requires an exactly one primary contact with a contact method', () => {
   const result = validateBookingIntake(

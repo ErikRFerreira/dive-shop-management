@@ -89,10 +89,6 @@ export function BookingForm(props: BookingFormProps) {
   const customers =
     useWatch({ control: form.control, name: 'customers' }) ?? [];
   const source = useWatch({ control: form.control, name: 'source' });
-  const numberOfPeople = useWatch({
-    control: form.control,
-    name: 'numberOfPeople',
-  });
   const depositStatus = useWatch({
     control: form.control,
     name: 'depositStatus',
@@ -283,7 +279,6 @@ export function BookingForm(props: BookingFormProps) {
     currency,
     customers,
     depositStatus,
-    numberOfPeople,
     paidTo,
     source,
   });

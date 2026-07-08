@@ -71,6 +71,7 @@ export type MyScheduleAssignment = {
   activities: MyScheduleAssignmentActivity[];
   primaryCustomerName: string | null;
   customers: ScheduleBookingCustomerDisplay[];
+  /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
   hotel: string | null;
   scheduleNotes: string | null;
@@ -118,6 +119,7 @@ export type SchedulePageItem = {
   startTime: string | null;
   activityType: ActivityType;
   primaryCustomerName: string | null;
+  /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
   hotel: string | null;
   source: BookingSource | null;
@@ -171,6 +173,7 @@ export type ScheduleCalendarEvent = {
   activities: ScheduleCalendarActivity[];
   primaryCustomerName: string | null;
   customers: ScheduleBookingCustomerDisplay[];
+  /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
   hotel: string | null;
   source: BookingSource | null;

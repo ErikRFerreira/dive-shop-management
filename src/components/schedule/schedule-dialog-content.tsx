@@ -96,7 +96,7 @@ export function ScheduleEventDialogContent({
             />
             <SummaryField
               icon={Users}
-              label="Customers"
+              label="Active participants"
               value={<CustomersSummary customers={event.customers} />}
             />
             <SummaryField
@@ -189,10 +189,10 @@ function SummaryField({
 }
 
 /**
- * Renders all customers and divers attached to the selected schedule event.
+ * Renders active customers and divers attached to the selected schedule event.
  *
  * @param props - Customer/diver rows prepared by the schedule query mapper.
- * @returns A compact customer list without repeating the primary summary.
+ * @returns A compact active participant list without repeating the primary summary.
  */
 function CustomersSummary({
   customers,
@@ -201,7 +201,7 @@ function CustomersSummary({
 }) {
   if (customers.length === 0) {
     return (
-      <p className="text-muted-foreground">No customers/divers recorded</p>
+      <p className="text-muted-foreground">No active participants recorded</p>
     );
   }
 
