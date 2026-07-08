@@ -1,3 +1,4 @@
+import { AssignmentBadge } from '@/components/common/assignment-badge';
 import { EmptyState } from '@/components/common/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,13 +74,11 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
             {assignment.primaryCustomerName ?? 'Customer not recorded'}
           </p>
         </div>
-        <Badge
+        <AssignmentBadge
+          label={formatEnumLabel(assignment.assignmentRole)}
           variant="secondary"
-          className="bg-ocean/10 text-ocean ring-ocean/20"
-        >
-          <span className="size-1.5 rounded-full bg-current" aria-hidden />
-          {formatEnumLabel(assignment.assignmentRole)}
-        </Badge>
+          colorScheme="ocean"
+        />
       </CardHeader>
       <CardContent className="space-y-4 px-1 mt-1">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">

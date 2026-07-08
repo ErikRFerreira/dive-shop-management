@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { AssignmentBadge } from '@/components/common/assignment-badge';
+
 import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -271,19 +273,12 @@ function ScheduleDialogHeaderBadges({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {needsStaff ? (
-        <Badge
-          className={cn(
-            badgeClassName,
-            'bg-unassigned/10 text-unassigned ring-unassigned/20',
-          )}
+        <AssignmentBadge
+          label="Needs staff"
           variant="outline"
-        >
-          <span
-            aria-hidden="true"
-            className="size-1.5 rounded-full bg-current"
-          />
-          Needs staff
-        </Badge>
+          colorScheme="unassigned"
+          className={badgeClassName}
+        />
       ) : null}
       {activityCategory ? (
         <Badge
