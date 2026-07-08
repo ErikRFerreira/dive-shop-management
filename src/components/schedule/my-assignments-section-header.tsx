@@ -7,18 +7,20 @@ type AssignmentSectionHeaderProps = {
  * Renders a section title and assignment count.
  *
  * @param props - Section title and count to display.
- * @returns A compact section header.
+ * @returns A compact section header with uppercase title and inline count badge.
  */
 export function AssignmentSectionHeader({
   count,
   title,
 }: AssignmentSectionHeaderProps) {
   return (
-    <div>
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      <p className="text-sm text-muted-foreground">
-        {count === 1 ? '1 assigned activity' : `${count} assigned activities`}
-      </p>
+    <div className="flex items-center gap-3">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h2>
+      <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        {count}
+      </span>
     </div>
   );
 }

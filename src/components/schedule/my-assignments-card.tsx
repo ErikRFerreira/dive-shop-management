@@ -5,11 +5,12 @@ import type { MyScheduleAssignment } from '@/features/schedule/types';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 import {
-  formatAssignmentActivityLine,
   formatAssignmentTime,
   formatHotelPickup,
 } from './my-assignments-list-formatters';
 import { AssignmentSectionHeader } from './my-assignments-section-header';
+
+import { Clock, MapPin, Users, StickyNote } from 'lucide-react';
 
 type MyAssignmentCardProps = {
   assignment: MyScheduleAssignment;
@@ -39,7 +40,7 @@ export function AssignmentCardSection({
       <AssignmentSectionHeader count={assignments.length} title={title} />
 
       {assignments.length > 0 ? (
-        <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {assignments.map((assignment) => (
             <MyAssignmentCard
               assignment={assignment}
@@ -62,8 +63,8 @@ export function AssignmentCardSection({
  */
 export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
   return (
-    <Card className="rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm">
-      <CardHeader className="gap-3 border-b border-border px-5 md:flex md:flex-row md:items-start md:justify-between">
+    <Card className="rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow p-5 shadow-sm">
+      <CardHeader className="gap-3 px-1 md:flex md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle className="text-base">
             {assignment.activitySummary}
@@ -72,53 +73,49 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
             {assignment.primaryCustomerName ?? 'Customer not recorded'}
           </p>
         </div>
-        <Badge variant="secondary">
+        <Badge
+          variant="secondary"
+          className="bg-ocean/10 text-ocean ring-ocean/20"
+        >
+          <span className="size-1.5 rounded-full bg-current" aria-hidden />
           {formatEnumLabel(assignment.assignmentRole)}
         </Badge>
       </CardHeader>
-      <CardContent className="space-y-4 p-5">
-        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+      <CardContent className="space-y-4 px-1 mt-1">
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <AssignmentDetail
-            label="Date"
-            value={formatDisplayDate(assignment.date)}
+            label="Date & Time"
+            value={`${formatDisplayDate(assignment.date)} ·  ${formatAssignmentTime(assignment)}`}
+            icon={Clock}
           />
-          <AssignmentDetail
-            label="Time"
-            value={formatAssignmentTime(assignment)}
+          <AssignmentCustomersSection
+            customers={assignment.customers}
+            icon={Users}
           />
+
           <AssignmentDetail
-            label="Location"
+            label="Hotel / Pickup"
             value={formatHotelPickup(assignment.hotel)}
+            icon={MapPin}
           />
+
+          {assignment.scheduleNotes ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase text-muted-foreground">
+                Schedule notes
+              </p>
+              <p className="whitespace-pre-wrap text-sm">
+                {assignment.scheduleNotes}
+              </p>
+            </div>
+          ) : (
+            <AssignmentDetail
+              label="Schedule notes"
+              value="No notes"
+              icon={StickyNote}
+            />
+          )}
         </dl>
-
-        <AssignmentCustomersSection customers={assignment.customers} />
-
-        {assignment.activities.length > 0 ? (
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase text-muted-foreground">
-              Activities
-            </p>
-            <ul className="list-disc space-y-1 pl-5 text-sm">
-              {assignment.activities.map((activity) => (
-                <li key={activity.id}>
-                  {formatAssignmentActivityLine(assignment, activity)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {assignment.scheduleNotes ? (
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase text-muted-foreground">
-              Schedule notes
-            </p>
-            <p className="whitespace-pre-wrap text-sm">
-              {assignment.scheduleNotes}
-            </p>
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );
@@ -132,16 +129,22 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
  */
 function AssignmentCustomersSection({
   customers,
+  icon: Icon,
 }: {
   customers: MyScheduleAssignment['customers'];
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium uppercase text-muted-foreground">
+      <p className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
+        <Icon
+          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
         Customers/divers
       </p>
       {customers.length > 0 ? (
-        <ul className="space-y-1.5 text-sm">
+        <ul className="space-y-1.5 text-sm pl-6">
           {customers.map((customer, index) => (
             <li
               className="flex flex-wrap items-center gap-2"
@@ -171,13 +174,24 @@ function AssignmentCustomersSection({
  * @param props - Detail label and formatted value to display.
  * @returns A definition-list item for one assignment attribute.
  */
-function AssignmentDetail({ label, value }: { label: string; value: string }) {
+function AssignmentDetail({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 font-medium">{value}</dd>
+    <div className="flex gap-2">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div>
+        <dt className="text-xs font-medium uppercase text-muted-foreground">
+          {label}
+        </dt>
+        <dd className="mt-1 font-medium">{value}</dd>
+      </div>
     </div>
   );
 }

@@ -43,23 +43,3 @@ export function formatAssignmentTime(assignment: MyScheduleAssignment) {
 export function formatHotelPickup(hotel: string | null) {
   return hotel ? `Hotel / pickup: ${hotel}` : 'Hotel / pickup: Not recorded';
 }
-
-/**
- * Formats the bounded upcoming table footer copy.
- *
- * @param visibleCount - Number of upcoming rows rendered.
- * @param totalCount - Total number of matching upcoming assignments.
- * @param limit - Maximum upcoming rows loaded for the table.
- * @returns Staff-facing copy explaining the bounded upcoming list.
- */
-export function formatUpcomingShowingCopy(
-  visibleCount: number,
-  totalCount: number,
-  limit: number,
-) {
-  if (totalCount > visibleCount && visibleCount === limit) {
-    return `Showing next ${limit} assignments`;
-  }
-
-  return `Showing all ${visibleCount} upcoming assignments`;
-}

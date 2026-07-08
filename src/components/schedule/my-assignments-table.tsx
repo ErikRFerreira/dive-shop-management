@@ -21,7 +21,6 @@ import {
   formatAssignmentActivityLine,
   formatAssignmentTime,
   formatHotelPickup,
-  formatUpcomingShowingCopy,
 } from './my-assignments-list-formatters';
 import { AssignmentSectionHeader } from './my-assignments-section-header';
 
@@ -39,7 +38,7 @@ export function UpcomingAssignmentsTable({
   briefing,
 }: UpcomingAssignmentsTableProps) {
   const assignments = briefing.upcomingAssignments;
-
+  console.log(assignments);
   return (
     <section className="space-y-3">
       <AssignmentSectionHeader
@@ -72,9 +71,6 @@ export function UpcomingAssignmentsTable({
                     <AssignmentTableHead className="w-[14%]">
                       Notes
                     </AssignmentTableHead>
-                    <AssignmentTableHead className="w-[7%] pr-6 text-right">
-                      Actions
-                    </AssignmentTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -88,14 +84,6 @@ export function UpcomingAssignmentsTable({
               </Table>
             </CardContent>
           </Card>
-
-          <p className="text-sm text-muted-foreground">
-            {formatUpcomingShowingCopy(
-              assignments.length,
-              briefing.summary.upcomingCount,
-              briefing.upcomingLimit,
-            )}
-          </p>
         </div>
       ) : (
         <EmptyState
@@ -160,7 +148,11 @@ function UpcomingAssignmentRow({
         {formatHotelPickup(assignment.hotel)}
       </TableCell>
       <TableCell className="py-5 align-top">
-        <Badge variant="secondary">
+        <Badge
+          variant="secondary"
+          className="bg-ocean/10 text-ocean ring-ocean/20 flex items-center gap-2"
+        >
+          <span className="size-1.5 rounded-full bg-current" aria-hidden />
           {formatEnumLabel(assignment.assignmentRole)}
         </Badge>
       </TableCell>
@@ -170,9 +162,6 @@ function UpcomingAssignmentRow({
         ) : (
           <p className="text-muted-foreground">No notes</p>
         )}
-      </TableCell>
-      <TableCell className="py-5 pr-6 text-right align-top">
-        <span className="text-sm text-muted-foreground">Read-only</span>
       </TableCell>
     </TableRow>
   );

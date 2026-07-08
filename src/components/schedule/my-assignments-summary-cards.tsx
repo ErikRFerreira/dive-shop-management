@@ -1,7 +1,8 @@
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+
 import type { MyScheduleAssignmentBriefing } from '@/features/schedule/types';
-import { formatDisplayDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { getShopDateOnlyKey } from '@/lib/operational-date';
 import {
   CalendarDays,
   CalendarClock,
@@ -22,16 +23,43 @@ type AssignmentSummaryCardProps = {
 };
 
 /**
+ * Calculates a relative date label for the next assignment card.
+ *
+ * @param date - The next assignment date.
+ * @returns "tomorrow" if the date is tomorrow, "in X days" otherwise, or "None" if no date provided.
+ */
+function formatNextAssignmentDate(date: Date | null | undefined): string {
+  if (!date) return 'None';
+
+  const today = new Date();
+  const todayKey = getShopDateOnlyKey(today);
+  const targetKey = getShopDateOnlyKey(date);
+
+  if (todayKey === targetKey) return 'Today';
+
+  // Calculate days difference using UTC midnight dates
+  const todayUtc = new Date(todayKey + 'T00:00:00Z');
+  const targetUtc = new Date(targetKey + 'T00:00:00Z');
+  const daysDiff = Math.round(
+    (targetUtc.getTime() - todayUtc.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (daysDiff === 1) return 'Tomorrow';
+  if (daysDiff < 1) return 'Today';
+
+  return `In ${daysDiff} days`;
+}
+
+/**
  * Renders the compact top summary cards for the personal assignment briefing.
  *
- * @param props - Briefing payload containing summary counts and next assignment metadata.
+ * @param props - Props for the summary cards, including the briefing data.
  * @returns Four compact operational summary cards.
  */
 export function AssignmentSummaryCards({
   briefing,
 }: AssignmentSummaryCardsProps) {
   const nextAssignment = briefing.summary.nextAssignment;
-
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <AssignmentSummaryCard
@@ -50,15 +78,10 @@ export function AssignmentSummaryCards({
         icon={CalendarRange}
         value={String(briefing.summary.upcomingCount)}
       />
-      <AssignmentSummaryCard
-        label="Next assignment"
+      <NextAssignmentCard
+        label={nextAssignment?.activitySummary || 'None scheduled'}
+        value={formatNextAssignmentDate(nextAssignment?.date)}
         icon={ArrowRight}
-        value={
-          nextAssignment
-            ? formatDisplayDate(nextAssignment.date)
-            : 'None scheduled'
-        }
-        detail={nextAssignment?.activitySummary}
       />
     </div>
   );
@@ -67,19 +90,18 @@ export function AssignmentSummaryCards({
 /**
  * Renders one compact assignment briefing summary card.
  *
- * @param props - Summary label, value, and optional supporting detail.
+ * @param props - Props for the summary card, including label, icon, value, and accent flag.
  * @returns A compact card matching the dashboard visual language.
  */
 function AssignmentSummaryCard({
-  detail,
   label,
   icon: Icon,
   value,
   accent = false,
 }: AssignmentSummaryCardProps) {
   return (
-    <Card className="rounded-2xl border border-border bg-card p-2 shadow-sm">
-      <CardHeader className="flex gap-2 items-center">
+    <Card className="rounded-2xl border border-border bg-card py-4 px-1 shadow-sm">
+      <CardHeader className="flex gap-4 items-center mt-1">
         <span
           className={cn(
             'flex size-10 shrink-0 items-center justify-center rounded-xl ring-1',
@@ -92,16 +114,36 @@ function AssignmentSummaryCard({
         </span>
 
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            {label}
-          </p>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
             {value}
           </CardTitle>
         </div>
-        {detail ? (
-          <p className="line-clamp-1 text-sm text-muted-foreground">{detail}</p>
-        ) : null}
+      </CardHeader>
+    </Card>
+  );
+}
+
+/**
+ * Renders the next assignment summary card with a distinct visual style.
+ *
+ * @param param0 - Props for the next assignment card, including label and value.
+ * @returns - A compact card highlighting the next assignment, with a primary accent color.
+ */
+function NextAssignmentCard({ label, value }: AssignmentSummaryCardProps) {
+  return (
+    <Card className="col-span-2 gap-1 flex flex-col justify-center rounded-2xl border border-primary/20 bg-primary/[0.06] p-4 shadow-sm lg:col-span-1">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+        <ArrowRight className="size-3.5" />
+        Next assignment
+      </div>
+      <CardHeader className="flex gap-4 items-center">
+        <div>
+          <CardTitle className="truncate text-sm font-semibold text-foreground">
+            {label}
+          </CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground"> {value}</p>
+        </div>
       </CardHeader>
     </Card>
   );
