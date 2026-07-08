@@ -1,12 +1,15 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import {
+  formatBookingCustomerDisplayName,
+  getPrimaryActiveBookingCustomer,
+} from '@/features/bookings/participants';
+import {
   formatDisplayDate,
   formatDisplayDateTime,
   formatEnumLabel,
 } from '@/lib/format';
 import {
   ActivityType,
-  BookingCustomerRole,
 } from '@/generated/prisma/enums';
 
 export type BookingActivityDisplay = {
@@ -70,30 +73,17 @@ export function formatTimeOrTbd(value: string | null | undefined) {
 export function formatCustomerName(
   customer: BookingDetailsItem['displayCustomer'],
 ) {
-  const fullName = customer?.fullName?.trim();
-  if (fullName) return fullName;
-
-  return (
-    [customer?.firstName, customer?.lastName]
-      .filter((part): part is string => Boolean(part))
-      .join(' ') || EMPTY_VALUE
-  );
+  return formatBookingCustomerDisplayName(customer, EMPTY_VALUE);
 }
 
 /**
  * Finds the booking customer staff should treat as the primary operational contact.
  *
  * @param booking - Booking detail payload with customer join rows.
- * @returns The explicit primary contact, first customer, or null when none exists.
+ * @returns The active primary contact, first active customer, or null when none exists.
  */
 export function getPrimaryBookingCustomer(booking: BookingDetailsItem) {
-  return (
-    booking.customers.find(
-      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
-    ) ??
-    booking.customers[0] ??
-    null
-  );
+  return getPrimaryActiveBookingCustomer(booking.customers);
 }
 
 /**

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
 
@@ -7,6 +13,7 @@ import type { AssignableStaff } from '@/features/schedule/types';
 import {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
   ScheduleAssignmentRole,
   UserRole,
@@ -18,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   removeScheduleAssignment: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
+  updateBookingParticipantStatus: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -34,6 +42,7 @@ vi.mock('@/features/schedule/actions', () => ({
 
 vi.mock('@/features/bookings/actions', () => ({
   cancelBooking: mocks.cancelBooking,
+  updateBookingParticipantStatus: mocks.updateBookingParticipantStatus,
 }));
 
 vi.mock('@/components/ui/select', () => {
@@ -172,6 +181,7 @@ vi.mock('@/components/ui/select', () => {
 
 beforeEach(() => {
   mocks.cancelBooking.mockResolvedValue({});
+  mocks.updateBookingParticipantStatus.mockResolvedValue({ success: true });
 });
 
 afterEach(() => {
@@ -181,6 +191,7 @@ afterEach(() => {
   mocks.refresh.mockReset();
   mocks.removeScheduleAssignment.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
+  mocks.updateBookingParticipantStatus.mockReset();
 });
 
 import BookingDetails from './booking-details';
@@ -254,6 +265,9 @@ function booking(
         bookingRequestId: 'booking-1',
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+        participationStatusChangedAt: null,
+        participationStatusNote: null,
         hotelAtBooking: null,
         equipmentNeeded: null,
         notes: null,
@@ -304,12 +318,13 @@ function booking(
       createdAt,
       updatedAt: createdAt,
     },
+    activeParticipantCount: 1,
     ...overrides,
   } as BookingDetailsItem;
 }
 
 /**
- * Renders booking details with default read-only assignment props.
+ * Renders booking details with default read-only assignment and participant props.
  *
  * @param props - Optional component props to override.
  * @returns React Testing Library render result.
@@ -324,6 +339,7 @@ function renderBookingDetails(
       canCancel={false}
       canEdit={false}
       canManageAssignments={false}
+      canManageParticipantStatus={false}
       canShowManagerAssignmentAvailabilityCopy={false}
       canResubmit={false}
       canReview={false}
@@ -548,6 +564,104 @@ test('renders the unassigned state when the schedule item has no assignments', (
   expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
   expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
   expect(screen.getByText('No staff assigned')).not.toBeNull();
+});
+
+test('renders active and historical participant groups on booking detail cards', () => {
+  renderBookingDetails({
+    booking: booking({
+      activeParticipantCount: 1,
+      customers: [
+        booking().customers[0],
+        {
+          ...booking().customers[0],
+          customerId: 'customer-2',
+          role: BookingCustomerRole.PARTICIPANT,
+          participationStatus: BookingParticipantStatus.NO_SHOW,
+          customer: {
+            ...booking().customers[0].customer,
+            id: 'customer-2',
+            fullName: 'Kai Chen',
+          },
+        },
+        {
+          ...booking().customers[0],
+          customerId: 'customer-3',
+          role: BookingCustomerRole.PARTICIPANT,
+          participationStatus: BookingParticipantStatus.CANCELLED,
+          customer: {
+            ...booking().customers[0].customer,
+            id: 'customer-3',
+            fullName: 'Lina Park',
+          },
+        },
+      ],
+    }),
+  });
+
+  expect(screen.getAllByText('Active participants').length).toBeGreaterThan(0);
+  expect(screen.getByText('Historical participants')).not.toBeNull();
+  expect(screen.getByText('Active')).not.toBeNull();
+  expect(screen.getByText('No-show')).not.toBeNull();
+  expect(screen.getByText('Cancelled')).not.toBeNull();
+  expect(screen.getAllByText('Kai Chen').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Lina Park').length).toBeGreaterThan(0);
+});
+
+test('renders participant status controls for scheduled admin and manager users', () => {
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  expect(screen.getByLabelText('Participant status')).not.toBeNull();
+});
+
+test('hides participant status controls for read-only detail users', () => {
+  renderBookingDetails({
+    canManageParticipantStatus: false,
+  });
+
+  expect(screen.getByText('Active')).not.toBeNull();
+  expect(screen.queryByLabelText('Participant status')).toBeNull();
+});
+
+test('refreshes booking details after updating a participant status', async () => {
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  fireEvent.change(screen.getByLabelText('Participant status'), {
+    target: { value: BookingParticipantStatus.DROPPED_OUT },
+  });
+
+  await waitFor(() => {
+    expect(mocks.updateBookingParticipantStatus).toHaveBeenCalledWith(
+      'booking-1',
+      'customer-1',
+      BookingParticipantStatus.DROPPED_OUT,
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
+test('shows inline participant status errors returned by the server action', async () => {
+  mocks.updateBookingParticipantStatus.mockResolvedValue({
+    success: false,
+    formError: 'Only scheduled bookings can have participant statuses changed.',
+  });
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  fireEvent.change(screen.getByLabelText('Participant status'), {
+    target: { value: BookingParticipantStatus.CANCELLED },
+  });
+
+  expect(
+    await screen.findByText(
+      'Only scheduled bookings can have participant statuses changed.',
+    ),
+  ).not.toBeNull();
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 test('renders assignment controls for admin and manager users', () => {

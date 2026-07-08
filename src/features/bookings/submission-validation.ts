@@ -8,6 +8,7 @@
 
 import { Currency, DepositStatus } from '@/generated/prisma/enums';
 
+import { getActiveParticipantCount } from './participants';
 import type { NormalizedBookingFormValues } from './types';
 import { validateBookingIntake } from './validation';
 
@@ -31,6 +32,7 @@ type StoredBookingForSubmission = {
   customers: Array<{
     customerId: string;
     role: NormalizedBookingFormValues['customers'][number]['role'];
+    participationStatus: NormalizedBookingFormValues['customers'][number]['participationStatus'];
     hotelAtBooking: string | null;
     equipmentNeeded: string | null;
     notes: string | null;
@@ -118,13 +120,14 @@ function mapStoredBookingToNormalizedValues(
       requestedTime: activity.requestedTime,
       notes: activity.notes,
     })),
-    numberOfPeople: booking.numberOfPeople,
+    numberOfPeople: getActiveParticipantCount(booking.customers),
     source: booking.source,
     referrerName: booking.referrerName,
     internalNotes: booking.internalNotes,
     customers: booking.customers.map((bookingCustomer) => ({
       customerId: bookingCustomer.customerId,
       role: bookingCustomer.role,
+      participationStatus: bookingCustomer.participationStatus,
       customerName: bookingCustomer.customer.fullName,
       chineseName: bookingCustomer.customer.chineseName,
       weChatId: bookingCustomer.customer.weChatId,

@@ -28,11 +28,12 @@ const dashboardNeedsAttentionBookingArgs = {
         sortOrder: 'asc',
       },
     },
-    customers: {
-      select: {
-        role: true,
-        createdAt: true,
-        customer: {
+	    customers: {
+	      select: {
+	        role: true,
+	        participationStatus: true,
+	        createdAt: true,
+	        customer: {
           select: {
             fullName: true,
             firstName: true,
@@ -63,11 +64,12 @@ const dashboardRecentActivityBookingArgs = {
         sortOrder: 'asc',
       },
     },
-    customers: {
-      select: {
-        role: true,
-        createdAt: true,
-        customer: {
+	    customers: {
+	      select: {
+	        role: true,
+	        participationStatus: true,
+	        createdAt: true,
+	        customer: {
           select: {
             fullName: true,
             firstName: true,

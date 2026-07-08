@@ -12,6 +12,7 @@ type BookingMainSectionsProps = {
   afterOriginalMessage?: React.ReactNode;
   afterSummary?: React.ReactNode;
   booking: BookingDetailsItem;
+  canManageParticipantStatus?: boolean;
   includesFunDive: boolean;
   internalNotesVariant: 'details' | 'review';
   summaryTitle: string;
@@ -20,7 +21,7 @@ type BookingMainSectionsProps = {
 /**
  * Renders the shared left-column booking information sections.
  *
- * @param props - Booking data, normalized activities, page variants, and optional page-specific slots.
+ * @param props - Booking data, normalized activities, page variants, optional slots, and participant status permission.
  * @returns Ordered left-column sections for booking detail and review pages.
  */
 export function BookingMainSections({
@@ -28,6 +29,7 @@ export function BookingMainSections({
   afterOriginalMessage,
   afterSummary,
   booking,
+  canManageParticipantStatus = false,
   includesFunDive,
   internalNotesVariant,
   summaryTitle,
@@ -45,6 +47,7 @@ export function BookingMainSections({
       <ActivitiesSection activities={activities} />
       <CustomersDiversSection
         booking={booking}
+        canManageParticipantStatus={canManageParticipantStatus}
         includesFunDive={includesFunDive}
       />
       <BookingDepositPaymentSection booking={booking} />

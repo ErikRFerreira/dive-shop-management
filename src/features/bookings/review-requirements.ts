@@ -7,6 +7,7 @@
  */
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -78,13 +79,13 @@ function hasCustomerName(customer: BookingDetailsItem['displayCustomer']) {
 }
 
 /**
- * Finds the booking customer marked as the primary contact.
+ * Finds the active booking customer marked as the primary contact.
  *
  * @param booking - Booking detail payload with customer join rows.
  * @returns Primary contact row when exactly one exists, otherwise null.
  */
 function getPrimaryContact(booking: BookingDetailsItem) {
-  const primaryContacts = booking.customers.filter(
+  const primaryContacts = getActiveBookingParticipants(booking.customers).filter(
     (bookingCustomer) =>
       bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
   );
@@ -122,13 +123,13 @@ function bookingIncludesFunDive(booking: BookingDetailsItem) {
 }
 
 /**
- * Checks whether every diver has the required fun-dive experience fields.
+ * Checks whether every active diver has the required fun-dive experience fields.
  *
  * @param booking - Booking detail payload with customer join rows.
- * @returns True when certification level, last dive date, and logged dives are present for every customer.
+ * @returns True when certification level, last dive date, and logged dives are present for every active customer.
  */
 function hasCompleteDivingExperience(booking: BookingDetailsItem) {
-  return booking.customers.every(
+  return getActiveBookingParticipants(booking.customers).every(
     (bookingCustomer) =>
       hasText(bookingCustomer.certificationLevel) &&
       bookingCustomer.lastDiveAt !== null &&
@@ -183,13 +184,13 @@ function getEquipmentNeedDecision(value: string | null | undefined) {
 }
 
 /**
- * Checks whether equipment sizing is complete for customers who clearly need equipment.
+ * Checks whether equipment sizing is complete for active customers who clearly need equipment.
  *
  * @param booking - Booking detail payload with customer equipment fields.
  * @returns True when height, weight, and shoe size are present for every equipment-requesting customer.
  */
 function hasCompleteEquipmentSizing(booking: BookingDetailsItem) {
-  return booking.customers
+  return getActiveBookingParticipants(booking.customers)
     .filter(
       (bookingCustomer) =>
         getEquipmentNeedDecision(bookingCustomer.equipmentNeeded) === 'needed',
@@ -217,13 +218,14 @@ export function getBookingReviewReadiness(
     activities.length > 0 &&
     activities.every((activity) => activity.requestedDate !== null);
   const primaryContact = getPrimaryContact(booking);
+  const activeCustomers = getActiveBookingParticipants(booking.customers);
   const includesFunDive = bookingIncludesFunDive(booking);
   const paidDeposits = booking.deposits.filter(
     (deposit) =>
       deposit.status === DepositStatus.PAID ||
       deposit.status === DepositStatus.PARTIALLY_PAID,
   );
-  const equipmentDecisions = booking.customers.map((bookingCustomer) =>
+  const equipmentDecisions = activeCustomers.map((bookingCustomer) =>
     getEquipmentNeedDecision(bookingCustomer.equipmentNeeded),
   );
   const hasEquipmentNeeded = equipmentDecisions.includes('needed');
@@ -319,6 +321,7 @@ export function getMissingBookingReviewInformation(
   if (activities.length === 0) {
     warnings.push('Add at least one activity.');
   }
+  const activeCustomers = getActiveBookingParticipants(booking.customers);
 
   activities.forEach((activity, index) => {
     const activityLabel = `Activity ${index + 1}`;
@@ -339,19 +342,15 @@ export function getMissingBookingReviewInformation(
     }
   });
 
-  if (booking.numberOfPeople === null || booking.numberOfPeople < 1) {
-    warnings.push('Total participants must be at least 1.');
-  }
-
   if (booking.source === null) {
     warnings.push('Booking source is required.');
   }
 
-  if (booking.customers.length === 0) {
-    warnings.push('Add at least one customer or diver.');
+  if (activeCustomers.length === 0) {
+    warnings.push('Add at least one active customer or diver.');
   }
 
-  booking.customers.forEach((bookingCustomer, index) => {
+  activeCustomers.forEach((bookingCustomer, index) => {
     const customerLabel = `Customer/diver ${index + 1}`;
 
     if (!hasCustomerName(bookingCustomer.customer)) {
@@ -359,7 +358,7 @@ export function getMissingBookingReviewInformation(
     }
   });
 
-  const primaryContacts = booking.customers.filter(
+  const primaryContacts = activeCustomers.filter(
     (bookingCustomer) =>
       bookingCustomer.role === BookingCustomerRole.PRIMARY_CONTACT,
   );
@@ -385,7 +384,7 @@ export function getMissingBookingReviewInformation(
   );
 
   if (includesFunDive) {
-    booking.customers.forEach((bookingCustomer, index) => {
+    activeCustomers.forEach((bookingCustomer, index) => {
       const customerLabel = `Customer/diver ${index + 1}`;
 
       if (!hasText(bookingCustomer.certificationLevel)) {

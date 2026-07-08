@@ -150,7 +150,6 @@ test('uses edit-specific autosave in edit mode without restoring new-booking aut
             requestedDate: '2026-07-14',
           },
         ],
-        numberOfPeople: '1',
         source: BookingSource.EMAIL,
         customers: [
           {
@@ -231,7 +230,6 @@ test('retries draft edit submission after fixing the primary contact method', as
             requestedDate: '2026-07-14',
           },
         ],
-        numberOfPeople: '1',
         source: BookingSource.EMAIL,
         customers: [
           {
@@ -283,7 +281,6 @@ test('unlocks incomplete linked customers after submit validation errors', async
             requestedDate: '2026-07-14',
           },
         ],
-        numberOfPeople: '1',
         source: BookingSource.EMAIL,
         customers: [
           {

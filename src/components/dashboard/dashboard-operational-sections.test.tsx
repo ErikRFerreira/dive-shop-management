@@ -201,6 +201,7 @@ test('shows calm missing values in attention and schedule rows', () => {
   expect(screen.getByText('Booking updated')).not.toBeNull();
   expect(screen.getByText(/No primary customer: Fun Dive/)).not.toBeNull();
   expect(screen.getByText('TBD')).not.toBeNull();
+  expect(screen.getByText('No active participants recorded')).not.toBeNull();
   expect(screen.getByText('No hotel')).not.toBeNull();
   expect(screen.getByText('Unassigned')).not.toBeNull();
 });
@@ -252,6 +253,9 @@ test('shows unassigned and assigned staff states on today schedule rows', () => 
 
   const assignLink = screen.getByRole('link', { name: 'Assign staff' });
 
+  expect(screen.getAllByText('2 active participants').length).toBeGreaterThan(
+    0,
+  );
   expect(screen.getByText('Unassigned')).not.toBeNull();
   expect(screen.getByText('Inez Instructor')).not.toBeNull();
   expect(screen.getByText('Dina Divemaster')).not.toBeNull();

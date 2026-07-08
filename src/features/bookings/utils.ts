@@ -7,10 +7,12 @@
 
 import {
   BookingCustomerRole,
+  BookingParticipantStatus,
   BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import { getPrimaryActiveBookingCustomer } from './participants';
 import {
   bookingQueueFilters,
   bookingDefaultPageSize,
@@ -145,6 +147,7 @@ export function buildBookingRequestWhere(
 /** A booking-customer relation containing the data required for display. */
 type BookingCustomerForDisplay<TCustomer> = {
   role: BookingCustomerRole;
+  participationStatus: BookingParticipantStatus | null;
   customer: TCustomer;
 };
 
@@ -153,19 +156,13 @@ type BookingCustomerForDisplay<TCustomer> = {
  *
  * @typeParam TCustomer - The shape of the included customer record.
  * @param customers - Booking customers ordered by their creation time.
- * @returns The primary contact when present, otherwise the first customer, or
- * `null` when the booking has no customers.
+ * @returns The active primary contact, active first-customer fallback, or
+ * `null` when the booking has no active participants.
  */
 export function resolveDisplayCustomer<TCustomer>(
   customers: BookingCustomerForDisplay<TCustomer>[],
 ) {
-  return (
-    customers.find(
-      (customer) => customer.role === BookingCustomerRole.PRIMARY_CONTACT,
-    )?.customer ??
-    customers[0]?.customer ??
-    null
-  );
+  return getPrimaryActiveBookingCustomer(customers)?.customer ?? null;
 }
 
 /**

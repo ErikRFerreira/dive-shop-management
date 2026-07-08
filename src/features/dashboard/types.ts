@@ -96,6 +96,7 @@ export type DashboardScheduleItem = {
   activitySummary: string;
   primaryCustomerName: string | null;
   customers: DashboardScheduleCustomer[];
+  /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
   hotel: string | null;
   assignments: DashboardScheduleAssignment[];

@@ -38,11 +38,12 @@ const dashboardScheduleAttentionArgs = {
             sortOrder: 'asc',
           },
         },
-        customers: {
-          select: {
-            role: true,
-            createdAt: true,
-            customer: {
+	        customers: {
+	          select: {
+	            role: true,
+	            participationStatus: true,
+	            createdAt: true,
+	            customer: {
               select: {
                 fullName: true,
                 firstName: true,
@@ -87,10 +88,9 @@ const dashboardTodayScheduleArgs = {
     },
     bookingRequest: {
       select: {
-        id: true,
-        activityType: true,
-        numberOfPeople: true,
-        activities: {
+	        id: true,
+	        activityType: true,
+	        activities: {
           select: {
             activityType: true,
             sortOrder: true,
@@ -99,11 +99,12 @@ const dashboardTodayScheduleArgs = {
             sortOrder: 'asc',
           },
         },
-        customers: {
-          select: {
-            role: true,
-            hotelAtBooking: true,
-            createdAt: true,
+	        customers: {
+	          select: {
+	            role: true,
+	            participationStatus: true,
+	            hotelAtBooking: true,
+	            createdAt: true,
             customer: {
               select: {
                 fullName: true,

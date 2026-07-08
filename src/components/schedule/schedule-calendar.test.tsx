@@ -371,6 +371,7 @@ test('opens an operational booking summary dialog from an event click', () => {
   expect(
     screen.getByRole('heading', { name: DEFAULT_EVENT_TITLE }),
   ).not.toBeNull();
+  expect(screen.getByText('Active participants')).not.toBeNull();
   expect(screen.getByText('Ocean View')).not.toBeNull();
   expect(screen.getAllByText(/Maria Santos \//)).toHaveLength(1);
   expect(screen.getAllByText('Participant Diver')).toHaveLength(1);

@@ -71,6 +71,8 @@ export function mapBookingActivityCreateManyData(
 
 /**
  * Maps a single booking customer to the data structure used for creating a booking customer.
+ * The participation status is supplied by form normalization so the denormalized
+ * booking participant count and join rows stay consistent.
  *
  * @param bookingCustomer - The normalized booking customer form values.
  * @returns An object containing the mapped booking customer data.
@@ -106,6 +108,7 @@ export function mapBookingCustomerCreateManyData(
     bookingRequestId,
     customerId: customerIds[index],
     role: bookingCustomer.role,
+    participationStatus: bookingCustomer.participationStatus,
     hotelAtBooking: bookingCustomer.hotelAtBooking,
     equipmentNeeded: bookingCustomer.equipmentNeeded,
     notes: bookingCustomer.customerNotes,

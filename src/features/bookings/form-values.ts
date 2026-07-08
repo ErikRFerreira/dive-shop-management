@@ -43,7 +43,6 @@ export const bookingCustomerDefaultValues: BookingCustomerFormValues = {
 export const bookingFormDefaultValues: BookingFormValues = {
   rawBookingText: '',
   activities: [{ ...bookingActivityDefaultValues }],
-  numberOfPeople: '',
   source: '',
   referrerName: '',
   internalNotes: '',

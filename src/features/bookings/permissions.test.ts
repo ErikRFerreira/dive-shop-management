@@ -4,6 +4,7 @@ import {
   canApproveBookingRequest,
   canCancelBooking,
   canEditBooking,
+  canManageScheduledBookingParticipants,
   canReviewBooking,
   canViewBooking,
   canResubmitBookingForApproval,
@@ -78,6 +79,25 @@ test.each([
 ] as const)('allows cancellation for %s on %s: %s', (role, status, expected) => {
   expect(canCancelBooking({ role }, status)).toBe(expected);
 });
+
+test.each([
+  [UserRole.ADMIN, BookingStatus.SCHEDULED, true],
+  [UserRole.MANAGER, BookingStatus.SCHEDULED, true],
+  [UserRole.CUSTOMER_SERVICE, BookingStatus.SCHEDULED, false],
+  [UserRole.INSTRUCTOR, BookingStatus.SCHEDULED, false],
+  [UserRole.ADMIN, BookingStatus.DRAFT, false],
+  [UserRole.MANAGER, BookingStatus.PENDING_APPROVAL, false],
+  [UserRole.ADMIN, BookingStatus.NEEDS_MORE_INFO, false],
+  [UserRole.MANAGER, BookingStatus.APPROVED, false],
+  [UserRole.ADMIN, BookingStatus.CANCELLED, false],
+] as const)(
+  'allows participant status management for %s on %s: %s',
+  (role, status, expected) => {
+    expect(canManageScheduledBookingParticipants({ role }, status)).toBe(
+      expected,
+    );
+  },
+);
 
 test('allows only the owner in Customer Service to resubmit a booking', () => {
   const owner = { id: 'owner', role: UserRole.CUSTOMER_SERVICE };

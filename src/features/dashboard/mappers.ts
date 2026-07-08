@@ -1,9 +1,15 @@
 import type {
   ActivityType,
   BookingCustomerRole,
+  BookingParticipantStatus,
 } from '@/generated/prisma/enums';
 import { BookingCustomerRole as BookingCustomerRoleValue } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import {
+  getActiveBookingParticipants,
+  getActiveParticipantCount,
+  getPrimaryActiveBookingCustomer,
+} from '@/features/bookings/participants';
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import type {
   DashboardNeedsAttentionBookingRecord,
@@ -103,7 +109,7 @@ export function mapScheduleItemToDashboardScheduleItem(
     ),
     primaryCustomerName: getPrimaryCustomerName(booking.customers),
     customers: mapDashboardScheduleCustomers(booking.customers),
-    numberOfPeople: booking.numberOfPeople,
+    numberOfPeople: getActiveParticipantCount(booking.customers),
     hotel: getScheduleHotel(booking.customers),
     assignments,
     assignedStaffNames: assignments.map((assignment) => assignment.user.name),
@@ -157,15 +163,15 @@ function mapDashboardScheduleAssignments(
 }
 
 /**
- * Maps booking customer links into compact dashboard customer rows.
+ * Maps active booking customer links into compact dashboard customer rows.
  *
  * @param customers - Booking customer rows selected through a schedule item.
- * @returns Customer/diver rows in query order with safe display names.
+ * @returns Active customer/diver rows in query order with safe display names.
  */
 function mapDashboardScheduleCustomers(
   customers: DashboardTodayScheduleRecord['bookingRequest']['customers'],
 ) {
-  return customers.map((bookingCustomer) => ({
+  return getActiveBookingParticipants(customers).map((bookingCustomer) => ({
     name: formatCustomerDisplayName(bookingCustomer.customer),
     chineseName: bookingCustomer.customer.chineseName?.trim() || null,
     isPrimaryContact:
@@ -211,14 +217,15 @@ function summarizeActivities(
 }
 
 /**
- * Returns the primary contact name for compact dashboard display.
+ * Returns the primary active contact name for compact dashboard display.
  *
  * @param customers - Booking customer rows ordered by creation time.
- * @returns Primary contact name, first customer name, or null.
+ * @returns Active primary contact name, first active customer name, or null.
  */
 function getPrimaryCustomerName(
   customers: Array<{
     role: BookingCustomerRole;
+    participationStatus: BookingParticipantStatus;
     customer: {
       fullName: string | null;
       firstName: string | null;
@@ -227,29 +234,21 @@ function getPrimaryCustomerName(
     };
   }>,
 ) {
-  const displayCustomer =
-    customers.find(
-      (bookingCustomer) =>
-        bookingCustomer.role === BookingCustomerRoleValue.PRIMARY_CONTACT,
-    ) ?? customers[0];
+  const displayCustomer = getPrimaryActiveBookingCustomer(customers);
 
   return displayCustomer ? formatCustomerName(displayCustomer.customer) : null;
 }
 
 /**
- * Returns the best available hotel for a scheduled booking.
+ * Returns the best available active participant hotel for a scheduled booking.
  *
  * @param customers - Booking customer rows selected through a schedule item.
- * @returns Hotel-at-booking, customer hotel, or null.
+ * @returns Active participant hotel-at-booking, customer hotel, or null.
  */
 function getScheduleHotel(
   customers: DashboardTodayScheduleRecord['bookingRequest']['customers'],
 ) {
-  const displayCustomer =
-    customers.find(
-      (bookingCustomer) =>
-        bookingCustomer.role === BookingCustomerRoleValue.PRIMARY_CONTACT,
-    ) ?? customers[0];
+  const displayCustomer = getPrimaryActiveBookingCustomer(customers);
 
   return (
     displayCustomer?.hotelAtBooking?.trim() ||

@@ -18,11 +18,11 @@ import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import type { BookingFormValues } from '@/features/bookings/types';
 
 /** Versioned browser storage key for unsaved new-booking form values. */
-export const NEW_BOOKING_FORM_AUTOSAVE_KEY = 'dive-shop:new-booking-form:v2';
+export const NEW_BOOKING_FORM_AUTOSAVE_KEY = 'dive-shop:new-booking-form:v3';
 
 /** Versioned browser storage key for unsaved edits to one existing booking. */
 export function getBookingEditFormAutosaveKey(bookingId: string) {
-  return `dive-shop:booking-edit-form:${bookingId}:v2`;
+  return `dive-shop:booking-edit-form:${bookingId}:v3`;
 }
 
 /**

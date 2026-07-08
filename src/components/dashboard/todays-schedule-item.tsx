@@ -32,7 +32,7 @@ export function TodaysScheduleItem({
         )
       : item.primaryCustomerName
         ? [item.primaryCustomerName]
-        : ['No customers/divers recorded'];
+        : ['No active participants recorded'];
 
   const staffNames =
     item.assignedStaffNames.length > 0
@@ -96,19 +96,19 @@ export function TodaysScheduleItem({
 }
 
 /**
- * Builds a compact participant summary without repeating customer names.
+ * Builds a compact active participant summary without repeating customer names.
  *
  * @param item - Schedule item with participant counts.
- * @returns A short participant summary for the activity header.
+ * @returns A short active participant summary for the activity header.
  */
 function formatParticipantSummary(item: DashboardScheduleItemData) {
   const participantCount = item.numberOfPeople ?? item.customers.length;
 
   if (participantCount <= 0) {
-    return 'No customers/divers recorded';
+    return 'No active participants recorded';
   }
 
-  const label = participantCount === 1 ? 'customer/diver' : 'customers/divers';
+  const label = participantCount === 1 ? 'participant' : 'participants';
 
-  return `${participantCount} ${label}`;
+  return `${participantCount} active ${label}`;
 }

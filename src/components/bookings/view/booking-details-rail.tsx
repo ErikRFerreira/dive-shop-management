@@ -4,6 +4,7 @@ import { ResubmitBookingForApprovalForm } from '@/components/bookings/booking-wo
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import { formatDisplayDate } from '@/lib/format';
@@ -72,13 +73,13 @@ function hasPrimaryContactMethod(
 }
 
 /**
- * Checks whether all fun-dive participants have core diving experience details.
+ * Checks whether all active fun-dive participants have core diving experience details.
  *
  * @param booking - Booking detail payload with customer/diver rows.
- * @returns True when every customer row has the expected fun-dive experience fields.
+ * @returns True when every active customer row has the expected fun-dive experience fields.
  */
 function hasDivingExperienceForFunDive(booking: BookingDetailsItem) {
-  return booking.customers.every(
+  return getActiveBookingParticipants(booking.customers).every(
     (customer) =>
       hasText(customer.certificationLevel) &&
       customer.lastDiveAt !== null &&
