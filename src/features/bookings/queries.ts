@@ -76,6 +76,7 @@ const bookingRequestListArgs = {
     scheduleItems: {
       select: {
         id: true,
+        bookingActivityId: true,
         date: true,
         startTime: true,
         dayNumber: true,
@@ -111,6 +112,7 @@ const bookingRequestDetailArgs = {
     scheduleItems: {
       select: {
         id: true,
+        bookingActivityId: true,
         date: true,
         startTime: true,
         dayNumber: true,

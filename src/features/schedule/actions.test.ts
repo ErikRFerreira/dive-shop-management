@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
 import {
+  ActivityType,
   BookingStatus,
   ScheduleAssignmentRole,
   UserRole,
@@ -8,19 +9,29 @@ import {
 
 const mocks = vi.hoisted(() => ({
   createAssignment: vi.fn(),
+  createScheduleItem: vi.fn(),
   deleteAssignment: vi.fn(),
+  deleteScheduleItem: vi.fn(),
   findAssignmentUnique: vi.fn(),
+  findScheduleItems: vi.fn(),
   findScheduleItemUnique: vi.fn(),
   findUserUnique: vi.fn(),
   requireCurrentUser: vi.fn(),
   revalidatePath: vi.fn(),
+  transaction: vi.fn(),
   updateAssignment: vi.fn(),
+  updateScheduleItem: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
+    $transaction: mocks.transaction,
     scheduleItem: {
+      create: mocks.createScheduleItem,
+      delete: mocks.deleteScheduleItem,
+      findMany: mocks.findScheduleItems,
       findUnique: mocks.findScheduleItemUnique,
+      update: mocks.updateScheduleItem,
     },
     scheduleAssignment: {
       create: mocks.createAssignment,
@@ -41,7 +52,9 @@ vi.mock('@/lib/current-user', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
 import {
+  addScheduledCourseDay,
   addScheduleAssignment,
+  removeScheduledCourseDay,
   removeScheduleAssignment,
   updateScheduleAssignmentRole,
 } from './actions';
@@ -65,6 +78,12 @@ const customerServiceUser = {
   role: UserRole.CUSTOMER_SERVICE,
 };
 
+const instructorUser = {
+  ...adminUser,
+  id: 'instructor-1',
+  role: UserRole.INSTRUCTOR,
+};
+
 /**
  * Builds the schedule item guard shape selected by assignment actions.
  *
@@ -78,6 +97,57 @@ function scheduleItemGuard(status = BookingStatus.SCHEDULED) {
       id: 'booking-1',
       status,
     },
+  };
+}
+
+/**
+ * Builds the scheduled day guard shape selected by day management actions.
+ *
+ * @param overrides - Schedule day fields to override for a scenario.
+ * @returns A schedule item with related booking status and assignment count.
+ */
+function scheduleDayGuard(overrides = {}) {
+  return {
+    id: 'schedule-2',
+    bookingRequestId: 'booking-1',
+    bookingActivityId: 'activity-1',
+    date: new Date('2026-07-15T00:00:00.000Z'),
+    startTime: '08:00',
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    scheduleNotes: 'Pool session',
+    bookingRequest: {
+      id: 'booking-1',
+      status: BookingStatus.SCHEDULED,
+    },
+    _count: {
+      assignments: 0,
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Builds a persisted scheduled day sibling used for renumbering tests.
+ *
+ * @param id - Schedule item ID.
+ * @param dayNumber - Persisted day number.
+ * @param date - Persisted schedule date.
+ * @returns A schedule day sibling row.
+ */
+function scheduleDaySibling(
+  id: string,
+  dayNumber: number,
+  date = `2026-07-${13 + dayNumber}T00:00:00.000Z`,
+) {
+  return {
+    id,
+    date: new Date(date),
+    startTime: '08:00',
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    scheduleNotes: `Day ${dayNumber} notes`,
+    createdAt: new Date(`2026-07-01T0${dayNumber}:00:00.000Z`),
+    dayNumber,
+    totalDays: 3,
   };
 }
 
@@ -111,21 +181,44 @@ function assignableUser(overrides = {}) {
 
 beforeEach(() => {
   mocks.createAssignment.mockReset();
+  mocks.createScheduleItem.mockReset();
   mocks.deleteAssignment.mockReset();
+  mocks.deleteScheduleItem.mockReset();
   mocks.findAssignmentUnique.mockReset();
+  mocks.findScheduleItems.mockReset();
   mocks.findScheduleItemUnique.mockReset();
   mocks.findUserUnique.mockReset();
   mocks.requireCurrentUser.mockReset();
   mocks.revalidatePath.mockReset();
+  mocks.transaction.mockReset();
   mocks.updateAssignment.mockReset();
+  mocks.updateScheduleItem.mockReset();
 
   mocks.requireCurrentUser.mockResolvedValue(adminUser);
   mocks.findScheduleItemUnique.mockResolvedValue(scheduleItemGuard());
+  mocks.findScheduleItems.mockResolvedValue([
+    scheduleDaySibling('schedule-1', 1),
+    scheduleDaySibling('schedule-2', 2),
+    scheduleDaySibling('schedule-3', 3),
+  ]);
   mocks.findUserUnique.mockResolvedValue(assignableUser());
   mocks.findAssignmentUnique.mockResolvedValue(null);
   mocks.createAssignment.mockResolvedValue({ id: 'assignment-1' });
+  mocks.createScheduleItem.mockResolvedValue({ id: 'schedule-4' });
   mocks.updateAssignment.mockResolvedValue({ id: 'assignment-1' });
+  mocks.updateScheduleItem.mockResolvedValue({ id: 'schedule-1' });
   mocks.deleteAssignment.mockResolvedValue({ id: 'assignment-1' });
+  mocks.deleteScheduleItem.mockResolvedValue({ id: 'schedule-2' });
+  mocks.transaction.mockImplementation((callback) =>
+    callback({
+      scheduleItem: {
+        create: mocks.createScheduleItem,
+        delete: mocks.deleteScheduleItem,
+        findMany: mocks.findScheduleItems,
+        update: mocks.updateScheduleItem,
+      },
+    }),
+  );
 });
 
 test.each([adminUser, managerUser])(
@@ -412,4 +505,197 @@ test('rejects remove when related booking is not scheduled', async () => {
   });
 
   expect(mocks.deleteAssignment).not.toHaveBeenCalled();
+});
+
+test.each([adminUser, managerUser])(
+  'allows %s to add a scheduled course day',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+    mocks.findScheduleItemUnique.mockResolvedValue(scheduleDayGuard());
+
+    await expect(addScheduledCourseDay('schedule-2')).resolves.toEqual({
+      success: true,
+    });
+
+    expect(mocks.findScheduleItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          bookingRequestId: 'booking-1',
+          bookingActivityId: 'activity-1',
+        },
+      }),
+    );
+    expect(mocks.updateScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-1' },
+      data: { dayNumber: 1, totalDays: 4 },
+    });
+    expect(mocks.updateScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-3' },
+      data: { dayNumber: 3, totalDays: 4 },
+    });
+    expect(mocks.createScheduleItem).toHaveBeenCalledWith({
+      data: {
+        bookingRequestId: 'booking-1',
+        bookingActivityId: 'activity-1',
+        date: new Date('2026-07-17T00:00:00.000Z'),
+        startTime: '08:00',
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        dayNumber: 4,
+        totalDays: 4,
+        scheduleNotes: 'Day 3 notes',
+      },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+  },
+);
+
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to add a scheduled course day',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+
+    await expect(addScheduledCourseDay('schedule-2')).resolves.toEqual({
+      success: false,
+      formError: 'You do not have permission to manage scheduled days.',
+    });
+
+    expect(mocks.createScheduleItem).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects adding a day when the schedule item is missing', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(null);
+
+  await expect(addScheduledCourseDay('missing-schedule')).resolves.toEqual({
+    success: false,
+    formError: 'Scheduled day not found. Refresh and try again.',
+  });
+
+  expect(mocks.createScheduleItem).not.toHaveBeenCalled();
+});
+
+test('rejects adding a day when related booking is not scheduled', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    scheduleDayGuard({
+      bookingRequest: { id: 'booking-1', status: BookingStatus.CANCELLED },
+    }),
+  );
+
+  await expect(addScheduledCourseDay('schedule-2')).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have scheduled days changed.',
+  });
+
+  expect(mocks.createScheduleItem).not.toHaveBeenCalled();
+});
+
+test.each([adminUser, managerUser])(
+  'allows %s to remove a scheduled course day',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+    mocks.findScheduleItemUnique.mockResolvedValue(scheduleDayGuard());
+
+    await expect(
+      removeScheduledCourseDay('schedule-2', false),
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.deleteScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-2' },
+    });
+    expect(mocks.updateScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-1' },
+      data: { dayNumber: 1, totalDays: 2 },
+    });
+    expect(mocks.updateScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-3' },
+      data: { dayNumber: 2, totalDays: 2 },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+  },
+);
+
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to remove a scheduled course day',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+
+    await expect(
+      removeScheduledCourseDay('schedule-2', false),
+    ).resolves.toEqual({
+      success: false,
+      formError: 'You do not have permission to manage scheduled days.',
+    });
+
+    expect(mocks.deleteScheduleItem).not.toHaveBeenCalled();
+  },
+);
+
+test('requires confirmation before removing a scheduled day with assignments', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    scheduleDayGuard({
+      _count: {
+        assignments: 2,
+      },
+    }),
+  );
+
+  await expect(removeScheduledCourseDay('schedule-2', false)).resolves.toEqual({
+    success: false,
+    requiresConfirmation: true,
+    formError:
+      'This scheduled day has assigned staff. Confirm removal to delete this day and its assignments.',
+  });
+
+  expect(mocks.deleteScheduleItem).not.toHaveBeenCalled();
+});
+
+test('removes an assigned scheduled day after confirmation', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    scheduleDayGuard({
+      _count: {
+        assignments: 2,
+      },
+    }),
+  );
+
+  await expect(removeScheduledCourseDay('schedule-2', true)).resolves.toEqual({
+    success: true,
+  });
+
+  expect(mocks.deleteScheduleItem).toHaveBeenCalledWith({
+    where: { id: 'schedule-2' },
+  });
+});
+
+test('rejects removing the only scheduled day for an activity', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(scheduleDayGuard());
+  mocks.findScheduleItems.mockResolvedValue([scheduleDaySibling('schedule-1', 1)]);
+
+  await expect(removeScheduledCourseDay('schedule-1', false)).resolves.toEqual({
+    success: false,
+    formError: 'A scheduled activity must keep at least one day.',
+  });
+
+  expect(mocks.deleteScheduleItem).not.toHaveBeenCalled();
+});
+
+test('rejects removing a day when related booking is not scheduled', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    scheduleDayGuard({
+      bookingRequest: { id: 'booking-1', status: BookingStatus.CANCELLED },
+    }),
+  );
+
+  await expect(removeScheduledCourseDay('schedule-2', false)).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have scheduled days changed.',
+  });
+
+  expect(mocks.deleteScheduleItem).not.toHaveBeenCalled();
 });

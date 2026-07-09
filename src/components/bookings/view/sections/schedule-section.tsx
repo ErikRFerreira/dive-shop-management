@@ -13,6 +13,7 @@ import {
   BookingInfoField,
   BookingInfoSection,
 } from '../../booking-info-layout';
+import { ScheduledCourseDayActions } from './scheduled-course-day-actions';
 
 const MANAGER_ASSIGNMENT_AVAILABILITY_MESSAGE =
   'Approve and schedule this booking before assigning instructors or divemasters.';
@@ -67,6 +68,24 @@ export function ScheduleSection({
             className="space-y-4 border-b border-border pb-5 last:border-b-0 last:pb-0"
             key={scheduleItem.id}
           >
+            {canManageAssignments ? (
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {getScheduleItemHeading(
+                      scheduleItem.dayNumber,
+                      scheduleItem.totalDays,
+                      index,
+                    )}
+                  </p>
+                </div>
+                <ScheduledCourseDayActions
+                  assignmentCount={scheduleItem.assignments.length}
+                  canRemoveDay={scheduleItem.totalDays > 1}
+                  scheduleItemId={scheduleItem.id}
+                />
+              </div>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <BookingInfoField
                 label={getScheduleItemDateLabel(
@@ -120,4 +139,20 @@ function getScheduleItemDateLabel(
   const dayLabel = formatScheduleDayLabel(dayNumber, totalDays);
 
   return dayLabel ? `${dayLabel} date` : `Schedule ${index + 1} date`;
+}
+
+/**
+ * Builds the compact heading for admin/manager scheduled-day controls.
+ *
+ * @param dayNumber - Persisted one-based course day number, when available.
+ * @param totalDays - Persisted total days for the scheduled activity.
+ * @param index - Zero-based display position used as a fallback.
+ * @returns A concise schedule day heading.
+ */
+function getScheduleItemHeading(
+  dayNumber: number | null,
+  totalDays: number,
+  index: number,
+) {
+  return formatScheduleDayLabel(dayNumber, totalDays) || `Schedule ${index + 1}`;
 }
