@@ -16,7 +16,9 @@ import {
   Currency,
   DepositStatus,
   PreferredLanguage,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
+import { validateNotPastShopDate } from '@/lib/operational-date';
 import { hasPersistableBookingCustomer } from './form-mappers';
 import { primaryContactMethodError } from './validation-messages';
 import type { NormalizedBookingFormValues } from './types';
@@ -177,6 +179,7 @@ const activitySchema = z.object({
   durationDays: z.number().int().positive(),
   requestedDate: z.date().nullable(),
   requestedTime: z.string().nullable(),
+  requestedTimeSlot: z.enum(ScheduleTimeSlot),
   notes: z.string().nullable(),
 });
 
@@ -232,6 +235,9 @@ function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
       activity.specialtyCourse,
       activity.requestedDate,
       activity.requestedTime,
+      activity.requestedTimeSlot !== ScheduleTimeSlot.TBD
+        ? activity.requestedTimeSlot
+        : null,
       activity.notes,
     ].some((value) => value !== null),
   );
@@ -384,6 +390,16 @@ export const submitBookingIntakeSchema =
           path: ['activities', index, 'requestedDate'],
           message: 'Requested date is required before submitting for approval.',
         });
+      } else {
+        const pastDateError = validateNotPastShopDate(activity.requestedDate);
+
+        if (pastDateError) {
+          context.addIssue({
+            code: 'custom',
+            path: ['activities', index, 'requestedDate'],
+            message: pastDateError,
+          });
+        }
       }
 
       if (

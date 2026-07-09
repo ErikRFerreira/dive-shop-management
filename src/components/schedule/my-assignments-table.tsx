@@ -21,7 +21,7 @@ import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 import {
   formatAssignmentActivityLine,
-  formatAssignmentTime,
+  formatAssignmentSlot,
   formatHotelPickup,
 } from './my-assignments-list-formatters';
 import { AssignmentSectionHeader } from './my-assignments-section-header';
@@ -56,7 +56,7 @@ export function UpcomingAssignmentsTable({
                 <TableHeader>
                   <TableRow className="border-b bg-muted/40">
                     <AssignmentTableHead className="w-[13%] pl-6">
-                      Date / Time
+                      Date / Slot
                     </AssignmentTableHead>
                     <AssignmentTableHead className="w-[18%]">
                       Activity
@@ -136,7 +136,7 @@ function UpcomingAssignmentRow({
         <div className="space-y-1">
           <p className="font-medium">{formatDisplayDate(assignment.date)}</p>
           <p className="text-sm text-muted-foreground">
-            {formatAssignmentTime(assignment)}
+            {formatAssignmentSlot(assignment)}
           </p>
         </div>
       </TableCell>

@@ -11,6 +11,7 @@ import {
   BookingCustomerRole,
   BookingStatus,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 import { AdminDashboardSummary } from './admin-dashboard-summary';
@@ -180,6 +181,7 @@ test('shows calm missing values in attention and schedule rows', () => {
             customers: [],
             startTime: null,
             isTimeTbd: true,
+            timeSlot: ScheduleTimeSlot.TBD,
             hotel: null,
             assignedStaffNames: [],
             assignments: [],
@@ -323,7 +325,7 @@ function attentionItem(
     status: BookingStatus.PENDING_APPROVAL,
     activitySummary: 'Fun Dive',
     primaryCustomerName: 'Maria Santos',
-    detail: '08:00',
+    detail: 'AM',
     date: new Date('2026-07-14T00:00:00.000Z'),
     updatedAt: new Date('2026-07-01T08:00:00.000Z'),
     ...overrides,
@@ -345,6 +347,7 @@ function scheduleItem(
     date: new Date('2026-07-02T00:00:00.000Z'),
     startTime: '08:00',
     isTimeTbd: false,
+    timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',

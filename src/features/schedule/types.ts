@@ -3,6 +3,7 @@ import type {
   BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -46,6 +47,7 @@ export type MyScheduleAssignmentActivity = {
   specialtyCourse: string | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot: ScheduleTimeSlot;
   notes: string | null;
 };
 
@@ -62,6 +64,7 @@ export type MyScheduleAssignment = {
   scheduleItemId: string;
   bookingId: string;
   date: Date;
+  timeSlot: ScheduleTimeSlot;
   startTime: string | null;
   endTime: string | null;
   isTimeTbd: boolean;
@@ -119,6 +122,7 @@ export type SchedulePageItem = {
   scheduleItemId: string;
   bookingId: string;
   date: Date;
+  timeSlot: ScheduleTimeSlot;
   startTime: string | null;
   activityType: ActivityType;
   activityLabel: string;
@@ -151,6 +155,7 @@ export type ScheduleCalendarActivity = {
   specialtyCourse: string | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot: ScheduleTimeSlot;
   notes: string | null;
 };
 
@@ -173,6 +178,7 @@ export type ScheduleCalendarEvent = {
   bookingReference: string;
   scheduleItemId: string;
   date: Date;
+  timeSlot: ScheduleTimeSlot;
   startTime: string | null;
   endTime: string | null;
   activityType: ActivityType;

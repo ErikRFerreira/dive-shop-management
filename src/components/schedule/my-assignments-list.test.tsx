@@ -8,6 +8,7 @@ import type {
 import {
   ActivityType,
   BookingCustomerRole,
+  ScheduleTimeSlot,
   ScheduleAssignmentRole,
 } from '@/generated/prisma/enums';
 import { MyAssignmentsList } from './my-assignments-list';
@@ -151,7 +152,7 @@ test('renders upcoming assignments in a scalable table', () => {
   );
 
   const table = screen.getByRole('table');
-  expect(within(table).getByText('Date / Time')).not.toBeNull();
+  expect(within(table).getByText('Date / Slot')).not.toBeNull();
   expect(within(table).getByText('Activity')).not.toBeNull();
   expect(within(table).getByText('Active participants')).not.toBeNull();
   expect(within(table).getByText('Location')).not.toBeNull();
@@ -205,6 +206,7 @@ test('renders personal assignment details without edit or booking actions', () =
             startTime: '08:00',
             endTime: '12:30',
             isTimeTbd: false,
+            timeSlot: ScheduleTimeSlot.AM,
             activitySummary: 'Fun Dive + Snorkeling',
             primaryCustomerName: 'Maria Santos',
             customers: [
@@ -252,7 +254,7 @@ test('renders personal assignment details without edit or booking actions', () =
   expect(screen.getByText('Second Diver')).not.toBeNull();
   expect(screen.getByText('Hotel / pickup: Primary Booking Hotel')).not.toBeNull();
   expect(screen.getByText(hasTextContent('28 Jun 2026'))).not.toBeNull();
-  expect(screen.getByText(hasTextContent('08:00 - 12:30'))).not.toBeNull();
+  expect(screen.getByText(hasTextContent('AM'))).not.toBeNull();
   expect(screen.getAllByText('Fun Dive + Snorkeling').length).toBeGreaterThan(0);
   expect(screen.getByText('Meet at the shop.')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
@@ -274,7 +276,8 @@ test('renders missing hotel pickup and time fallback safely', () => {
             scheduleItemId: 'schedule-1',
             startTime: null,
             endTime: null,
-            isTimeTbd: false,
+            isTimeTbd: true,
+            timeSlot: ScheduleTimeSlot.TBD,
             hotel: null,
           }),
         ],
@@ -291,7 +294,7 @@ test('renders missing hotel pickup and time fallback safely', () => {
     />,
   );
 
-  expect(screen.getByText(hasTextContent('Time TBD'))).not.toBeNull();
+  expect(screen.getByText(hasTextContent('TBD'))).not.toBeNull();
   expect(screen.getByText('Hotel / pickup: Not recorded')).not.toBeNull();
 });
 
@@ -353,6 +356,7 @@ function assignment(
     startTime: '08:00',
     endTime: null,
     isTimeTbd: false,
+    timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
@@ -367,6 +371,7 @@ function assignment(
         specialtyCourse: null,
         requestedDate: new Date('2026-06-28T00:00:00.000Z'),
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: null,
       },
       {
@@ -376,6 +381,7 @@ function assignment(
         specialtyCourse: null,
         requestedDate: new Date('2026-06-28T00:00:00.000Z'),
         requestedTime: '10:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: null,
       },
     ],

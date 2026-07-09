@@ -3,7 +3,10 @@ import type {
   BookingCustomerRole,
   BookingParticipantStatus,
 } from '@/generated/prisma/enums';
-import { BookingCustomerRole as BookingCustomerRoleValue } from '@/generated/prisma/enums';
+import {
+  BookingCustomerRole as BookingCustomerRoleValue,
+  ScheduleTimeSlot as ScheduleTimeSlotValue,
+} from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
 import {
   getActiveBookingParticipants,
@@ -14,6 +17,7 @@ import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import {
   formatScheduleActivityLabel,
   formatScheduleDayLabel,
+  getScheduleTimeSlotLabel,
 } from '@/features/schedule/utils';
 import type {
   DashboardNeedsAttentionBookingRecord,
@@ -66,6 +70,8 @@ export function mapBookingToNeedsAttentionItem(
 export function mapScheduleItemToNeedsAttentionItem(
   scheduleItem: DashboardScheduleAttentionRecord,
 ): DashboardNeedsAttentionItem {
+  const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlotValue.TBD;
+
   return {
     id: `schedule-${scheduleItem.id}`,
     kind: 'schedule',
@@ -77,7 +83,7 @@ export function mapScheduleItemToNeedsAttentionItem(
     primaryCustomerName: getPrimaryCustomerName(
       scheduleItem.bookingRequest.customers,
     ),
-    detail: formatDashboardDisplayText(scheduleItem.startTime) ?? 'TBD',
+    detail: getScheduleTimeSlotLabel(timeSlot),
     date: scheduleItem.date,
     updatedAt: scheduleItem.updatedAt,
   };
@@ -93,15 +99,16 @@ export function mapScheduleItemToDashboardScheduleItem(
   scheduleItem: DashboardTodayScheduleRecord,
 ): DashboardScheduleItem {
   const booking = scheduleItem.bookingRequest;
-  const startTime = scheduleItem.startTime?.trim() || null;
+  const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlotValue.TBD;
   const assignments = mapDashboardScheduleAssignments(scheduleItem.assignments);
 
   return {
     scheduleItemId: scheduleItem.id,
     bookingId: booking.id,
     date: scheduleItem.date,
-    startTime,
-    isTimeTbd: startTime === null,
+    timeSlot,
+    startTime: null,
+    isTimeTbd: timeSlot === ScheduleTimeSlotValue.TBD,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
     activitySummary: summarizeDashboardScheduleActivity(scheduleItem),
@@ -371,7 +378,7 @@ function getNeedsAttentionBookingLabel(
  * Returns compact extra detail for a booking attention item.
  *
  * @param booking - The booking row being mapped.
- * @returns Needs-more-info reason, requested time, or null.
+ * @returns Needs-more-info reason or requested slot label.
  */
 function getNeedsAttentionBookingDetail(
   booking: DashboardNeedsAttentionBookingRecord,
@@ -380,7 +387,9 @@ function getNeedsAttentionBookingDetail(
     return formatDashboardDisplayText(booking.needsMoreInfoReason);
   }
 
-  return formatDashboardDisplayText(booking.requestedTime);
+  return getScheduleTimeSlotLabel(
+    booking.requestedTimeSlot ?? ScheduleTimeSlotValue.TBD,
+  );
 }
 
 /**

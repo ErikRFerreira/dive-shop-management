@@ -92,6 +92,13 @@ enum ScheduleAssignmentRole {
   STAFF
 }
 
+enum ScheduleTimeSlot {
+  AM
+  PM
+  NIGHT
+  TBD
+}
+
 model User {
   id                  String               @id @default(cuid())
   name                String
@@ -115,6 +122,7 @@ model BookingRequest {
   source              BookingSource?
   requestedDate       DateTime?         @db.Date
   requestedTime       String?
+  requestedTimeSlot   ScheduleTimeSlot  @default(TBD)
   numberOfPeople      Int?
   referrerName        String?
   startAt             DateTime?
@@ -139,19 +147,20 @@ model BookingRequest {
 }
 
 model BookingActivity {
-  id               String         @id @default(cuid())
-  bookingRequestId String
-  activityType     ActivityType?
-  specialtyCourse  String?
-  durationDays     Int            @default(1)
-  requestedDate    DateTime?      @db.Date
-  requestedTime    String?
-  notes            String?        @db.Text
-  sortOrder        Int
-  bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
-  scheduleItems    ScheduleItem[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                String           @id @default(cuid())
+  bookingRequestId  String
+  activityType      ActivityType?
+  specialtyCourse   String?
+  durationDays      Int              @default(1)
+  requestedDate     DateTime?        @db.Date
+  requestedTime     String?
+  requestedTimeSlot ScheduleTimeSlot @default(TBD)
+  notes             String?          @db.Text
+  sortOrder         Int
+  bookingRequest    BookingRequest   @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  scheduleItems     ScheduleItem[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([bookingRequestId, sortOrder])
 }
@@ -230,6 +239,7 @@ model ScheduleItem {
   bookingActivity   BookingActivity?     @relation(fields: [bookingActivityId], references: [id], onDelete: SetNull)
   date              DateTime             @db.Date
   startTime         String?
+  timeSlot          ScheduleTimeSlot     @default(TBD)
   activityType      ActivityType
   dayNumber         Int?
   totalDays         Int                  @default(1)

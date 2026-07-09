@@ -6,6 +6,7 @@ import {
   BookingParticipantStatus,
   BookingStatus,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -403,8 +404,9 @@ describe("today's dashboard schedule", () => {
         activitySummary: 'Open Water',
         primaryCustomerName: 'Ada Lovelace',
         hotel: 'Sea View',
-        startTime: '09:00',
-        isTimeTbd: false,
+        timeSlot: ScheduleTimeSlot.TBD,
+        startTime: null,
+        isTimeTbd: true,
         isUnassigned: true,
       }),
     ]);

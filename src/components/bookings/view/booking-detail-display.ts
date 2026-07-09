@@ -10,7 +10,9 @@ import {
 } from '@/lib/format';
 import {
   ActivityType,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 
 export type BookingActivityDisplay = {
   id: string;
@@ -19,6 +21,7 @@ export type BookingActivityDisplay = {
   durationDays: number | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot: ScheduleTimeSlot;
   notes: string | null;
 };
 
@@ -53,16 +56,6 @@ export function formatDateTime(value: Date) {
  */
 export function formatEnum(value: string | null | undefined) {
   return formatEnumLabel(value);
-}
-
-/**
- * Formats a time field where missing values should be operationally explicit.
- *
- * @param value - Stored time text from a booking activity or schedule item.
- * @returns The stored time or the explicit TBD label.
- */
-export function formatTimeOrTbd(value: string | null | undefined) {
-  return value?.trim() || 'TBD';
 }
 
 /**
@@ -159,19 +152,20 @@ export function getDisplayActivities(
       activityType: booking.activityType,
       specialtyCourse: booking.specialtyCourse,
       durationDays: null,
-      requestedDate: booking.requestedDate,
-      requestedTime: booking.requestedTime,
-      notes: null,
-    },
+            requestedDate: booking.requestedDate,
+            requestedTime: booking.requestedTime,
+            requestedTimeSlot: booking.requestedTimeSlot,
+            notes: null,
+          },
   ];
 }
 
 /**
- * Resolves the first requested date/time visible in the booking overview.
+ * Resolves the first requested date and slot visible in the booking overview.
  *
  * @param booking - Booking detail payload.
  * @param activities - Activity rows already normalized for display.
- * @returns Requested date and time using activity data before legacy fields.
+ * @returns Requested date and slot using activity data before legacy fields.
  */
 export function getOverviewRequestedDateTime(
   booking: BookingDetailsItem,
@@ -183,17 +177,19 @@ export function getOverviewRequestedDateTime(
   return {
     requestedDate:
       firstActivityWithDate?.requestedDate ?? booking.requestedDate,
-    requestedTime:
-      firstActivityWithDate?.requestedTime ?? booking.requestedTime ?? null,
+    requestedTimeSlot:
+      firstActivityWithDate?.requestedTimeSlot ??
+      booking.requestedTimeSlot ??
+      ScheduleTimeSlot.TBD,
   };
 }
 
 /**
- * Formats the requested date/time pair for compact booking reference display.
+ * Formats the requested date and slot pair for compact booking reference display.
  *
  * @param booking - Booking detail payload.
  * @param activities - Normalized activity rows visible on the detail page.
- * @returns A joined requested date/time label.
+ * @returns A joined requested date/slot label.
  */
 export function formatRequestedDateTime(
   booking: BookingDetailsItem,
@@ -201,7 +197,7 @@ export function formatRequestedDateTime(
 ) {
   const requested = getOverviewRequestedDateTime(booking, activities);
 
-  return `${formatDate(requested.requestedDate)} / ${formatTimeOrTbd(requested.requestedTime)}`;
+  return `${formatDate(requested.requestedDate)} / ${getScheduleTimeSlotLabel(requested.requestedTimeSlot)}`;
 }
 
 /**

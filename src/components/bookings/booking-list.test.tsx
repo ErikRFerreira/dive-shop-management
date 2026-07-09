@@ -27,6 +27,7 @@ import {
   BookingParticipantStatus,
   BookingStatus,
   BookingSource,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 import { BookingList } from './booking-list';
@@ -69,6 +70,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
     source: BookingSource.WHATSAPP,
     requestedDate: new Date('2026-07-14T00:00:00.000Z'),
     requestedTime: '08:00',
+    requestedTimeSlot: ScheduleTimeSlot.AM,
     numberOfPeople: 2,
     referrerName: null,
     startAt: null,
@@ -90,6 +92,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
         specialtyCourse: null,
         requestedDate: new Date('2026-07-14T00:00:00.000Z'),
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: null,
         sortOrder: 0,
         createdAt,
@@ -122,6 +125,7 @@ function booking(overrides: Partial<BookingListItem> = {}): BookingListItem {
       id: 'schedule-1',
       date: new Date('2026-07-15T00:00:00.000Z'),
       startTime: '13:00',
+      timeSlot: ScheduleTimeSlot.PM,
       assignments: [
         {
           id: 'assignment-1',
@@ -218,6 +222,7 @@ test('renders assigned staff names without exposing emails', () => {
         id: 'schedule-1',
         date: new Date('2026-07-15T00:00:00.000Z'),
         startTime: '13:00',
+        timeSlot: ScheduleTimeSlot.PM,
         assignments: [
           { id: 'assignment-1', user: { name: 'Inez Instructor' } },
           { id: 'assignment-2', user: { name: 'Dina Divemaster' } },
@@ -241,6 +246,7 @@ test('renders staff state for unassigned and unscheduled bookings', () => {
         id: 'schedule-1',
         date: new Date('2026-07-15T00:00:00.000Z'),
         startTime: '13:00',
+        timeSlot: ScheduleTimeSlot.PM,
         assignments: [],
       },
     }),
@@ -313,6 +319,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
           specialtyCourse: null,
           requestedDate: new Date('2026-07-15T00:00:00.000Z'),
           requestedTime: '13:00',
+          requestedTimeSlot: ScheduleTimeSlot.PM,
           notes: null,
           sortOrder: 1,
           createdAt,
@@ -346,6 +353,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
       ],
       requestedDate: new Date('2026-07-16T00:00:00.000Z'),
       requestedTime: null,
+      requestedTimeSlot: ScheduleTimeSlot.TBD,
       scheduleItem: null,
     }),
   ]);
@@ -357,7 +365,7 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
   expect(screen.getByText('Open Water Course')).not.toBeNull();
   expect(screen.queryByText('Fun Dive + Open Water Course')).toBeNull();
   expect(screen.getByText('Unnamed customer')).not.toBeNull();
-  expect(screen.getByText('15 Jul 2026 \u00b7 13:00')).not.toBeNull();
+  expect(screen.getByText('15 Jul 2026 \u00b7 PM')).not.toBeNull();
   expect(screen.getByText('16 Jul 2026 \u00b7 TBD')).not.toBeNull();
   expect(screen.getByText('Hotel: Booking Hotel')).not.toBeNull();
   expect(

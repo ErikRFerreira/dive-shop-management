@@ -7,7 +7,7 @@ import { buildScheduleEventTitle } from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 import {
-  formatAssignmentTime,
+  formatAssignmentSlot,
   formatHotelPickup,
 } from './my-assignments-list-formatters';
 import { AssignmentSectionHeader } from './my-assignments-section-header';
@@ -91,8 +91,8 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
       <CardContent className="space-y-4 px-1 mt-1">
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <AssignmentDetail
-            label="Date & Time"
-            value={`${formatDisplayDate(assignment.date)} ·  ${formatAssignmentTime(assignment)}`}
+            label="Date & Slot"
+            value={`${formatDisplayDate(assignment.date)} / ${formatAssignmentSlot(assignment)}`}
             icon={Clock}
           />
           <AssignmentCustomersSection

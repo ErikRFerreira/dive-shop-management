@@ -10,6 +10,7 @@ import { Prisma } from '@/generated/prisma/client';
 import {
   BookingCustomerRole,
   BookingStatus,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 import {
@@ -38,12 +39,13 @@ import {
   buildScheduleEventTitle,
   formatScheduleActivityLabel,
   formatScheduleDayLabel,
+  getScheduleTimeSlotLabel,
 } from './utils';
 
 const MY_ASSIGNMENTS_UPCOMING_LIMIT = 20;
 const scheduleAssignmentOrderBy = [
   { date: 'asc' },
-  { startTime: 'asc' },
+  { timeSlot: 'asc' },
   { createdAt: 'asc' },
 ] satisfies Prisma.ScheduleItemOrderByWithRelationInput[];
 
@@ -53,6 +55,7 @@ const schedulePageItemArgs = {
     bookingRequestId: true,
     date: true,
     startTime: true,
+    timeSlot: true,
     activityType: true,
     dayNumber: true,
     totalDays: true,
@@ -65,6 +68,7 @@ const schedulePageItemArgs = {
         specialtyCourse: true,
         requestedDate: true,
         requestedTime: true,
+        requestedTimeSlot: true,
         notes: true,
       },
     },
@@ -103,6 +107,7 @@ const schedulePageItemArgs = {
             specialtyCourse: true,
             requestedDate: true,
             requestedTime: true,
+            requestedTimeSlot: true,
             notes: true,
             sortOrder: true,
           },
@@ -145,6 +150,7 @@ const myScheduleAssignmentArgs = {
     bookingRequestId: true,
     date: true,
     startTime: true,
+    timeSlot: true,
     activityType: true,
     dayNumber: true,
     totalDays: true,
@@ -157,6 +163,7 @@ const myScheduleAssignmentArgs = {
         specialtyCourse: true,
         requestedDate: true,
         requestedTime: true,
+        requestedTimeSlot: true,
         notes: true,
       },
     },
@@ -182,6 +189,7 @@ const myScheduleAssignmentArgs = {
             specialtyCourse: true,
             requestedDate: true,
             requestedTime: true,
+            requestedTimeSlot: true,
             notes: true,
             sortOrder: true,
           },
@@ -379,7 +387,7 @@ export async function getScheduledBookingsForSchedulePage(
   const scheduleItems = await db.scheduleItem.findMany({
     ...schedulePageItemArgs,
     where: buildSchedulePageWhere(currentUser),
-    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
   });
 
   return scheduleItems.map(mapScheduleItemForSchedulePage);
@@ -404,7 +412,7 @@ export async function getScheduleItemsForCalendar(
   const scheduleItems = await db.scheduleItem.findMany({
     ...schedulePageItemArgs,
     where: buildSchedulePageWhere(currentUser, filters),
-    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
   });
 
   return mapScheduleItemsToCalendarEvents(scheduleItems);
@@ -542,6 +550,7 @@ export function mapScheduleItemForSchedulePage(
   scheduleItem: ScheduleItemForSchedulePage,
 ): SchedulePageItem {
   const booking = scheduleItem.bookingRequest;
+  const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlot.TBD;
   const displayBookingCustomer = getPrimaryActiveBookingCustomer(
     booking.customers,
   );
@@ -550,6 +559,7 @@ export function mapScheduleItemForSchedulePage(
     scheduleItemId: scheduleItem.id,
     bookingId: booking.id,
     date: scheduleItem.date,
+    timeSlot,
     startTime: scheduleItem.startTime,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
@@ -598,6 +608,7 @@ function mapScheduleItemToCalendarEvent(
   scheduleItem: ScheduleItemForSchedulePage,
 ): ScheduleCalendarEvent {
   const booking = scheduleItem.bookingRequest;
+  const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlot.TBD;
   const displayBookingCustomer = getPrimaryActiveBookingCustomer(
     booking.customers,
   );
@@ -605,9 +616,6 @@ function mapScheduleItemToCalendarEvent(
     displayBookingCustomer?.customer ?? null,
   );
   const dateKey = getCalendarDateKey(scheduleItem.date);
-  const startTime = normalizeTimeValue(scheduleItem.startTime);
-  const endTime = startTime ? getCalendarEndTime(booking.endAt) : null;
-  const isTimeTbd = startTime === null;
   const activityLabel = formatScheduleActivityLabel(scheduleItem.activityType);
   const activitySummary = summarizeScheduleItemActivity(scheduleItem);
   const dayLabel = formatScheduleDayLabel(
@@ -615,25 +623,35 @@ function mapScheduleItemToCalendarEvent(
     scheduleItem.totalDays,
   );
   const assignments = mapScheduleAssignments(scheduleItem.assignments);
+  const slotTitlePrefix =
+    timeSlot === ScheduleTimeSlot.TBD
+      ? null
+      : getScheduleTimeSlotLabel(timeSlot);
 
   return {
     id: scheduleItem.id,
-    title: buildScheduleCalendarEventTitle({
-      activityLabel: activitySummary,
-      assignments,
-      customerName: primaryCustomerName,
-      dayLabel,
-      numberOfPeople: getActiveParticipantCount(booking.customers),
-    }),
-    start: startTime ? `${dateKey}T${startTime}:00` : dateKey,
-    end: startTime && endTime ? `${dateKey}T${endTime}:00` : null,
-    allDay: isTimeTbd,
+    title: [
+      slotTitlePrefix,
+      buildScheduleCalendarEventTitle({
+        activityLabel: activitySummary,
+        assignments,
+        customerName: primaryCustomerName,
+        dayLabel,
+        numberOfPeople: getActiveParticipantCount(booking.customers),
+      }),
+    ]
+      .filter((part): part is string => Boolean(part))
+      .join(' '),
+    start: dateKey,
+    end: null,
+    allDay: true,
     bookingId: booking.id,
     bookingReference: booking.id,
     scheduleItemId: scheduleItem.id,
     date: scheduleItem.date,
-    startTime,
-    endTime,
+    timeSlot,
+    startTime: null,
+    endTime: null,
     activityType: scheduleItem.activityType,
     activityLabel,
     activitySummary,
@@ -649,6 +667,7 @@ function mapScheduleItemToCalendarEvent(
       specialtyCourse: activity.specialtyCourse,
       requestedDate: activity.requestedDate,
       requestedTime: activity.requestedTime,
+      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
       notes: activity.notes,
     })),
     primaryCustomerName,
@@ -662,7 +681,7 @@ function mapScheduleItemToCalendarEvent(
     referrerName: booking.referrerName,
     notes: scheduleItem.scheduleNotes ?? booking.internalNotes,
     assignments,
-    isTimeTbd,
+    isTimeTbd: timeSlot === ScheduleTimeSlot.TBD,
   };
 }
 
@@ -737,13 +756,13 @@ function mapScheduleItemToMyScheduleAssignment(
   currentUserId: string,
 ): MyScheduleAssignment {
   const booking = scheduleItem.bookingRequest;
+  const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlot.TBD;
   const displayBookingCustomer = getPrimaryActiveBookingCustomer(
     booking.customers,
   );
   const primaryCustomerName = formatCustomerName(
     displayBookingCustomer?.customer ?? null,
   );
-  const startTime = normalizeTimeValue(scheduleItem.startTime);
   const currentUserAssignment = scheduleItem.assignments.find(
     (assignment) => assignment.userId === currentUserId,
   );
@@ -756,9 +775,10 @@ function mapScheduleItemToMyScheduleAssignment(
     scheduleItemId: scheduleItem.id,
     bookingId: booking.id,
     date: scheduleItem.date,
-    startTime,
-    endTime: getCalendarEndTime(booking.endAt),
-    isTimeTbd: startTime === null,
+    timeSlot,
+    startTime: null,
+    endTime: null,
+    isTimeTbd: timeSlot === ScheduleTimeSlot.TBD,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
     activitySummary: summarizeScheduleItemActivity(scheduleItem),
@@ -777,6 +797,7 @@ function mapScheduleItemToMyScheduleAssignment(
       specialtyCourse: activity.specialtyCourse,
       requestedDate: activity.requestedDate,
       requestedTime: activity.requestedTime,
+      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
       notes: activity.notes,
     })),
     primaryCustomerName,
@@ -1018,23 +1039,3 @@ function getCalendarDateKey(date: Date) {
   return formatDateInputValue(date) ?? '';
 }
 
-/**
- * Normalizes optional database time text before building calendar event dates.
- *
- * @param value - Stored time text from the schedule item.
- * @returns A trimmed time string or null when the schedule time is missing.
- */
-function normalizeTimeValue(value: string | null) {
-  const trimmedValue = value?.trim();
-  return trimmedValue || null;
-}
-
-/**
- * Extracts a compact end time from a booking end date, when one exists.
- *
- * @param endAt - Optional booking end timestamp.
- * @returns An `HH:mm` time string or null when no end timestamp is available.
- */
-function getCalendarEndTime(endAt: Date | null) {
-  return endAt ? endAt.toISOString().slice(11, 16) : null;
-}

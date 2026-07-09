@@ -27,16 +27,6 @@ export function formatEnum(value: string | null | undefined) {
 }
 
 /**
- * Formats a requested time where missing values should remain operationally explicit.
- *
- * @param value - Stored requested time from a booking or activity.
- * @returns The stored time text, or `TBD` when no time has been captured.
- */
-export function formatTimeOrTbd(value: string | null | undefined) {
-  return value?.trim() || 'TBD';
-}
-
-/**
  * Formats the customer name shown in booking review sections.
  *
  * @param customer - Customer fields selected for the booking detail payload.

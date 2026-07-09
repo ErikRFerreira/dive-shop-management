@@ -1,6 +1,7 @@
 import type { BookingListItem } from '@/features/bookings/queries';
 import { getActivityDisplayLabel } from '@/features/bookings/activity-utils';
 import { getActiveBookingParticipants } from '@/features/bookings/participants';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import type { BookingSource } from '@/generated/prisma/client';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 import { SHOP_TIME_ZONE } from '@/lib/operational-date';
@@ -111,18 +112,18 @@ export function getBookingActivityLines(booking: BookingListItem) {
  * Formats the operational schedule label for a booking list row.
  *
  * @param booking - Booking list item with optional scheduled date/time.
- * @returns Scheduled or requested date with time, `TBD`, or the empty placeholder.
+ * @returns Scheduled or requested date with operational slot, or the empty placeholder.
  */
 export function formatBookingSchedule(booking: BookingListItem) {
   const date = booking.scheduleItem?.date ?? booking.requestedDate;
-  const time = booking.scheduleItem?.startTime ?? booking.requestedTime;
-  const trimmedTime = time?.trim();
+  const timeSlot =
+    booking.scheduleItem?.timeSlot ?? booking.requestedTimeSlot;
 
   if (!date) {
     return EMPTY_VALUE;
   }
 
-  return `${formatDisplayDate(date)} \u00b7 ${trimmedTime || 'TBD'}`;
+  return `${formatDisplayDate(date)} \u00b7 ${getScheduleTimeSlotLabel(timeSlot)}`;
 }
 
 /**

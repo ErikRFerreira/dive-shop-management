@@ -23,6 +23,7 @@ const dashboardScheduleAttentionArgs = {
     bookingRequestId: true,
     date: true,
     startTime: true,
+    timeSlot: true,
     activityType: true,
     dayNumber: true,
     totalDays: true,
@@ -76,6 +77,7 @@ const dashboardTodayScheduleArgs = {
     bookingRequestId: true,
     date: true,
     startTime: true,
+    timeSlot: true,
     activityType: true,
     dayNumber: true,
     totalDays: true,
@@ -255,7 +257,7 @@ export async function getUnassignedDashboardScheduleItemsFromDate(
         none: {},
       },
     },
-    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
     take: limit,
   });
 }
@@ -335,7 +337,7 @@ async function getTodaysDashboardScheduleItems(
   return db.scheduleItem.findMany({
     ...dashboardTodayScheduleArgs,
     where,
-    orderBy: [{ date: 'asc' }, { startTime: 'asc' }, { createdAt: 'asc' }],
+    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
     take: limit,
   });
 }
