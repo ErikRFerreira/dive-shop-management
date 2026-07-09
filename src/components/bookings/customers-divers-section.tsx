@@ -4,6 +4,7 @@ import { useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { AssignmentBadge } from '@/components/common/assignment-badge';
+import { AddScheduledBookingParticipantDialog } from '@/components/bookings/add-scheduled-booking-participant-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
@@ -438,6 +439,11 @@ export function CustomersDiversSection({
 
   return (
     <BookingInfoSection title="Customers & divers">
+      {canManageParticipantStatus ? (
+        <div className="flex justify-end sm:col-span-2">
+          <AddScheduledBookingParticipantDialog booking={booking} />
+        </div>
+      ) : null}
       {booking.customers.length === 0 ? (
         <p className="text-sm text-muted-foreground sm:col-span-2">
           No customer or diver details.
