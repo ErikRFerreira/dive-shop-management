@@ -130,6 +130,7 @@ export function BookingReviewDecisionPanel({
       canCancel,
     }),
   );
+  const [isAnyFormPending, setIsAnyFormPending] = useState(false);
   const activeMode = availableModes.includes(selectedMode)
     ? selectedMode
     : availableModes[0];
@@ -149,9 +150,10 @@ export function BookingReviewDecisionPanel({
               <button
                 aria-pressed={isActive}
                 className={cn(
-                  'flex flex-col items-center gap-2 rounded-xl border border-border bg-background px-2 py-3 text-center transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+                  'flex flex-col items-center gap-2 rounded-xl border border-border bg-background px-2 py-3 text-center transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50',
                   isActive && decisionModeActiveClasses[mode],
                 )}
+                disabled={isAnyFormPending}
                 key={mode}
                 onClick={() => setSelectedMode(mode)}
                 type="button"
@@ -175,6 +177,7 @@ export function BookingReviewDecisionPanel({
           <ApproveBookingForm
             bookingId={bookingId}
             defaultAdminNotes={adminNotes}
+            onPendingChange={setIsAnyFormPending}
           />
         </section>
       ) : null}
@@ -187,7 +190,10 @@ export function BookingReviewDecisionPanel({
               Return this booking to customer service with a clear reason.
             </p>
           </div>
-          <MarkNeedsMoreInfoForm bookingId={bookingId} />
+          <MarkNeedsMoreInfoForm
+            bookingId={bookingId}
+            onPendingChange={setIsAnyFormPending}
+          />
         </section>
       ) : null}
 
@@ -203,6 +209,7 @@ export function BookingReviewDecisionPanel({
           <CancelBookingForm
             bookingId={bookingId}
             defaultAdminNotes={adminNotes}
+            onPendingChange={setIsAnyFormPending}
             status={status}
           />
         </section>

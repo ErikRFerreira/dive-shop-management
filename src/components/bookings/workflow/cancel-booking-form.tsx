@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 
 import { AlertTriangle, XCircle } from 'lucide-react';
 
@@ -18,6 +18,7 @@ type CancelBookingFormProps = {
   bookingId: string;
   defaultAdminNotes?: string | null;
   status: BookingStatus;
+  onPendingChange?: (pending: boolean) => void;
 };
 
 /**
@@ -30,12 +31,17 @@ export function CancelBookingForm({
   bookingId,
   defaultAdminNotes,
   status,
+  onPendingChange,
 }: CancelBookingFormProps) {
   const [state, formAction, pending] = useActionState(
     cancelBooking,
     getInitialBookingWorkflowActionState(),
   );
   const isScheduled = status === BookingStatus.SCHEDULED;
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   return (
     <form action={formAction} className="grid gap-3">
