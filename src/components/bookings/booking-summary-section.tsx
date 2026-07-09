@@ -72,7 +72,7 @@ export function BookingSummarySection({
         />
         <BookingReferenceMetaItem
           icon={CalendarDays}
-          label="Requested date / time"
+          label="Requested date / slot"
           value={formatRequestedDateTime(booking, activities)}
         />
         <BookingReferenceMetaItem

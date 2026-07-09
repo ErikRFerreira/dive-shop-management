@@ -2,7 +2,10 @@ import Link from 'next/link';
 import { MapPin, User, Users } from 'lucide-react';
 
 import type { DashboardScheduleItem as DashboardScheduleItemData } from '@/features/dashboard/types';
-import { buildScheduleEventTitle } from '@/features/schedule/utils';
+import {
+  buildScheduleEventTitle,
+  getScheduleTimeSlotLabel,
+} from '@/features/schedule/utils';
 import { Button } from '@/components/ui/button';
 
 import type { DashboardSectionUser } from './dashboard-operational-helpers';
@@ -50,7 +53,7 @@ export function TodaysScheduleItem({
     <article className="grid gap-1 rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/30 md:grid-cols-[5rem_1fr_auto] md:items-start md:px-5">
       <div className="space-y-1">
         <p className="text-base font-semibold tabular-nums text-primary">
-          {item.startTime ?? 'TBD'}
+          {getScheduleTimeSlotLabel(item.timeSlot)}
         </p>
       </div>
 

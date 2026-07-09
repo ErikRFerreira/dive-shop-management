@@ -4,7 +4,6 @@ import type { EventClickArg, EventInput } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import FullCalendar from '@fullcalendar/react';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import { useMemo, useState } from 'react';
 
 import { ScheduleEventDialogContent } from '@/components/schedule/schedule-dialog-content';
@@ -107,11 +106,11 @@ function ScheduleCalendarView({
           headerToolbar={{
             center: '',
             left: 'prev,next today title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+            right: 'dayGridMonth,listWeek',
           }}
           height="auto"
           initialView="dayGridMonth"
-          plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
+          plugins={[dayGridPlugin, listPlugin]}
           selectable={false}
         />
       </div>

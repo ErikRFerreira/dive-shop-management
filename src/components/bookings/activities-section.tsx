@@ -4,8 +4,8 @@ import type { BookingActivityDisplayItem } from './booking-display-utils';
 import {
   formatBookingActivityLabel,
   formatBookingDate,
-  formatBookingTimeOrTbd,
 } from './booking-display-utils';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import { BookingInfoField, BookingInfoSection } from './booking-info-layout';
 
 /**
@@ -43,8 +43,8 @@ function ActivityCard({
           value={formatBookingDate(activity.requestedDate)}
         />
         <BookingInfoField
-          label="Requested time"
-          value={formatBookingTimeOrTbd(activity.requestedTime)}
+          label="Requested slot"
+          value={getScheduleTimeSlotLabel(activity.requestedTimeSlot)}
         />
         <div className="border-t border-muted-foreground/20 pt-4 sm:col-span-2">
           <BookingInfoField

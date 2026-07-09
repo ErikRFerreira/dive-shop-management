@@ -17,15 +17,18 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   activityTypeOptions,
   bookingSourceOptions,
+  scheduleTimeSlotOptions,
 } from '@/features/bookings/form-options';
 import { bookingActivityDefaultValues } from '@/features/bookings/form-values';
 import { getDefaultActivityDurationDays } from '@/features/bookings/activity-utils';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import type {
   BookingActivityFormValues,
   BookingFormValues,
 } from '@/features/bookings/types';
-import { ActivityType } from '@/generated/prisma/enums';
+import { ActivityType, ScheduleTimeSlot } from '@/generated/prisma/enums';
 import { inputClassName } from '@/lib/consts';
+import { getShopDateOnlyKey } from '@/lib/operational-date';
 import { Plus, Trash2 } from 'lucide-react';
 
 type BookingDetailsSectionProps = {
@@ -50,6 +53,7 @@ export function BookingDetailsSection({
     control: form.control,
     name: 'activities',
   });
+  const minRequestedDate = getShopDateOnlyKey(new Date());
 
   return (
     <>
@@ -198,16 +202,29 @@ export function BookingDetailsSection({
                     <Input
                       id={`${prefix}.requestedDate`}
                       type="date"
+                      min={minRequestedDate}
                       {...form.register(`${prefix}.requestedDate`)}
                       className={inputClassName}
                     />
                   </BookingFormField>
-                  <BookingFormField id={`${prefix}.requestedTime`} label="Time">
-                    <Input
-                      id={`${prefix}.requestedTime`}
-                      type="time"
-                      {...form.register(`${prefix}.requestedTime`)}
-                      className={inputClassName}
+                  <BookingFormField
+                    id={`${prefix}.requestedTimeSlot`}
+                    label="Requested slot"
+                  >
+                    <Controller
+                      control={form.control}
+                      name={`${prefix}.requestedTimeSlot`}
+                      render={({ field }) => (
+                        <EnumSelect
+                          id={field.name}
+                          value={field.value ?? ScheduleTimeSlot.TBD}
+                          onValueChange={field.onChange}
+                          values={scheduleTimeSlotOptions}
+                          placeholder="Select slot"
+                          getOptionLabel={getScheduleTimeSlotLabel}
+                          className={inputClassName}
+                        />
+                      )}
                     />
                   </BookingFormField>
                   {activityTypeError || requestedDateError ? (

@@ -3,6 +3,7 @@ import type {
   BookingCustomerRole,
   BookingStatus,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -89,6 +90,7 @@ export type DashboardScheduleItem = {
   scheduleItemId: string;
   bookingId: string;
   date: Date;
+  timeSlot: ScheduleTimeSlot;
   startTime: string | null;
   isTimeTbd: boolean;
   activityType: ActivityType;

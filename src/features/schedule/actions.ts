@@ -7,7 +7,11 @@
 'use server';
 
 import { Prisma } from '@/generated/prisma/client';
-import { ActivityType, BookingStatus } from '@/generated/prisma/enums';
+import {
+  ActivityType,
+  BookingStatus,
+  ScheduleTimeSlot,
+} from '@/generated/prisma/enums';
 import {
   revalidateBookingWorkflowPaths,
   revalidateSchedulePath,
@@ -59,6 +63,7 @@ type ScheduleDayGuard = {
   bookingActivityId: string | null;
   date: Date;
   startTime: string | null;
+  timeSlot?: ScheduleTimeSlot | null;
   activityType: ActivityType;
   scheduleNotes: string | null;
   bookingRequest: {
@@ -74,6 +79,7 @@ type ScheduleDaySibling = {
   id: string;
   date: Date;
   startTime: string | null;
+  timeSlot?: ScheduleTimeSlot | null;
   activityType: ActivityType;
   scheduleNotes: string | null;
   createdAt: Date;
@@ -177,6 +183,7 @@ async function loadScheduleDayGuard(
       bookingActivityId: true,
       date: true,
       startTime: true,
+      timeSlot: true,
       activityType: true,
       scheduleNotes: true,
       bookingRequest: {
@@ -280,6 +287,7 @@ async function loadScheduleDaySiblings(
       id: true,
       date: true,
       startTime: true,
+      timeSlot: true,
       activityType: true,
       scheduleNotes: true,
       createdAt: true,
@@ -600,7 +608,8 @@ export async function addScheduledCourseDay(
         bookingRequestId: scheduleItem.bookingRequestId,
         bookingActivityId: scheduleItem.bookingActivityId,
         date: addUtcDateOnlyDays(latestScheduleItem.date, 1),
-        startTime: latestScheduleItem.startTime,
+        startTime: null,
+        timeSlot: latestScheduleItem.timeSlot ?? ScheduleTimeSlot.TBD,
         activityType: latestScheduleItem.activityType,
         dayNumber: totalDays,
         totalDays,

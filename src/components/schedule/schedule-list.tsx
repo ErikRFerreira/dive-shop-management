@@ -12,6 +12,7 @@ import {
 import type { SchedulePageItem } from '@/features/schedule/types';
 import {
   buildScheduleEventTitle,
+  getScheduleTimeSlotLabel,
   groupScheduleItemsByDate,
 } from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
@@ -78,9 +79,9 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
                 >
                   <div>
                     <p className="text-sm font-medium">
-                      {item.startTime || 'TBD'}
+                      {getScheduleTimeSlotLabel(item.timeSlot)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Time</p>
+                    <p className="text-xs text-muted-foreground">Slot</p>
                   </div>
 
                   <div className="space-y-2">

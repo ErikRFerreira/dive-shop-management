@@ -1,5 +1,6 @@
 import type { MyScheduleAssignment } from '@/features/schedule/types';
 import { getActivityShortLabel } from '@/features/bookings/activity-utils';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 
 /**
  * Formats one booking activity line for cards and table rows.
@@ -23,19 +24,13 @@ export function formatAssignmentActivityLine(
 }
 
 /**
- * Formats an assignment's start and end time for compact display.
+ * Formats an assignment's operational slot for compact display.
  *
- * @param assignment - Assignment containing normalized time fields.
- * @returns `Time TBD`, a start time, or a start/end time range.
+ * @param assignment - Assignment containing the persisted schedule slot.
+ * @returns Staff-facing schedule slot label.
  */
-export function formatAssignmentTime(assignment: MyScheduleAssignment) {
-  if (assignment.isTimeTbd || !assignment.startTime) {
-    return 'Time TBD';
-  }
-
-  return assignment.endTime
-    ? `${assignment.startTime} - ${assignment.endTime}`
-    : assignment.startTime;
+export function formatAssignmentSlot(assignment: MyScheduleAssignment) {
+  return getScheduleTimeSlotLabel(assignment.timeSlot);
 }
 
 /**

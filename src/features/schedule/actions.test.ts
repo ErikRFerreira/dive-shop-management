@@ -4,6 +4,7 @@ import {
   ActivityType,
   BookingStatus,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -113,6 +114,7 @@ function scheduleDayGuard(overrides = {}) {
     bookingActivityId: 'activity-1',
     date: new Date('2026-07-15T00:00:00.000Z'),
     startTime: '08:00',
+    timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.OPEN_WATER_COURSE,
     scheduleNotes: 'Pool session',
     bookingRequest: {
@@ -143,6 +145,7 @@ function scheduleDaySibling(
     id,
     date: new Date(date),
     startTime: '08:00',
+    timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.OPEN_WATER_COURSE,
     scheduleNotes: `Day ${dayNumber} notes`,
     createdAt: new Date(`2026-07-01T0${dayNumber}:00:00.000Z`),
@@ -538,7 +541,8 @@ test.each([adminUser, managerUser])(
         bookingRequestId: 'booking-1',
         bookingActivityId: 'activity-1',
         date: new Date('2026-07-17T00:00:00.000Z'),
-        startTime: '08:00',
+        startTime: null,
+        timeSlot: ScheduleTimeSlot.AM,
         activityType: ActivityType.OPEN_WATER_COURSE,
         dayNumber: 4,
         totalDays: 4,

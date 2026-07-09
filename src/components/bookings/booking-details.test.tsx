@@ -16,6 +16,7 @@ import {
   BookingParticipantStatus,
   BookingStatus,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -245,6 +246,7 @@ function scheduledDay(overrides = {}) {
     bookingActivityId: 'activity-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
     startTime: '08:00',
+    timeSlot: ScheduleTimeSlot.AM,
     dayNumber: 1,
     totalDays: 3,
     activityType: ActivityType.OPEN_WATER_COURSE,
@@ -273,6 +275,7 @@ function booking(
     source: null,
     requestedDate: new Date('2026-07-14T00:00:00.000Z'),
     requestedTime: '08:00',
+    requestedTimeSlot: ScheduleTimeSlot.AM,
     numberOfPeople: 2,
     referrerName: null,
     startAt: null,
@@ -294,6 +297,7 @@ function booking(
         specialtyCourse: null,
         requestedDate: new Date('2026-07-14T00:00:00.000Z'),
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: null,
         sortOrder: 0,
         createdAt,
@@ -464,6 +468,7 @@ test('renders schedule action for scheduled bookings with schedule items', () =>
         id: 'schedule-1',
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: '08:00',
+        timeSlot: ScheduleTimeSlot.AM,
         scheduleNotes: null,
         assignments: [],
       },
@@ -482,6 +487,7 @@ test('renders scheduled cancellation action for authorized detail users', async 
         id: 'schedule-1',
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: '08:00',
+        timeSlot: ScheduleTimeSlot.AM,
         scheduleNotes: null,
         assignments: [],
       },
@@ -555,6 +561,7 @@ test('renders multiple assigned staff with assignment roles', () => {
         id: 'schedule-1',
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: '08:00',
+        timeSlot: ScheduleTimeSlot.AM,
         scheduleNotes: null,
         assignments: [
           {
@@ -595,6 +602,7 @@ test('renders the unassigned state when the schedule item has no assignments', (
         id: 'schedule-1',
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: '08:00',
+        timeSlot: ScheduleTimeSlot.AM,
         scheduleNotes: null,
         assignments: [],
       },

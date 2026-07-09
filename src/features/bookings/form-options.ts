@@ -11,6 +11,7 @@ import {
   Currency,
   DepositStatus,
   PreferredLanguage,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 export { formatEnumLabel } from '@/lib/format';
 
@@ -19,3 +20,9 @@ export const bookingSourceOptions = Object.values(BookingSource);
 export const currencyOptions = Object.values(Currency);
 export const depositStatusOptions = Object.values(DepositStatus);
 export const preferredLanguageOptions = Object.values(PreferredLanguage);
+export const scheduleTimeSlotOptions = [
+  ScheduleTimeSlot.TBD,
+  ScheduleTimeSlot.AM,
+  ScheduleTimeSlot.PM,
+  ScheduleTimeSlot.NIGHT,
+];

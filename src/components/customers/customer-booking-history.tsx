@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import type { CustomerBookingHistoryItem } from '@/features/customers/types';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import {
   formatDisplayDate,
   formatDisplayDateTime,
@@ -70,33 +71,37 @@ function getRequestedDate(booking: CustomerBookingHistoryItem) {
 }
 
 /**
- * Resolves the best requested time from booking-level and activity-level data.
+ * Resolves the best requested slot from booking-level and activity-level data.
  *
  * @param booking - Booking history item being displayed.
- * @returns Requested time from the booking or first timed activity.
+ * @returns Requested slot from the booking or first activity.
  */
-function getRequestedTime(booking: CustomerBookingHistoryItem) {
+function getRequestedSlot(booking: CustomerBookingHistoryItem) {
   return (
-    booking.requestedTime ??
-    booking.activities.find((activity) => activity.requestedTime)
-      ?.requestedTime ??
-    null
+    booking.requestedTimeSlot ??
+    booking.activities.find((activity) => activity.requestedTimeSlot)
+      ?.requestedTimeSlot
   );
 }
 
 /**
- * Formats one compact operational date/time label for booking history.
+ * Formats one compact operational date/slot label for booking history.
  *
  * @param date - Requested or scheduled date.
- * @param time - Requested or scheduled time.
- * @returns Date and time text, falling back to TBD where needed.
+ * @param slot - Requested or scheduled operational slot.
+ * @returns Date and slot text, falling back to TBD where needed.
  */
-function formatHistoryDateTime(date: Date | null, time: string | null) {
-  if (!date && !time) {
+function formatHistoryDateSlot(
+  date: Date | null,
+  slot: CustomerBookingHistoryItem['requestedTimeSlot'] | null,
+) {
+  if (!date && !slot) {
     return 'TBD';
   }
 
-  return `${formatDisplayDate(date, { emptyValue: 'TBD' })} / ${time ?? 'TBD'}`;
+  return `${formatDisplayDate(date, { emptyValue: 'TBD' })} / ${
+    slot ? getScheduleTimeSlotLabel(slot) : 'TBD'
+  }`;
 }
 
 /**
@@ -106,16 +111,16 @@ function formatHistoryDateTime(date: Date | null, time: string | null) {
  * @returns Scheduled or requested date/time label.
  */
 function formatActivitySchedule(booking: CustomerBookingHistoryItem) {
-  if (booking.scheduledDate || booking.scheduledTime) {
-    return `Scheduled: ${formatHistoryDateTime(
+  if (booking.scheduledDate || booking.scheduledTimeSlot) {
+    return `Scheduled: ${formatHistoryDateSlot(
       booking.scheduledDate,
-      booking.scheduledTime,
+      booking.scheduledTimeSlot,
     )}`;
   }
 
-  return `Requested: ${formatHistoryDateTime(
+  return `Requested: ${formatHistoryDateSlot(
     getRequestedDate(booking),
-    getRequestedTime(booking),
+    getRequestedSlot(booking),
   )}`;
 }
 

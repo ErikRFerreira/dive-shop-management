@@ -7,9 +7,12 @@ import type {
 } from '@/features/schedule/types';
 import {
   buildScheduleEventTitle,
+  formatScheduleDateSlot,
   groupMyScheduleAssignmentsByDay,
   groupScheduleItemsByDate,
   formatScheduleDayLabel,
+  getScheduleTimeSlotLabel,
+  getScheduleTimeSlotSortValue,
   serializeScheduleCalendarEvents,
 } from '@/features/schedule/utils';
 import {
@@ -17,6 +20,7 @@ import {
   BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 
 function scheduleItem(
@@ -26,6 +30,7 @@ function scheduleItem(
     scheduleItemId: 'schedule-1',
     bookingId: 'booking-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
+    timeSlot: ScheduleTimeSlot.TBD,
     startTime: null,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
@@ -57,6 +62,7 @@ function myAssignment(
     scheduleItemId: 'schedule-1',
     bookingId: 'booking-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
+    timeSlot: ScheduleTimeSlot.TBD,
     startTime: null,
     endTime: null,
     isTimeTbd: true,
@@ -194,6 +200,7 @@ test('serializes calendar event date fields for client props', () => {
     bookingReference: 'BOOK-1',
     scheduleItemId: 'schedule-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
+    timeSlot: ScheduleTimeSlot.AM,
     startTime: '08:00',
     endTime: '12:00',
     activityType: ActivityType.FUN_DIVE,
@@ -210,6 +217,7 @@ test('serializes calendar event date fields for client props', () => {
         specialtyCourse: null,
         requestedDate: new Date('2026-07-14T00:00:00.000Z'),
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: 'Two tanks.',
       },
     ],
@@ -249,6 +257,41 @@ test('formats only multi-day schedule labels', () => {
   expect(formatScheduleDayLabel(3, 3)).toBe('Day 3/3');
   expect(formatScheduleDayLabel(null, 3)).toBe('Day 1/3');
   expect(formatScheduleDayLabel(1, 1)).toBeNull();
+});
+
+test('formats operational schedule slot labels', () => {
+  expect(getScheduleTimeSlotLabel(ScheduleTimeSlot.TBD)).toBe('TBD');
+  expect(getScheduleTimeSlotLabel(ScheduleTimeSlot.AM)).toBe('AM');
+  expect(getScheduleTimeSlotLabel(ScheduleTimeSlot.PM)).toBe('PM');
+  expect(getScheduleTimeSlotLabel(ScheduleTimeSlot.NIGHT)).toBe('Night');
+});
+
+test('sorts operational schedule slots in shop order', () => {
+  expect(
+    [
+      ScheduleTimeSlot.TBD,
+      ScheduleTimeSlot.NIGHT,
+      ScheduleTimeSlot.PM,
+      ScheduleTimeSlot.AM,
+    ].sort(
+      (left, right) =>
+        getScheduleTimeSlotSortValue(left) - getScheduleTimeSlotSortValue(right),
+    ),
+  ).toEqual([
+    ScheduleTimeSlot.AM,
+    ScheduleTimeSlot.PM,
+    ScheduleTimeSlot.NIGHT,
+    ScheduleTimeSlot.TBD,
+  ]);
+});
+
+test('formats date-only schedule values with operational slots', () => {
+  expect(
+    formatScheduleDateSlot(
+      new Date('2026-07-14T00:00:00.000Z'),
+      ScheduleTimeSlot.NIGHT,
+    ),
+  ).toBe('14 Jul 2026 / Night');
 });
 
 test('builds compact schedule event titles with active participants and course days', () => {

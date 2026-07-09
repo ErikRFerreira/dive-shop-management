@@ -17,6 +17,7 @@ import {
   BookingCustomerRole,
   BookingSource,
   ScheduleAssignmentRole,
+  ScheduleTimeSlot,
   UserRole,
 } from '@/generated/prisma/enums';
 
@@ -264,15 +265,16 @@ function scheduleEvent(
   return {
     id: 'schedule-1',
     title: DEFAULT_EVENT_TITLE,
-    start: '2026-07-14T08:00:00',
-    end: '2026-07-14T12:00:00',
-    allDay: false,
+    start: '2026-07-14',
+    end: null,
+    allDay: true,
     bookingId: 'booking-1',
     bookingReference: 'BOOK-1',
     scheduleItemId: 'schedule-1',
     date: '2026-07-14T00:00:00.000Z',
-    startTime: '08:00',
-    endTime: '12:00',
+    startTime: null,
+    endTime: null,
+    timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
@@ -287,6 +289,7 @@ function scheduleEvent(
         specialtyCourse: null,
         requestedDate: '2026-07-14T00:00:00.000Z',
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
         notes: 'Two tanks.',
       },
     ],
@@ -428,6 +431,7 @@ test('makes no-time schedule events clear in the summary dialog', () => {
         isTimeTbd: true,
         start: '2026-07-14',
         startTime: null,
+        timeSlot: ScheduleTimeSlot.TBD,
         title: DEFAULT_EVENT_TITLE,
       }),
     ],
@@ -439,7 +443,7 @@ test('makes no-time schedule events clear in the summary dialog', () => {
     }),
   );
 
-  expect(screen.getByText(/time TBD/i)).not.toBeNull();
+  expect(screen.getByText(/14 Jul 2026 \/ TBD/i)).not.toBeNull();
 });
 
 test('does not render schedule mutation controls', () => {
