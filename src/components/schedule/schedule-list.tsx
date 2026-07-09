@@ -10,7 +10,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { SchedulePageItem } from '@/features/schedule/types';
-import { groupScheduleItemsByDate } from '@/features/schedule/utils';
+import {
+  buildScheduleEventTitle,
+  groupScheduleItemsByDate,
+} from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 function formatSourceReferrer(item: SchedulePageItem) {
@@ -61,6 +64,12 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
           <CardContent className="divide-y">
             {group.items.map((item) => {
               const sourceReferrer = formatSourceReferrer(item);
+              const title = buildScheduleEventTitle({
+                activityLabel: item.activitySummary,
+                customerName: item.primaryCustomerName,
+                dayLabel: item.dayLabel,
+                numberOfPeople: item.numberOfPeople,
+              });
 
               return (
                 <article
@@ -77,15 +86,14 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
                   <div className="space-y-2">
                     <div>
                       <h2 className="text-base font-medium">
-                        {formatEnumLabel(item.activityType)}
+                        {title}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {item.primaryCustomerName ?? 'Customer not recorded'}
+                        {formatActiveParticipantSummary(item)}
                       </p>
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span>{formatActiveParticipantSummary(item)}</span>
                       {item.hotel ? <span>Hotel: {item.hotel}</span> : null}
                       {sourceReferrer ? (
                         <span>Source/referrer: {sourceReferrer}</span>

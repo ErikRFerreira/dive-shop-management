@@ -21,7 +21,12 @@ const mocks = vi.hoisted(() => ({
   transactionRunner: vi.fn(),
   transaction: {
     bookingRequest: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
-    scheduleItem: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+    scheduleItem: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
     customer: {
       update: vi.fn(),
@@ -173,6 +178,8 @@ function pendingApprovableBooking(overrides = {}) {
     activityType: ActivityType.OPEN_WATER_COURSE,
     internalNotes: 'Customer prefers a morning slot.',
     scheduleItem: null,
+    scheduleItems: [],
+    activities: [],
     ...overrides,
   };
 }
@@ -249,6 +256,7 @@ beforeEach(() => {
     ],
   });
   mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.scheduleItem.findFirst.mockResolvedValue(null);
   mocks.transaction.scheduleItem.findUnique.mockResolvedValue(null);
   mocks.transaction.scheduleItem.create.mockResolvedValue({ id: 'schedule-1' });
   mocks.transaction.scheduleItem.deleteMany.mockResolvedValue({ count: 1 });
@@ -769,7 +777,7 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
       ),
     ).rejects.toThrow('redirect:/bookings/booking-1');
 
-    expect(mocks.transaction.scheduleItem.findUnique).toHaveBeenCalledWith({
+    expect(mocks.transaction.scheduleItem.findFirst).toHaveBeenCalledWith({
       where: {
         bookingRequestId: 'booking-1',
       },
@@ -787,15 +795,39 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
         adminNotes: 'Approved for the morning schedule.',
       },
     });
-    expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledWith({
+    expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledTimes(3);
+    expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(1, {
       data: {
         bookingRequestId: 'booking-1',
+        bookingActivityId: null,
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: '09:00',
         activityType: ActivityType.OPEN_WATER_COURSE,
+        dayNumber: 1,
+        totalDays: 3,
         scheduleNotes: 'Approved for the morning schedule.',
       },
     });
+    expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          date: new Date('2026-07-15T00:00:00.000Z'),
+          dayNumber: 2,
+          totalDays: 3,
+        }),
+      }),
+    );
+    expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          date: new Date('2026-07-16T00:00:00.000Z'),
+          dayNumber: 3,
+          totalDays: 3,
+        }),
+      }),
+    );
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
     expect(mocks.revalidatePath).toHaveBeenCalledWith(
@@ -807,6 +839,159 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
   },
 );
+
+test('approves a persisted one-day activity into one schedule item', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+          requestedTime: '09:00',
+          durationDays: 1,
+          notes: null,
+          sortOrder: 0,
+        },
+      ],
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledTimes(1);
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledWith({
+    data: {
+      bookingRequestId: 'booking-1',
+      bookingActivityId: 'activity-1',
+      date: new Date('2026-07-14T00:00:00.000Z'),
+      startTime: '09:00',
+      activityType: ActivityType.OPEN_WATER_COURSE,
+      dayNumber: 1,
+      totalDays: 1,
+      scheduleNotes: 'Customer prefers a morning slot.',
+    },
+  });
+});
+
+test('approves a legacy course booking using the default activity duration', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+      requestedTime: '08:30',
+      activities: [],
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledTimes(2);
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(1, {
+    data: expect.objectContaining({
+      bookingRequestId: 'booking-1',
+      bookingActivityId: null,
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      date: new Date('2026-07-14T00:00:00.000Z'),
+      startTime: '08:30',
+      dayNumber: 1,
+      totalDays: 2,
+    }),
+  });
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(2, {
+    data: expect.objectContaining({
+      bookingRequestId: 'booking-1',
+      bookingActivityId: null,
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      date: new Date('2026-07-15T00:00:00.000Z'),
+      startTime: '08:30',
+      dayNumber: 2,
+      totalDays: 2,
+    }),
+  });
+});
+
+test('approves a persisted three-day activity into consecutive schedule items', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.SPECIALTY_COURSE,
+          requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+          requestedTime: null,
+          durationDays: 3,
+          notes: null,
+          sortOrder: 0,
+        },
+      ],
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledTimes(3);
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({
+      data: expect.objectContaining({
+        bookingActivityId: 'activity-1',
+        date: new Date('2026-07-14T00:00:00.000Z'),
+        dayNumber: 1,
+        totalDays: 3,
+      }),
+    }),
+  );
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({
+      data: expect.objectContaining({
+        bookingActivityId: 'activity-1',
+        date: new Date('2026-07-15T00:00:00.000Z'),
+        dayNumber: 2,
+        totalDays: 3,
+      }),
+    }),
+  );
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(
+    3,
+    expect.objectContaining({
+      data: expect.objectContaining({
+        bookingActivityId: 'activity-1',
+        date: new Date('2026-07-16T00:00:00.000Z'),
+        dayNumber: 3,
+        totalDays: 3,
+      }),
+    }),
+  );
+});
 
 test('does not allow a Customer Service user to approve a booking', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
@@ -891,7 +1076,7 @@ test('does not approve a booking that already has a schedule item', async () => 
   });
   mocks.findUnique.mockResolvedValue(
     pendingApprovableBooking({
-      scheduleItem: { id: 'schedule-1' },
+      scheduleItems: [{ id: 'schedule-1' }],
     }),
   );
 
@@ -912,7 +1097,7 @@ test('does not create a duplicate schedule item if one appears inside the transa
     role: UserRole.ADMIN,
   });
   mocks.findUnique.mockResolvedValue(pendingApprovableBooking());
-  mocks.transaction.scheduleItem.findUnique.mockResolvedValue({
+  mocks.transaction.scheduleItem.findFirst.mockResolvedValue({
     id: 'schedule-1',
   });
 

@@ -7,20 +7,23 @@
 'use server';
 
 import { Prisma } from '@/generated/prisma/client';
-import { BookingStatus } from '@/generated/prisma/enums';
+import { ActivityType, BookingStatus } from '@/generated/prisma/enums';
 import {
   revalidateBookingWorkflowPaths,
   revalidateSchedulePath,
 } from '@/features/bookings/cache';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
+import { addUtcDateOnlyDays } from '@/lib/operational-date';
 
 import {
   canManageScheduleAssignments,
   isAssignableStaffRole,
 } from './permissions';
 import {
+  addScheduledCourseDaySchema,
   addScheduleAssignmentSchema,
+  removeScheduledCourseDaySchema,
   removeScheduleAssignmentSchema,
   updateScheduleAssignmentRoleSchema,
 } from './validation';
@@ -33,12 +36,49 @@ export type ScheduleAssignmentActionResult =
       formError?: string;
     };
 
+export type ScheduleDayActionResult =
+  | { success: true }
+  | {
+      success: false;
+      fieldErrors?: Record<string, string[]>;
+      formError?: string;
+      requiresConfirmation?: boolean;
+    };
+
 type ScheduleItemAssignmentGuard = {
   id: string;
   bookingRequest: {
     id: string;
     status: BookingStatus;
   };
+};
+
+type ScheduleDayGuard = {
+  id: string;
+  bookingRequestId: string;
+  bookingActivityId: string | null;
+  date: Date;
+  startTime: string | null;
+  activityType: ActivityType;
+  scheduleNotes: string | null;
+  bookingRequest: {
+    id: string;
+    status: BookingStatus;
+  };
+  _count: {
+    assignments: number;
+  };
+};
+
+type ScheduleDaySibling = {
+  id: string;
+  date: Date;
+  startTime: string | null;
+  activityType: ActivityType;
+  scheduleNotes: string | null;
+  createdAt: Date;
+  dayNumber: number | null;
+  totalDays: number;
 };
 
 /**
@@ -52,7 +92,7 @@ function getScheduleValidationErrors(error: {
     fieldErrors: Record<string, string[] | undefined>;
     formErrors: string[];
   };
-}): ScheduleAssignmentActionResult {
+}): ScheduleAssignmentActionResult | ScheduleDayActionResult {
   const flattened = error.flatten();
   const fieldErrors = Object.fromEntries(
     Object.entries(flattened.fieldErrors).filter(
@@ -84,6 +124,22 @@ async function getScheduleAssignmentPermissionError() {
 }
 
 /**
+ * Checks whether an authenticated user can manage scheduled course days.
+ *
+ * @returns A failure result when the user lacks permission, otherwise null.
+ */
+async function getScheduleDayPermissionError() {
+  const currentUser = await requireCurrentUser();
+
+  return canManageScheduleAssignments(currentUser)
+    ? null
+    : ({
+        success: false,
+        formError: 'You do not have permission to manage scheduled days.',
+      } satisfies ScheduleDayActionResult);
+}
+
+/**
  * Loads a schedule item with the related booking status needed for mutation guards.
  *
  * @param scheduleItemId - Schedule item being assigned.
@@ -98,6 +154,40 @@ async function loadScheduleItemAssignmentGuard(scheduleItemId: string) {
         select: {
           id: true,
           status: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Loads a scheduled day with booking status and assignment count for day actions.
+ *
+ * @param scheduleItemId - Schedule item being added after or removed.
+ * @returns The schedule item day guard, or null when missing.
+ */
+async function loadScheduleDayGuard(
+  scheduleItemId: string,
+): Promise<ScheduleDayGuard | null> {
+  return db.scheduleItem.findUnique({
+    where: { id: scheduleItemId },
+    select: {
+      id: true,
+      bookingRequestId: true,
+      bookingActivityId: true,
+      date: true,
+      startTime: true,
+      activityType: true,
+      scheduleNotes: true,
+      bookingRequest: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
+      _count: {
+        select: {
+          assignments: true,
         },
       },
     },
@@ -143,6 +233,100 @@ function getScheduleStatusError(scheduleItem: ScheduleItemAssignmentGuard) {
         success: false,
         formError: 'Only scheduled bookings can have staff assignments changed.',
       } satisfies ScheduleAssignmentActionResult);
+}
+
+/**
+ * Validates that scheduled day changes are allowed for the related booking status.
+ *
+ * @param scheduleItem - Schedule item and booking status loaded for the action.
+ * @returns A failure result for non-scheduled bookings, otherwise null.
+ */
+function getScheduleDayStatusError(scheduleItem: ScheduleDayGuard) {
+  return scheduleItem.bookingRequest.status === BookingStatus.SCHEDULED
+    ? null
+    : ({
+        success: false,
+        formError: 'Only scheduled bookings can have scheduled days changed.',
+      } satisfies ScheduleDayActionResult);
+}
+
+/**
+ * Builds the sibling predicate for schedule days belonging to the same activity.
+ *
+ * @param scheduleItem - Schedule item whose activity group is being managed.
+ * @returns Prisma where input matching the schedule item's activity day group.
+ */
+function buildScheduleDaySiblingWhere(scheduleItem: ScheduleDayGuard) {
+  return {
+    bookingRequestId: scheduleItem.bookingRequestId,
+    bookingActivityId: scheduleItem.bookingActivityId,
+  } satisfies Prisma.ScheduleItemWhereInput;
+}
+
+/**
+ * Loads schedule days that belong to the same booking activity.
+ *
+ * @param transaction - Prisma client or transaction scoped client.
+ * @param scheduleItem - Schedule item whose activity group is being managed.
+ * @returns Sibling schedule days ordered for stable day numbering.
+ */
+async function loadScheduleDaySiblings(
+  transaction: Pick<Prisma.TransactionClient, 'scheduleItem'>,
+  scheduleItem: ScheduleDayGuard,
+): Promise<ScheduleDaySibling[]> {
+  return transaction.scheduleItem.findMany({
+    where: buildScheduleDaySiblingWhere(scheduleItem),
+    select: {
+      id: true,
+      date: true,
+      startTime: true,
+      activityType: true,
+      scheduleNotes: true,
+      createdAt: true,
+      dayNumber: true,
+      totalDays: true,
+    },
+    orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
+  });
+}
+
+/**
+ * Updates persisted day labels for an ordered group of scheduled days.
+ *
+ * @param transaction - Prisma transaction client used for atomic renumbering.
+ * @param scheduleItems - Ordered schedule days that should become day 1..n.
+ * @param totalDaysOverride - Total day count to write when appending a new day.
+ */
+async function renumberScheduleDays(
+  transaction: Pick<Prisma.TransactionClient, 'scheduleItem'>,
+  scheduleItems: ScheduleDaySibling[],
+  totalDaysOverride?: number,
+) {
+  const totalDays = totalDaysOverride ?? scheduleItems.length;
+
+  await Promise.all(
+    scheduleItems.map((scheduleItem, index) =>
+      transaction.scheduleItem.update({
+        where: {
+          id: scheduleItem.id,
+        },
+        data: {
+          dayNumber: index + 1,
+          totalDays,
+        },
+      }),
+    ),
+  );
+}
+
+/**
+ * Revalidates schedule surfaces and booking routes affected by schedule day changes.
+ *
+ * @param bookingId - Booking whose scheduled day count changed.
+ */
+function revalidateScheduleDayPaths(bookingId: string) {
+  revalidateSchedulePath();
+  revalidateBookingWorkflowPaths(bookingId);
 }
 
 /**
@@ -365,5 +549,145 @@ export async function removeScheduleAssignment(
   revalidateScheduleAssignmentPaths(
     assignment.scheduleItem.bookingRequest.id,
   );
+  return { success: true };
+}
+
+/**
+ * Adds one scheduled day after the last day for the selected activity group.
+ *
+ * @param scheduleItemId - Existing schedule item in the activity group to extend.
+ * @returns Success or validation/authorization/business-rule errors.
+ */
+export async function addScheduledCourseDay(
+  scheduleItemId: string,
+): Promise<ScheduleDayActionResult> {
+  const validation = addScheduledCourseDaySchema.safeParse({ scheduleItemId });
+
+  if (!validation.success) {
+    return getScheduleValidationErrors(validation.error);
+  }
+
+  const permissionError = await getScheduleDayPermissionError();
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const scheduleItem = await loadScheduleDayGuard(
+    validation.data.scheduleItemId,
+  );
+
+  if (!scheduleItem) {
+    return {
+      success: false,
+      formError: 'Scheduled day not found. Refresh and try again.',
+    };
+  }
+
+  const statusError = getScheduleDayStatusError(scheduleItem);
+  if (statusError) {
+    return statusError;
+  }
+
+  await db.$transaction(async (transaction) => {
+    const siblings = await loadScheduleDaySiblings(transaction, scheduleItem);
+    const latestScheduleItem = siblings.at(-1) ?? scheduleItem;
+    const totalDays = siblings.length + 1;
+
+    await renumberScheduleDays(transaction, siblings, totalDays);
+
+    await transaction.scheduleItem.create({
+      data: {
+        bookingRequestId: scheduleItem.bookingRequestId,
+        bookingActivityId: scheduleItem.bookingActivityId,
+        date: addUtcDateOnlyDays(latestScheduleItem.date, 1),
+        startTime: latestScheduleItem.startTime,
+        activityType: latestScheduleItem.activityType,
+        dayNumber: totalDays,
+        totalDays,
+        scheduleNotes: latestScheduleItem.scheduleNotes,
+      },
+    });
+  });
+
+  revalidateScheduleDayPaths(scheduleItem.bookingRequest.id);
+  return { success: true };
+}
+
+/**
+ * Removes one scheduled day and renumbers the remaining days in its activity group.
+ *
+ * @param scheduleItemId - Schedule item day to remove.
+ * @param confirmAssignedRemoval - Whether assigned-staff removal has been confirmed.
+ * @returns Success, confirmation-required, or validation/authorization/business-rule errors.
+ */
+export async function removeScheduledCourseDay(
+  scheduleItemId: string,
+  confirmAssignedRemoval: boolean,
+): Promise<ScheduleDayActionResult> {
+  const validation = removeScheduledCourseDaySchema.safeParse({
+    scheduleItemId,
+    confirmAssignedRemoval,
+  });
+
+  if (!validation.success) {
+    return getScheduleValidationErrors(validation.error);
+  }
+
+  const permissionError = await getScheduleDayPermissionError();
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const scheduleItem = await loadScheduleDayGuard(
+    validation.data.scheduleItemId,
+  );
+
+  if (!scheduleItem) {
+    return {
+      success: false,
+      formError: 'Scheduled day not found. Refresh and try again.',
+    };
+  }
+
+  const statusError = getScheduleDayStatusError(scheduleItem);
+  if (statusError) {
+    return statusError;
+  }
+
+  const siblings = await loadScheduleDaySiblings(db, scheduleItem);
+
+  if (siblings.length <= 1) {
+    return {
+      success: false,
+      formError: 'A scheduled activity must keep at least one day.',
+    };
+  }
+
+  if (
+    scheduleItem._count.assignments > 0 &&
+    !validation.data.confirmAssignedRemoval
+  ) {
+    return {
+      success: false,
+      requiresConfirmation: true,
+      formError:
+        'This scheduled day has assigned staff. Confirm removal to delete this day and its assignments.',
+    };
+  }
+
+  await db.$transaction(async (transaction) => {
+    await transaction.scheduleItem.delete({
+      where: {
+        id: validation.data.scheduleItemId,
+      },
+    });
+
+    await renumberScheduleDays(
+      transaction,
+      siblings.filter((sibling) => sibling.id !== validation.data.scheduleItemId),
+    );
+  });
+
+  revalidateScheduleDayPaths(scheduleItem.bookingRequest.id);
   return { success: true };
 }

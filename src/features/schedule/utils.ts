@@ -7,9 +7,18 @@ import type {
   SchedulePageItem,
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import { ActivityType } from '@/generated/prisma/enums';
-import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { formatDateInputValue } from '@/lib/format';
 import { getShopDateOnlyRange } from '@/lib/operational-date';
+
+export type ScheduleEventTitleInput = {
+  activityLabel: string;
+  customerName: string | null;
+  dayLabel?: string | null;
+  numberOfPeople: number | null;
+  staffPrefix?: string | null;
+};
 
 /**
  * Groups already-sorted schedule rows by calendar date for the simple schedule page.
@@ -163,17 +172,71 @@ export function serializeScheduleCalendarEvents(
  * @returns A short staff-facing label for schedule filters and calendar titles.
  */
 export function formatScheduleActivityLabel(activityType: ActivityType) {
-  if (activityType === ActivityType.DISCOVER_SCUBA_DIVING) {
-    return 'DSD';
+  return getActivityShortLabel({ activityType });
+}
+
+/**
+ * Formats persisted course-day metadata for schedule rows.
+ *
+ * Single-day activities omit the label so dense schedule UIs do not repeat
+ * redundant "Day 1/1" copy, while multi-day courses show a stable Day N/M label.
+ *
+ * @param dayNumber - One-based persisted day number for this schedule item.
+ * @param totalDays - Persisted total day count for the scheduled activity.
+ * @returns A compact day label for multi-day rows, or null for single-day rows.
+ */
+export function formatScheduleDayLabel(
+  dayNumber: number | null,
+  totalDays: number,
+) {
+  return formatCourseDayLabel(dayNumber, totalDays);
+}
+
+/**
+ * Formats course-day metadata for schedule titles and detail fields.
+ *
+ * @param dayNumber - One-based persisted day number for this schedule item.
+ * @param totalDays - Persisted total day count for the scheduled activity.
+ * @returns `Day N/M` for multi-day courses, or null for single-day activities.
+ */
+export function formatCourseDayLabel(
+  dayNumber: number | null,
+  totalDays: number,
+) {
+  if (totalDays <= 1) {
+    return null;
   }
 
-  if (activityType === ActivityType.OPEN_WATER_COURSE) {
-    return 'Open Water';
-  }
+  return `Day ${dayNumber ?? 1}/${totalDays}`;
+}
 
-  if (activityType === ActivityType.ADVANCED_OPEN_WATER_COURSE) {
-    return 'Advanced Open Water';
-  }
+/**
+ * Builds one operational schedule title shared by calendar, dashboard, lists,
+ * and assignment surfaces.
+ *
+ * @param input - Activity, active participant count, customer, optional staff,
+ * and optional course-day metadata for the schedule item.
+ * @returns A compact label such as `Open Water x1 Sarah (Day 1/3)`.
+ */
+export function buildScheduleEventTitle(input: ScheduleEventTitleInput) {
+  const title = [
+    input.staffPrefix,
+    input.activityLabel,
+    formatScheduleParticipantCount(input.numberOfPeople),
+    input.customerName ?? 'Customer TBD',
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(' ');
 
-  return formatEnumLabel(activityType);
+  return input.dayLabel ? `${title} (${input.dayLabel})` : title;
+}
+
+/**
+ * Formats active participant count for compact operational schedule titles.
+ *
+ * @param numberOfPeople - Active participant count derived from booking/customer rows.
+ * @returns A compact `xN` count or `xTBD` when no count is available.
+ */
+function formatScheduleParticipantCount(numberOfPeople: number | null) {
+  return `x${numberOfPeople ?? 'TBD'}`;
 }

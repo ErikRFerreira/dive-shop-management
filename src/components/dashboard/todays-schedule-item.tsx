@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { MapPin, User, Users } from 'lucide-react';
 
 import type { DashboardScheduleItem as DashboardScheduleItemData } from '@/features/dashboard/types';
+import { buildScheduleEventTitle } from '@/features/schedule/utils';
 import { Button } from '@/components/ui/button';
 
 import type { DashboardSectionUser } from './dashboard-operational-helpers';
@@ -24,6 +25,12 @@ export function TodaysScheduleItem({
 }: TodaysScheduleItemProps) {
   const action = getTodaysScheduleAction(item, currentUser);
   const participantSummary = formatParticipantSummary(item);
+  const title = buildScheduleEventTitle({
+    activityLabel: item.activitySummary,
+    customerName: item.primaryCustomerName,
+    dayLabel: item.dayLabel,
+    numberOfPeople: item.numberOfPeople,
+  });
 
   const uniqueCustomerNames =
     item.customers.length > 0
@@ -50,7 +57,7 @@ export function TodaysScheduleItem({
       <div className="space-y-2">
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-foreground">
-            {item.activitySummary}
+            {title}
           </h3>
           <p className="text-sm text-muted-foreground/90">
             {participantSummary}

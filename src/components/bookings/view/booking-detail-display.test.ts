@@ -49,6 +49,7 @@ test('uses legacy activity fields when a booking has no activity rows', () => {
       id: 'legacy-summary',
       activityType: ActivityType.SPECIALTY_COURSE,
       specialtyCourse: 'Nitrox',
+      durationDays: null,
       requestedDate,
       requestedTime: '08:00',
       notes: null,

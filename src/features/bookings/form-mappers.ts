@@ -15,6 +15,7 @@ import {
   PreferredLanguage,
 } from '@/generated/prisma/enums';
 import { formatDateInputValue } from '@/lib/format';
+import { getDefaultActivityDurationDays } from './activity-utils';
 import { bookingCustomerDefaultValues } from './form-values';
 import type {
   BookingCustomerFormValues,
@@ -73,6 +74,28 @@ function nullableNumber(value: string) {
 function nullableInteger(value: string) {
   const number = nullableNumber(value);
   return number !== null && Number.isInteger(number) ? number : null;
+}
+
+/**
+ * Normalizes an activity duration string to a positive day count.
+ *
+ * Blank, invalid, and non-positive values fall back to the selected activity
+ * type's operational default so legacy rows and incomplete draft values remain
+ * safe to persist.
+ *
+ * @param value - Browser form value for duration days.
+ * @param activityType - Normalized activity type used to choose the default.
+ * @returns Positive integer duration in days.
+ */
+function normalizedActivityDurationDays(
+  value: string,
+  activityType: ActivityType | null,
+) {
+  const durationDays = nullableInteger(value);
+
+  return durationDays && durationDays > 0
+    ? durationDays
+    : getDefaultActivityDurationDays(activityType);
 }
 
 /**
@@ -232,13 +255,21 @@ export function normalizeBookingFormValues(
 
   return {
     rawBookingText: nullableText(values.rawBookingText),
-    activities: values.activities.map((activity) => ({
-      activityType: enumValue(ActivityType, activity.activityType),
-      specialtyCourse: nullableText(activity.specialtyCourse),
-      requestedDate: nullableDate(activity.requestedDate),
-      requestedTime: nullableText(activity.requestedTime),
-      notes: nullableText(activity.notes),
-    })),
+    activities: values.activities.map((activity) => {
+      const activityType = enumValue(ActivityType, activity.activityType);
+
+      return {
+        activityType,
+        specialtyCourse: nullableText(activity.specialtyCourse),
+        durationDays: normalizedActivityDurationDays(
+          activity.durationDays,
+          activityType,
+        ),
+        requestedDate: nullableDate(activity.requestedDate),
+        requestedTime: nullableText(activity.requestedTime),
+        notes: nullableText(activity.notes),
+      };
+    }),
     numberOfPeople: getDerivedActiveParticipantCount(customers),
     source: enumValue(BookingSource, values.source),
     referrerName: nullableText(values.referrerName),
@@ -362,6 +393,7 @@ export function mapBookingToFormValues(
           {
             activityType: booking.activityType,
             specialtyCourse: booking.specialtyCourse,
+            durationDays: null,
             requestedDate: booking.requestedDate,
             requestedTime: booking.requestedTime,
             notes: null,
@@ -377,6 +409,10 @@ export function mapBookingToFormValues(
     activities: activities.map((activity) => ({
       activityType: activity.activityType ?? '',
       specialtyCourse: activity.specialtyCourse ?? '',
+      durationDays: formNumber(
+        activity.durationDays ??
+          getDefaultActivityDurationDays(activity.activityType),
+      ),
       requestedDate: formDate(activity.requestedDate),
       requestedTime: activity.requestedTime ?? '',
       notes: activity.notes ?? '',

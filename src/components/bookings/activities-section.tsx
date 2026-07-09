@@ -1,8 +1,9 @@
 import { Waves } from 'lucide-react';
+import { formatActivityDurationDays } from '@/features/bookings/activity-utils';
 import type { BookingActivityDisplayItem } from './booking-display-utils';
 import {
+  formatBookingActivityLabel,
   formatBookingDate,
-  formatBookingEnum,
   formatBookingTimeOrTbd,
 } from './booking-display-utils';
 import { BookingInfoField, BookingInfoSection } from './booking-info-layout';
@@ -31,14 +32,12 @@ function ActivityCard({
       <div className="grid gap-4 sm:grid-cols-2">
         <BookingInfoField
           label="Activity type"
-          value={formatBookingEnum(activity.activityType)}
+          value={formatBookingActivityLabel(activity)}
         />
-        {activity.specialtyCourse ? (
-          <BookingInfoField
-            label="Specialty course"
-            value={activity.specialtyCourse}
-          />
-        ) : null}
+        <BookingInfoField
+          label="Duration"
+          value={formatActivityDurationDays(activity.durationDays)}
+        />
         <BookingInfoField
           label="Requested date"
           value={formatBookingDate(activity.requestedDate)}

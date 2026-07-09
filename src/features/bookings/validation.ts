@@ -20,6 +20,7 @@ import {
 import { hasPersistableBookingCustomer } from './form-mappers';
 import { primaryContactMethodError } from './validation-messages';
 import type { NormalizedBookingFormValues } from './types';
+import { hasUsefulSpecialtyCourseName } from './activity-utils';
 
 export type BookingIntakeIntent = 'draft' | 'submit';
 
@@ -173,6 +174,7 @@ export const addScheduledBookingParticipantSchema = z
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
+  durationDays: z.number().int().positive(),
   requestedDate: z.date().nullable(),
   requestedTime: z.string().nullable(),
   notes: z.string().nullable(),
@@ -225,7 +227,13 @@ const normalizedBookingIntakeSchema = z.object({
  */
 function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
   return values.activities.some((activity) =>
-    Object.values(activity).some((value) => value !== null),
+    [
+      activity.activityType,
+      activity.specialtyCourse,
+      activity.requestedDate,
+      activity.requestedTime,
+      activity.notes,
+    ].some((value) => value !== null),
   );
 }
 
@@ -380,12 +388,12 @@ export const submitBookingIntakeSchema =
 
       if (
         activity.activityType === ActivityType.SPECIALTY_COURSE &&
-        activity.specialtyCourse === null
+        !hasUsefulSpecialtyCourseName(activity.specialtyCourse)
       ) {
         context.addIssue({
           code: 'custom',
           path: ['activities', index, 'specialtyCourse'],
-          message: 'Specialty course is required for this activity.',
+          message: 'Enter a specific specialty name for this activity.',
         });
       }
     });

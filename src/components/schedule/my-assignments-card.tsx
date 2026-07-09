@@ -3,6 +3,7 @@ import { EmptyState } from '@/components/common/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { MyScheduleAssignment } from '@/features/schedule/types';
+import { buildScheduleEventTitle } from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 import {
@@ -63,12 +64,19 @@ export function AssignmentCardSection({
  * @returns A compact card with schedule, booking, and current-user role details.
  */
 export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
+  const title = buildScheduleEventTitle({
+    activityLabel: assignment.activitySummary,
+    customerName: assignment.primaryCustomerName,
+    dayLabel: assignment.dayLabel,
+    numberOfPeople: assignment.numberOfPeople,
+  });
+
   return (
     <Card className="rounded-2xl border border-border bg-gradient-to-b from-card to-card-glow p-5 shadow-sm">
       <CardHeader className="gap-3 px-1 md:flex md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle className="text-base">
-            {assignment.activitySummary}
+            {title}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {assignment.primaryCustomerName ?? 'Customer not recorded'}

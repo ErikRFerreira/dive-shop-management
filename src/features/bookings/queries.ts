@@ -73,11 +73,15 @@ const bookingRequestListArgs = {
         createdAt: 'desc',
       },
     },
-    scheduleItem: {
+    scheduleItems: {
       select: {
         id: true,
+        bookingActivityId: true,
         date: true,
         startTime: true,
+        dayNumber: true,
+        totalDays: true,
+        activityType: true,
         assignments: {
           select: {
             id: true,
@@ -92,6 +96,7 @@ const bookingRequestListArgs = {
           },
         },
       },
+      orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
     },
   },
 } satisfies Prisma.BookingRequestDefaultArgs;
@@ -104,11 +109,15 @@ const bookingRequestListArgs = {
 const bookingRequestDetailArgs = {
   include: {
     ...bookingRequestListArgs.include,
-    scheduleItem: {
+    scheduleItems: {
       select: {
         id: true,
+        bookingActivityId: true,
         date: true,
         startTime: true,
+        dayNumber: true,
+        totalDays: true,
+        activityType: true,
         scheduleNotes: true,
         assignments: {
           select: {
@@ -130,6 +139,7 @@ const bookingRequestDetailArgs = {
           },
         },
       },
+      orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
     },
   },
 } satisfies Prisma.BookingRequestDefaultArgs;
@@ -153,6 +163,7 @@ export type BookingListItem = BookingRequestWithRelations & {
   displayCustomer:
     | BookingRequestWithRelations['customers'][number]['customer']
     | null;
+  scheduleItem: BookingRequestWithRelations['scheduleItems'][number] | null;
 };
 
 /** Pagination metadata returned with the internal booking list. */
@@ -181,6 +192,7 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
   displayCustomer:
     | BookingRequestDetailWithRelations['customers'][number]['customer']
     | null;
+  scheduleItem: BookingRequestDetailWithRelations['scheduleItems'][number] | null;
 };
 
 /**
@@ -238,6 +250,7 @@ export async function getBookingRequests(
         bookingRequest.customers,
       ),
       displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
+      scheduleItem: bookingRequest.scheduleItems[0] ?? null,
     })),
     pagination: {
       totalCount,
@@ -274,5 +287,6 @@ export async function getBookingRequestById(
     ...bookingRequest,
     activeParticipantCount: getActiveParticipantCount(bookingRequest.customers),
     displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
+    scheduleItem: bookingRequest.scheduleItems[0] ?? null,
   };
 }

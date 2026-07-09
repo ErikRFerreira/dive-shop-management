@@ -164,3 +164,33 @@ test('requires diving experience details when the booking includes a fun dive', 
     readinessItem('Diving experience details', completeExperience).complete,
   ).toBe(true);
 });
+
+test('requires a useful specialty name when the booking includes a specialty course', () => {
+  const missingSpecialtyName = readinessValues({
+    activities: [
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.SPECIALTY_COURSE,
+        requestedDate: '2026-07-20',
+        specialtyCourse: 'specialty',
+      },
+    ],
+  });
+  const completeSpecialtyName = readinessValues({
+    activities: [
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.SPECIALTY_COURSE,
+        requestedDate: '2026-07-20',
+        specialtyCourse: 'Nitrox',
+      },
+    ],
+  });
+
+  expect(readinessItem('Specialty name', missingSpecialtyName).complete).toBe(
+    false,
+  );
+  expect(readinessItem('Specialty name', completeSpecialtyName).complete).toBe(
+    true,
+  );
+});

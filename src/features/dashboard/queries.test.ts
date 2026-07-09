@@ -624,8 +624,8 @@ describe('recent dashboard activity', () => {
       expect.objectContaining({
         where: {
           status: BookingStatus.SCHEDULED,
-          scheduleItem: {
-            is: {
+          scheduleItems: {
+            some: {
               assignments: {
                 some: {
                   userId: instructorUser.id,

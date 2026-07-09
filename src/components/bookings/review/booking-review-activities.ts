@@ -1,10 +1,21 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { ActivityType } from '@/generated/prisma/enums';
 
-export type ReviewActivity = Pick<
-  BookingDetailsItem['activities'][number],
-  'id' | 'activityType' | 'specialtyCourse' | 'requestedDate' | 'requestedTime' | 'notes'
->;
+export type ReviewActivity = Omit<
+  Pick<
+    BookingDetailsItem['activities'][number],
+    | 'id'
+    | 'activityType'
+    | 'specialtyCourse'
+    | 'durationDays'
+    | 'requestedDate'
+    | 'requestedTime'
+    | 'notes'
+  >,
+  'durationDays'
+> & {
+  durationDays: number | null;
+};
 
 /**
  * Returns activity rows for admin review, preserving the legacy booking fields fallback.
@@ -20,6 +31,7 @@ export function getReviewActivities(booking: BookingDetailsItem): ReviewActivity
           id: 'legacy-summary',
           activityType: booking.activityType,
           specialtyCourse: booking.specialtyCourse,
+          durationDays: null,
           requestedDate: booking.requestedDate,
           requestedTime: booking.requestedTime,
           notes: null,

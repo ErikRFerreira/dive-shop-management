@@ -117,11 +117,12 @@ const customerDetailArgs = {
             referrerName: true,
             createdAt: true,
             updatedAt: true,
-            scheduleItem: {
+            scheduleItems: {
               select: {
                 date: true,
                 startTime: true,
               },
+              orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
             },
             activities: {
               orderBy: {
@@ -350,6 +351,11 @@ export function getCustomerBookingHistory(
   return sortCustomerBookingsByHistoryDate(customer.bookings).map(
     (bookingCustomer) => {
       const booking = bookingCustomer.bookingRequest;
+      const legacyScheduleItem = (
+        booking as {
+          scheduleItem?: { date: Date | null; startTime: string | null } | null;
+        }
+      ).scheduleItem;
 
       return {
         bookingId: booking.id,
@@ -357,8 +363,12 @@ export function getCustomerBookingHistory(
         date: getBookingHistoryDate(booking),
         requestedDate: booking.requestedDate,
         requestedTime: booking.requestedTime,
-        scheduledDate: booking.scheduleItem?.date ?? null,
-        scheduledTime: booking.scheduleItem?.startTime ?? null,
+        scheduledDate:
+          booking.scheduleItems?.[0]?.date ?? legacyScheduleItem?.date ?? null,
+        scheduledTime:
+          booking.scheduleItems?.[0]?.startTime ??
+          legacyScheduleItem?.startTime ??
+          null,
         activityType: booking.activityType,
         activities: booking.activities,
         role: bookingCustomer.role,

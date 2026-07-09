@@ -34,6 +34,7 @@ export type BookingRequestFilter = Prisma.BookingRequestWhereInput;
 export type BookingActivityFormValues = {
   activityType: ActivityType | '';
   specialtyCourse: string;
+  durationDays: string;
   requestedDate: string;
   requestedTime: string;
   notes: string;
@@ -82,6 +83,7 @@ export type BookingFormValues = {
 export type NormalizedBookingActivityFormValues = {
   activityType: ActivityType | null;
   specialtyCourse: string | null;
+  durationDays: number;
   requestedDate: Date | null;
   requestedTime: string | null;
   notes: string | null;

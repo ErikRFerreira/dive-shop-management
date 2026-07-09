@@ -30,6 +30,7 @@ enum ActivityType {
   OPEN_WATER_COURSE
   ADVANCED_OPEN_WATER_COURSE
   RESCUE_DIVER_COURSE
+  EMERGENCY_FIRST_RESPONSE
   DIVEMASTER
   SPECIALTY_COURSE
   SCUBA_REVIEW
@@ -127,7 +128,7 @@ model BookingRequest {
   activities          BookingActivity[]
   customers           BookingCustomer[]
   deposits            Deposit[]
-  scheduleItem        ScheduleItem?
+  scheduleItems       ScheduleItem[]
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
@@ -142,11 +143,13 @@ model BookingActivity {
   bookingRequestId String
   activityType     ActivityType?
   specialtyCourse  String?
+  durationDays     Int            @default(1)
   requestedDate    DateTime?      @db.Date
   requestedTime    String?
   notes            String?        @db.Text
   sortOrder        Int
   bookingRequest   BookingRequest @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  scheduleItems    ScheduleItem[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -220,17 +223,23 @@ model Deposit {
 }
 
 model ScheduleItem {
-  id               String               @id @default(cuid())
-  bookingRequestId String               @unique
-  bookingRequest   BookingRequest       @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
-  date             DateTime             @db.Date
-  startTime        String?
-  activityType     ActivityType
-  scheduleNotes    String?              @db.Text
-  assignments      ScheduleAssignment[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  id                String               @id @default(cuid())
+  bookingRequestId  String
+  bookingActivityId String?
+  bookingRequest    BookingRequest       @relation(fields: [bookingRequestId], references: [id], onDelete: Cascade)
+  bookingActivity   BookingActivity?     @relation(fields: [bookingActivityId], references: [id], onDelete: SetNull)
+  date              DateTime             @db.Date
+  startTime         String?
+  activityType      ActivityType
+  dayNumber         Int?
+  totalDays         Int                  @default(1)
+  scheduleNotes     String?              @db.Text
+  assignments       ScheduleAssignment[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
+  @@index([bookingRequestId, date])
+  @@index([bookingActivityId, date])
   @@index([date])
   @@index([activityType])
 }
