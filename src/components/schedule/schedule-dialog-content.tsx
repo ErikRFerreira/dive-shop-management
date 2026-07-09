@@ -87,6 +87,11 @@ export function ScheduleEventDialogContent({
               value={formatDateTimeSummary(event)}
             />
             <SummaryField
+              icon={CalendarCheck}
+              label="Course day"
+              value={event.dayLabel ?? 'Single day'}
+            />
+            <SummaryField
               icon={MapPin}
               label="Hotel"
               value={event.hotel ?? 'No hotel / pickup location recorded'}
@@ -309,6 +314,7 @@ function getActivityCategoryLabel(activityType: ActivityType) {
     case ActivityType.OPEN_WATER_COURSE:
     case ActivityType.ADVANCED_OPEN_WATER_COURSE:
     case ActivityType.RESCUE_DIVER_COURSE:
+    case ActivityType.EMERGENCY_FIRST_RESPONSE:
     case ActivityType.DIVEMASTER:
     case ActivityType.SPECIALTY_COURSE:
     case ActivityType.SCUBA_REVIEW:

@@ -214,6 +214,7 @@ test('shows all activity options when schedule type is all', () => {
     'Open Water',
     'Advanced Open Water',
     'Rescue Diver Course',
+    'EFR',
     'Divemaster',
     'Specialty Course',
     'Scuba Review',
@@ -245,6 +246,7 @@ test('limits activity options to courses when schedule type is courses', () => {
     'Open Water',
     'Advanced Open Water',
     'Rescue Diver Course',
+    'EFR',
     'Specialty Course',
   ]);
 });

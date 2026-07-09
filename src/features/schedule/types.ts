@@ -68,6 +68,9 @@ export type MyScheduleAssignment = {
   activityType: ActivityType;
   activityLabel: string;
   activitySummary: string;
+  dayNumber: number | null;
+  totalDays: number;
+  dayLabel: string | null;
   activities: MyScheduleAssignmentActivity[];
   primaryCustomerName: string | null;
   customers: ScheduleBookingCustomerDisplay[];
@@ -118,6 +121,11 @@ export type SchedulePageItem = {
   date: Date;
   startTime: string | null;
   activityType: ActivityType;
+  activityLabel: string;
+  activitySummary: string;
+  dayNumber: number | null;
+  totalDays: number;
+  dayLabel: string | null;
   primaryCustomerName: string | null;
   /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
@@ -170,6 +178,9 @@ export type ScheduleCalendarEvent = {
   activityType: ActivityType;
   activityLabel: string;
   activitySummary: string;
+  dayNumber: number | null;
+  totalDays: number;
+  dayLabel: string | null;
   activities: ScheduleCalendarActivity[];
   primaryCustomerName: string | null;
   customers: ScheduleBookingCustomerDisplay[];

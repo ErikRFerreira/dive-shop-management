@@ -1,4 +1,5 @@
 import type { BookingReadinessItem } from '@/components/bookings/form/booking-readiness-card';
+import { hasUsefulSpecialtyCourseName } from '@/features/bookings/activity-utils';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   ActivityType,
@@ -71,6 +72,9 @@ export function buildCreateReadinessItems(values: {
   const includesFunDive = values.activities.some(
     (activity) => activity.activityType === ActivityType.FUN_DIVE,
   );
+  const includesSpecialtyCourse = values.activities.some(
+    (activity) => activity.activityType === ActivityType.SPECIALTY_COURSE,
+  );
 
   return [
     {
@@ -115,6 +119,22 @@ export function buildCreateReadinessItems(values: {
           Boolean(values.currency) &&
           hasText(values.paidTo)),
       helperText: hasPaidDeposit ? undefined : 'No deposit recorded',
+    },
+    {
+      label: 'Specialty name',
+      complete:
+        !includesSpecialtyCourse ||
+        values.activities
+          .filter(
+            (activity) =>
+              activity.activityType === ActivityType.SPECIALTY_COURSE,
+          )
+          .every((activity) =>
+            hasUsefulSpecialtyCourseName(activity.specialtyCourse),
+          ),
+      helperText: includesSpecialtyCourse
+        ? 'Example: Nitrox, Deep, Wreck, Sidemount'
+        : 'No specialty courses',
     },
     {
       label: 'Diving experience details',

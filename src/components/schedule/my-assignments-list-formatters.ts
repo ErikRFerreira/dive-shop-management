@@ -1,4 +1,5 @@
 import type { MyScheduleAssignment } from '@/features/schedule/types';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 
 /**
  * Formats one booking activity line for cards and table rows.
@@ -11,11 +12,14 @@ export function formatAssignmentActivityLine(
   assignment: MyScheduleAssignment,
   activity: MyScheduleAssignment['activities'][number],
 ) {
-  const activityLabel = activity.activityLabel ?? assignment.activityLabel;
+  const activityLabel = activity.activityType
+    ? getActivityShortLabel({
+        activityType: activity.activityType,
+        specialtyCourse: activity.specialtyCourse,
+      })
+    : assignment.activityLabel;
 
-  return activity.specialtyCourse
-    ? `${activityLabel} - ${activity.specialtyCourse}`
-    : activityLabel;
+  return activityLabel;
 }
 
 /**

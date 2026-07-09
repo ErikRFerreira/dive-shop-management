@@ -21,9 +21,11 @@ import {
 
 const mocks = vi.hoisted(() => ({
   addCustomerToScheduledBooking: vi.fn(),
+  addScheduledCourseDay: vi.fn(),
   addScheduleAssignment: vi.fn(),
   cancelBooking: vi.fn(),
   refresh: vi.fn(),
+  removeScheduledCourseDay: vi.fn(),
   removeScheduleAssignment: vi.fn(),
   searchBookingCustomers: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
@@ -37,7 +39,9 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/features/schedule/actions', () => ({
+  addScheduledCourseDay: mocks.addScheduledCourseDay,
   addScheduleAssignment: mocks.addScheduleAssignment,
+  removeScheduledCourseDay: mocks.removeScheduledCourseDay,
   removeScheduleAssignment: mocks.removeScheduleAssignment,
   updateScheduleAssignmentRole: mocks.updateScheduleAssignmentRole,
 }));
@@ -188,7 +192,9 @@ vi.mock('@/components/ui/select', () => {
 
 beforeEach(() => {
   mocks.addCustomerToScheduledBooking.mockResolvedValue({ success: true });
+  mocks.addScheduledCourseDay.mockResolvedValue({ success: true });
   mocks.cancelBooking.mockResolvedValue({});
+  mocks.removeScheduledCourseDay.mockResolvedValue({ success: true });
   mocks.searchBookingCustomers.mockResolvedValue([]);
   mocks.updateBookingParticipantStatus.mockResolvedValue({ success: true });
 });
@@ -196,9 +202,11 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   mocks.addCustomerToScheduledBooking.mockReset();
+  mocks.addScheduledCourseDay.mockReset();
   mocks.addScheduleAssignment.mockReset();
   mocks.cancelBooking.mockReset();
   mocks.refresh.mockReset();
+  mocks.removeScheduledCourseDay.mockReset();
   mocks.removeScheduleAssignment.mockReset();
   mocks.searchBookingCustomers.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
@@ -221,6 +229,27 @@ function assignableStaff(
     name: 'Inez Instructor',
     email: 'inez@example.test',
     role: UserRole.INSTRUCTOR,
+    ...overrides,
+  };
+}
+
+/**
+ * Builds a scheduled day row for booking detail schedule tests.
+ *
+ * @param overrides - Schedule item fields to override.
+ * @returns Schedule item detail data used by the booking detail component.
+ */
+function scheduledDay(overrides = {}) {
+  return {
+    id: 'schedule-1',
+    bookingActivityId: 'activity-1',
+    date: new Date('2026-07-14T00:00:00.000Z'),
+    startTime: '08:00',
+    dayNumber: 1,
+    totalDays: 3,
+    activityType: ActivityType.OPEN_WATER_COURSE,
+    scheduleNotes: null,
+    assignments: [],
     ...overrides,
   };
 }
@@ -798,13 +827,7 @@ test('renders assignment controls for admin and manager users', () => {
   renderBookingDetails({
     assignableStaff: [assignableStaff()],
     booking: booking({
-      scheduleItem: {
-        id: 'schedule-1',
-        date: new Date('2026-07-14T00:00:00.000Z'),
-        startTime: '08:00',
-        scheduleNotes: null,
-        assignments: [],
-      },
+      scheduleItem: scheduledDay(),
     }),
     canManageAssignments: true,
   });
@@ -814,17 +837,24 @@ test('renders assignment controls for admin and manager users', () => {
   expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
 });
 
+test('renders scheduled day controls for admin and manager users', () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay(),
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(screen.getByRole('button', { name: 'Add day' })).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Remove day' })).not.toBeNull();
+});
+
 test('hides assignment controls for customer service read-only users', () => {
   renderBookingDetails({
     assignableStaff: [assignableStaff()],
     booking: booking({
-      scheduleItem: {
-        id: 'schedule-1',
-        date: new Date('2026-07-14T00:00:00.000Z'),
-        startTime: '08:00',
-        scheduleNotes: null,
-        assignments: [],
-      },
+      scheduleItem: scheduledDay(),
     }),
     canManageAssignments: false,
   });
@@ -834,18 +864,64 @@ test('hides assignment controls for customer service read-only users', () => {
   expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
 });
 
+test('hides scheduled day controls for customer service read-only users', () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay(),
+    }),
+    canManageAssignments: false,
+  });
+
+  expect(screen.queryByRole('button', { name: 'Add day' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Remove day' })).toBeNull();
+});
+
+test('confirms assigned scheduled day removal from booking details', async () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay({
+        assignments: [
+          {
+            id: 'assignment-1',
+            userId: 'instructor-1',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+            notes: null,
+            user: assignableStaff(),
+          },
+        ],
+      }),
+    }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove day' }));
+
+  expect(await screen.findByText('Remove scheduled day?')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'This day has assigned staff. Removing it will delete this scheduled day and its assignments only.',
+    ),
+  ).not.toBeNull();
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Remove day' }).at(-1)!);
+
+  await waitFor(() => {
+    expect(mocks.removeScheduledCourseDay).toHaveBeenCalledWith(
+      'schedule-1',
+      true,
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
 test('hides assignment controls for cancelled bookings with stale schedule items', () => {
   renderBookingDetails({
     assignableStaff: [assignableStaff()],
     booking: booking({
       status: BookingStatus.CANCELLED,
-      scheduleItem: {
-        id: 'schedule-1',
-        date: new Date('2026-07-14T00:00:00.000Z'),
-        startTime: '08:00',
-        scheduleNotes: null,
-        assignments: [],
-      },
+      scheduleItem: scheduledDay(),
     }),
     canManageAssignments: false,
   });

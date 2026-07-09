@@ -14,6 +14,7 @@ import type {
 export const bookingActivityDefaultValues: BookingActivityFormValues = {
   activityType: '',
   specialtyCourse: '',
+  durationDays: '',
   requestedDate: '',
   requestedTime: '',
   notes: '',

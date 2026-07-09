@@ -165,10 +165,11 @@ test('builds an operational unassigned schedule queue predicate', () => {
     ),
   ).toEqual({
     status: BookingStatus.SCHEDULED,
-    scheduleItem: {
-      is: {
+    scheduleItems: {
+      some: {},
+      none: {
         assignments: {
-          none: {},
+          some: {},
         },
       },
     },

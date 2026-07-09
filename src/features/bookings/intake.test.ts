@@ -71,6 +71,7 @@ test('normalizes nested activity and customer values for persistence', () => {
       {
         activityType: ActivityType.FUN_DIVE,
         specialtyCourse: '  Nitrox  ',
+        durationDays: '2',
         requestedDate: '2026-07-14',
         requestedTime: ' 09:30 ',
         notes: '  Morning boat  ',
@@ -106,6 +107,7 @@ test('normalizes nested activity and customer values for persistence', () => {
       {
         activityType: ActivityType.FUN_DIVE,
         specialtyCourse: 'Nitrox',
+        durationDays: 2,
         requestedTime: '09:30',
         notes: 'Morning boat',
       },
@@ -150,6 +152,29 @@ test('derives active participant count from persistable customer rows', () => {
   });
 
   expect(values.numberOfPeople).toBe(2);
+});
+
+test('defaults blank and invalid activity durations from activity type', () => {
+  const values = normalizeBookingFormValues({
+    ...bookingFormDefaultValues,
+    activities: [
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        durationDays: '',
+      },
+      {
+        ...bookingFormDefaultValues.activities[0],
+        activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+        durationDays: 'invalid',
+      },
+    ],
+  });
+
+  expect(values.activities.map((activity) => activity.durationDays)).toEqual([
+    3,
+    2,
+  ]);
 });
 
 test('derives zero active participants from an empty draft customer row', () => {
@@ -205,6 +230,7 @@ test('maps persisted booking relations into editable browser form values', () =>
         id: 'activity-1',
         activityType: ActivityType.FUN_DIVE,
         specialtyCourse: null,
+        durationDays: 2,
         requestedDate: new Date('2026-07-14T00:00:00.000Z'),
         requestedTime: '09:00',
         notes: 'Morning boat',
@@ -262,6 +288,7 @@ test('maps persisted booking relations into editable browser form values', () =>
     activities: [
       {
         activityType: ActivityType.FUN_DIVE,
+        durationDays: '2',
         requestedDate: '2026-07-14',
       },
     ],

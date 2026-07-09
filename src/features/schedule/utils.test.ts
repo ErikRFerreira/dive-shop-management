@@ -6,8 +6,10 @@ import type {
   SchedulePageItem,
 } from '@/features/schedule/types';
 import {
+  buildScheduleEventTitle,
   groupMyScheduleAssignmentsByDay,
   groupScheduleItemsByDate,
+  formatScheduleDayLabel,
   serializeScheduleCalendarEvents,
 } from '@/features/schedule/utils';
 import {
@@ -26,6 +28,11 @@ function scheduleItem(
     date: new Date('2026-07-14T00:00:00.000Z'),
     startTime: null,
     activityType: ActivityType.FUN_DIVE,
+    activityLabel: 'Fun Dive',
+    activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     primaryCustomerName: null,
     numberOfPeople: null,
     hotel: null,
@@ -56,6 +63,9 @@ function myAssignment(
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     activities: [],
     primaryCustomerName: null,
     customers: [],
@@ -189,6 +199,9 @@ test('serializes calendar event date fields for client props', () => {
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     activities: [
       {
         id: 'activity-1',
@@ -228,4 +241,41 @@ test('serializes calendar event date fields for client props', () => {
       ],
     }),
   ]);
+});
+
+test('formats only multi-day schedule labels', () => {
+  expect(formatScheduleDayLabel(1, 3)).toBe('Day 1/3');
+  expect(formatScheduleDayLabel(2, 3)).toBe('Day 2/3');
+  expect(formatScheduleDayLabel(3, 3)).toBe('Day 3/3');
+  expect(formatScheduleDayLabel(null, 3)).toBe('Day 1/3');
+  expect(formatScheduleDayLabel(1, 1)).toBeNull();
+});
+
+test('builds compact schedule event titles with active participants and course days', () => {
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Open Water',
+      customerName: 'Sarah',
+      dayLabel: 'Day 1/3',
+      numberOfPeople: 1,
+    }),
+  ).toBe('Open Water x1 Sarah (Day 1/3)');
+
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Rescue',
+      customerName: 'Chen Family',
+      dayLabel: 'Day 2/3',
+      numberOfPeople: 2,
+      staffPrefix: '[Unassigned]',
+    }),
+  ).toBe('[Unassigned] Rescue x2 Chen Family (Day 2/3)');
+
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Nitrox',
+      customerName: 'Maria Santos',
+      numberOfPeople: 3,
+    }),
+  ).toBe('Nitrox x3 Maria Santos');
 });

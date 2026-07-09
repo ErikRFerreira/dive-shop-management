@@ -1,4 +1,5 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { getActivityDisplayLabel } from '@/features/bookings/activity-utils';
 import {
   formatBookingCustomerDisplayName,
   getPrimaryActiveBookingCustomer,
@@ -13,6 +14,7 @@ export type BookingActivityDisplayItem = {
   id: string;
   activityType: string | null | undefined;
   specialtyCourse: string | null;
+  durationDays: number | null;
   requestedDate: Date | null;
   requestedTime: string | null;
   notes: string | null;
@@ -49,6 +51,21 @@ export function formatBookingDateTime(value: Date | null | undefined) {
  */
 export function formatBookingEnum(value: string | null | undefined) {
   return formatEnumLabel(value);
+}
+
+/**
+ * Formats a booking activity label with specialty-course naming rules.
+ *
+ * @param activity - Activity row shown in booking detail or review contexts.
+ * @returns Staff-facing activity label with specialty names preferred.
+ */
+export function formatBookingActivityLabel(
+  activity: Pick<
+    BookingActivityDisplayItem,
+    'activityType' | 'specialtyCourse'
+  >,
+) {
+  return getActivityDisplayLabel(activity);
 }
 
 /**
@@ -109,15 +126,31 @@ export function formatBookingSourceReferrer(
  * @returns Comma-separated staff names, unassigned text, or a not-scheduled label.
  */
 export function formatAssignedStaffSummary(booking: BookingDetailsItem) {
-  if (!booking.scheduleItem) {
+  const scheduleItems = getBookingScheduleItemsForDisplay(booking);
+
+  if (scheduleItems.length === 0) {
     return UNSCHEDULED_ASSIGNMENT_SUMMARY;
   }
 
-  const names = booking.scheduleItem.assignments.map(
-    (assignment) => assignment.user.name,
+  const names = Array.from(
+    new Set(
+      scheduleItems.flatMap((scheduleItem) =>
+        scheduleItem.assignments.map((assignment) => assignment.user.name),
+      ),
+    ),
   );
 
   return names.length > 0 ? names.join(', ') : 'Unassigned';
+}
+
+/**
+ * Returns schedule rows from the current read model with a legacy test fallback.
+ *
+ * @param booking - Booking detail payload.
+ * @returns Ordered schedule items, or an empty array when unscheduled.
+ */
+function getBookingScheduleItemsForDisplay(booking: BookingDetailsItem) {
+  return booking.scheduleItems ?? (booking.scheduleItem ? [booking.scheduleItem] : []);
 }
 
 /**

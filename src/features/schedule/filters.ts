@@ -27,6 +27,7 @@ const scheduleTypeActivityTypes: Record<ScheduleTypeFilter, ActivityType[]> = {
     ActivityType.OPEN_WATER_COURSE,
     ActivityType.ADVANCED_OPEN_WATER_COURSE,
     ActivityType.RESCUE_DIVER_COURSE,
+    ActivityType.EMERGENCY_FIRST_RESPONSE,
     ActivityType.SPECIALTY_COURSE,
   ],
 };

@@ -25,3 +25,14 @@ export const updateScheduleAssignmentRoleSchema = z.object({
 export const removeScheduleAssignmentSchema = z.object({
   assignmentId: z.string().trim().min(1, 'Assignment ID is required.'),
 });
+
+/** Validates input for appending one scheduled day to an activity. */
+export const addScheduledCourseDaySchema = z.object({
+  scheduleItemId: z.string().trim().min(1, 'Schedule item ID is required.'),
+});
+
+/** Validates input for removing one scheduled day from an activity. */
+export const removeScheduledCourseDaySchema = z.object({
+  scheduleItemId: z.string().trim().min(1, 'Schedule item ID is required.'),
+  confirmAssignedRemoval: z.boolean(),
+});

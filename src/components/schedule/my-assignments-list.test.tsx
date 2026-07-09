@@ -356,6 +356,9 @@ function assignment(
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     activities: [
       {
         id: 'activity-1',
