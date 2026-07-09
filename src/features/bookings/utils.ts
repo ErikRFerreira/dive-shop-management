@@ -6,12 +6,14 @@
  */
 
 import {
+  ActivityType,
   BookingCustomerRole,
   BookingParticipantStatus,
   BookingStatus,
   UserRole,
 } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import { getActivityDisplayLabel } from './activity-utils';
 import { getPrimaryActiveBookingCustomer } from './participants';
 import {
   bookingQueueFilters,
@@ -121,10 +123,11 @@ export function buildBookingRequestWhere(
 
   if (queue === 'unassigned') {
     where.status = BookingStatus.SCHEDULED;
-    where.scheduleItem = {
-      is: {
+    where.scheduleItems = {
+      some: {},
+      none: {
         assignments: {
-          none: {},
+          some: {},
         },
       },
     };
@@ -173,11 +176,15 @@ export function resolveDisplayCustomer<TCustomer>(
  * @returns A string summarizing the activity types, or a fallback string when no activities are present.
  */
 export function summarizeBookingActivities(
-  activities: Array<{ activityType: string | null }>,
+  activities: Array<{
+    activityType: ActivityType | string | null;
+    specialtyCourse?: string | null;
+  }>,
   fallbackActivityType?: string | null,
 ) {
   const labels = activities
-    .map((activity) => formatActivityType(activity.activityType))
+    .map((activity) => getActivityDisplayLabel(activity))
+    .filter((label) => label !== '\u2014')
     .filter((label): label is string => label !== null);
 
   if (labels.length === 0) {

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import type { SchedulePageItem } from '@/features/schedule/types';
 import { groupScheduleItemsByDate } from '@/features/schedule/utils';
+import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 function formatSourceReferrer(item: SchedulePageItem) {
@@ -77,7 +78,7 @@ export function ScheduleList({ items }: { items: SchedulePageItem[] }) {
                   <div className="space-y-2">
                     <div>
                       <h2 className="text-base font-medium">
-                        {formatEnumLabel(item.activityType)}
+                        {formatScheduleActivityLabel(item.activityType)}
                       </h2>
                       <p className="text-sm text-muted-foreground">
                         {item.primaryCustomerName ?? 'Customer not recorded'}

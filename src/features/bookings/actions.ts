@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import type { z } from 'zod';
 
 import {
+  ActivityType,
   BookingCustomerRole,
   BookingParticipantStatus,
   BookingStatus,
@@ -17,6 +18,7 @@ import {
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
+import { addUtcDateOnlyDays } from '@/lib/operational-date';
 
 import {
   getValidationErrors,
@@ -107,6 +109,25 @@ type ScheduledBookingParticipantData = z.infer<
   typeof addScheduledBookingParticipantSchema
 >;
 
+type ApprovableBookingActivity = {
+  id: string;
+  activityType: ActivityType | null;
+  requestedDate: Date | null;
+  requestedTime: string | null;
+  notes: string | null;
+  sortOrder: number;
+};
+
+type ScheduleItemCreateInput = {
+  bookingRequestId: string;
+  bookingActivityId: string | null;
+  date: Date;
+  startTime: string | null;
+  activityType: ActivityType;
+  dayNumber: number;
+  scheduleNotes: string | null;
+};
+
 /**
  * Persists one booking request and its related intake records atomically.
  *
@@ -115,6 +136,134 @@ type ScheduledBookingParticipantData = z.infer<
  */
 function getEditSaveValidationIntent(status: BookingStatus) {
   return status === BookingStatus.PENDING_APPROVAL ? 'submit' : 'draft';
+}
+
+/**
+ * Returns the default number of schedule days for a booking activity.
+ *
+ * @param activityType - Activity type selected by customer service.
+ * @returns The default operational duration in schedule rows.
+ */
+function getDefaultScheduleDurationDays(activityType: ActivityType) {
+  switch (activityType) {
+    case ActivityType.OPEN_WATER_COURSE:
+      return 3;
+    case ActivityType.ADVANCED_OPEN_WATER_COURSE:
+      return 2;
+    case ActivityType.RESCUE_DIVER_COURSE:
+      return 3;
+    case ActivityType.EMERGENCY_FIRST_RESPONSE:
+      return 1;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Expands one approved booking activity into one or more dated schedule rows.
+ *
+ * @param bookingId - Booking request being published to the schedule.
+ * @param activity - Stored activity row with requested scheduling details.
+ * @param scheduleNotes - Notes copied from admin/internal booking notes.
+ * @returns Schedule row create inputs for each default course day.
+ */
+function buildScheduleItemsForActivity(
+  bookingId: string,
+  activity: ApprovableBookingActivity,
+  scheduleNotes: string | null,
+): ScheduleItemCreateInput[] {
+  if (!activity.activityType || !activity.requestedDate) {
+    return [];
+  }
+
+  const activityType = activity.activityType;
+  const requestedDate = activity.requestedDate;
+
+  return Array.from({
+    length: getDefaultScheduleDurationDays(activityType),
+  }).map((_, index) => ({
+    bookingRequestId: bookingId,
+    bookingActivityId: activity.id,
+    date: addUtcDateOnlyDays(requestedDate, index),
+    startTime: activity.requestedTime,
+    activityType,
+    dayNumber: index + 1,
+    scheduleNotes,
+  }));
+}
+
+/**
+ * Builds schedule rows for the approval action using activity rows first.
+ *
+ * @param booking - Booking fields required to publish schedule items.
+ * @param scheduleNotes - Notes copied onto each schedule row.
+ * @returns Schedule rows ready to create, or an error when required date/type data is missing.
+ */
+function buildScheduleItemsForApproval(
+  booking: {
+    id: string;
+    requestedDate: Date | null;
+    requestedTime: string | null;
+    activityType: ActivityType | null;
+    activities: ApprovableBookingActivity[];
+  },
+  scheduleNotes: string | null,
+):
+  | { success: true; scheduleItems: ScheduleItemCreateInput[] }
+  | { success: false; formError: string } {
+  if (booking.activities.length === 0) {
+    if (!booking.requestedDate) {
+      return {
+        success: false,
+        formError: 'Requested date is required before approving a booking.',
+      };
+    }
+
+    if (!booking.activityType) {
+      return {
+        success: false,
+        formError: 'Activity type is required before approving a booking.',
+      };
+    }
+
+    return {
+      success: true,
+      scheduleItems: buildScheduleItemsForActivity(
+        booking.id,
+        {
+          id: 'legacy-booking-activity',
+          activityType: booking.activityType,
+          requestedDate: booking.requestedDate,
+          requestedTime: booking.requestedTime,
+          notes: null,
+          sortOrder: 0,
+        },
+        scheduleNotes,
+      ).map((scheduleItem) => ({
+        ...scheduleItem,
+        bookingActivityId: null,
+      })),
+    };
+  }
+
+  const incompleteActivity = booking.activities.find(
+    (activity) => !activity.activityType || !activity.requestedDate,
+  );
+
+  if (incompleteActivity) {
+    return {
+      success: false,
+      formError:
+        'Every activity needs an activity type and requested date before approval.',
+    };
+  }
+
+  return {
+    success: true,
+    scheduleItems: booking.activities.flatMap((activity) =>
+      buildScheduleItemsForActivity(booking.id, activity, scheduleNotes),
+    ),
+  };
 }
 
 /**
@@ -821,15 +970,29 @@ export async function approveBooking(
       requestedDate: true,
       requestedTime: true,
       activityType: true,
-      internalNotes: true,
-      adminNotes: true,
-      scheduleItem: {
-        select: {
-          id: true,
-        },
-      },
-    },
-  });
+	      internalNotes: true,
+	      adminNotes: true,
+	      scheduleItems: {
+	        select: {
+	          id: true,
+	        },
+	        take: 1,
+	      },
+	      activities: {
+	        select: {
+	          id: true,
+	          activityType: true,
+	          requestedDate: true,
+	          requestedTime: true,
+	          notes: true,
+	          sortOrder: true,
+	        },
+	        orderBy: {
+	          sortOrder: 'asc',
+	        },
+	      },
+	    },
+	  });
 
   if (!booking) {
     return { formError: 'Booking request not found.' };
@@ -841,28 +1004,31 @@ export async function approveBooking(
     };
   }
 
-  if (booking.scheduleItem) {
+  const legacyScheduleItem = (
+    booking as { scheduleItem?: { id: string } | null }
+  ).scheduleItem;
+  const existingScheduleItems =
+    booking.scheduleItems ?? (legacyScheduleItem ? [legacyScheduleItem] : []);
+
+  if (existingScheduleItems.length > 0) {
     return {
       formError: 'This booking already has a schedule item.',
     };
   }
 
-  if (booking.requestedDate === null) {
-    return {
-      formError: 'Requested date is required before approving a booking.',
-    };
-  }
-
-  if (booking.activityType === null) {
-    return {
-      formError: 'Activity type is required before approving a booking.',
-    };
-  }
-
-  const requestedDate = booking.requestedDate;
-  const activityType = booking.activityType;
   const adminNotes = validation.data.adminNotes;
   const scheduleNotes = adminNotes ?? booking.internalNotes;
+  const scheduleItemBuildResult = buildScheduleItemsForApproval(
+    {
+      ...booking,
+      activities: booking.activities ?? [],
+    },
+    scheduleNotes,
+  );
+
+  if (!scheduleItemBuildResult.success) {
+    return { formError: scheduleItemBuildResult.formError };
+  }
 
   if (
     !canPerformBookingStatusTransition(
@@ -879,7 +1045,7 @@ export async function approveBooking(
   assertCanTransitionBookingStatus(booking.status, BookingStatus.SCHEDULED);
 
   const transactionError = await db.$transaction(async (transaction) => {
-    const existingScheduleItem = await transaction.scheduleItem.findUnique({
+    const existingScheduleItem = await transaction.scheduleItem.findFirst({
       where: {
         bookingRequestId: booking.id,
       },
@@ -912,15 +1078,11 @@ export async function approveBooking(
       };
     }
 
-    await transaction.scheduleItem.create({
-      data: {
-        bookingRequestId: booking.id,
-        date: requestedDate,
-        startTime: booking.requestedTime,
-        activityType,
-        scheduleNotes,
-      },
-    });
+    for (const scheduleItem of scheduleItemBuildResult.scheduleItems) {
+      await transaction.scheduleItem.create({
+        data: scheduleItem,
+      });
+    }
 
     return null;
   });
@@ -1068,10 +1230,11 @@ export async function cancelBooking(
       id: true,
       status: true,
       adminNotes: true,
-      scheduleItem: {
+      scheduleItems: {
         select: {
           id: true,
         },
+        take: 1,
       },
     },
   });

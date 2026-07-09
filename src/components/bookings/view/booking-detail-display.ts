@@ -16,6 +16,7 @@ export type BookingActivityDisplay = {
   id: string;
   activityType: BookingDetailsItem['activities'][number]['activityType'];
   specialtyCourse: string | null;
+  durationDays: number | null;
   requestedDate: Date | null;
   requestedTime: string | null;
   notes: string | null;
@@ -112,15 +113,31 @@ export function formatSourceReferrer(
  * @returns Comma-separated staff names, unassigned text, or a not-scheduled label.
  */
 export function formatAssignedStaffSummary(booking: BookingDetailsItem) {
-  if (!booking.scheduleItem) {
+  const scheduleItems = getBookingScheduleItemsForDisplay(booking);
+
+  if (scheduleItems.length === 0) {
     return UNSCHEDULED_ASSIGNMENT_SUMMARY;
   }
 
-  const names = booking.scheduleItem.assignments.map(
-    (assignment) => assignment.user.name,
+  const names = Array.from(
+    new Set(
+      scheduleItems.flatMap((scheduleItem) =>
+        scheduleItem.assignments.map((assignment) => assignment.user.name),
+      ),
+    ),
   );
 
   return names.length > 0 ? names.join(', ') : 'Unassigned';
+}
+
+/**
+ * Returns schedule rows from the current read model with a legacy test fallback.
+ *
+ * @param booking - Booking detail payload.
+ * @returns Ordered schedule items, or an empty array when unscheduled.
+ */
+function getBookingScheduleItemsForDisplay(booking: BookingDetailsItem) {
+  return booking.scheduleItems ?? (booking.scheduleItem ? [booking.scheduleItem] : []);
 }
 
 /**
@@ -141,6 +158,7 @@ export function getDisplayActivities(
       id: 'legacy-summary',
       activityType: booking.activityType,
       specialtyCourse: booking.specialtyCourse,
+      durationDays: null,
       requestedDate: booking.requestedDate,
       requestedTime: booking.requestedTime,
       notes: null,

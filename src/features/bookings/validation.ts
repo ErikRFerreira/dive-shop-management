@@ -173,6 +173,7 @@ export const addScheduledBookingParticipantSchema = z
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),
+  durationDays: z.number().int().positive(),
   requestedDate: z.date().nullable(),
   requestedTime: z.string().nullable(),
   notes: z.string().nullable(),
@@ -225,7 +226,13 @@ const normalizedBookingIntakeSchema = z.object({
  */
 function hasMeaningfulActivity(values: NormalizedBookingFormValues) {
   return values.activities.some((activity) =>
-    Object.values(activity).some((value) => value !== null),
+    [
+      activity.activityType,
+      activity.specialtyCourse,
+      activity.requestedDate,
+      activity.requestedTime,
+      activity.notes,
+    ].some((value) => value !== null),
   );
 }
 

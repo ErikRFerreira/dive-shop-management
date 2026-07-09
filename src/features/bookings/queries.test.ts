@@ -58,10 +58,11 @@ test('queries scheduled bookings with schedule items that have no assignments', 
   expect(mocks.bookingRequestCount).toHaveBeenCalledWith({
     where: {
       status: BookingStatus.SCHEDULED,
-      scheduleItem: {
-        is: {
+      scheduleItems: {
+        some: {},
+        none: {
           assignments: {
-            none: {},
+            some: {},
           },
         },
       },
@@ -71,11 +72,13 @@ test('queries scheduled bookings with schedule items that have no assignments', 
   expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
     expect.objectContaining({
       include: expect.objectContaining({
-        scheduleItem: {
+        scheduleItems: {
           select: {
             id: true,
             date: true,
             startTime: true,
+            dayNumber: true,
+            activityType: true,
             assignments: {
               select: {
                 id: true,
@@ -90,14 +93,20 @@ test('queries scheduled bookings with schedule items that have no assignments', 
               },
             },
           },
+          orderBy: [
+            { date: 'asc' },
+            { dayNumber: 'asc' },
+            { createdAt: 'asc' },
+          ],
         },
       }),
       where: {
         status: BookingStatus.SCHEDULED,
-        scheduleItem: {
-          is: {
+        scheduleItems: {
+          some: {},
+          none: {
             assignments: {
-              none: {},
+              some: {},
             },
           },
         },

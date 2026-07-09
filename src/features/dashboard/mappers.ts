@@ -10,6 +10,7 @@ import {
   getActiveParticipantCount,
   getPrimaryActiveBookingCustomer,
 } from '@/features/bookings/participants';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import type {
   DashboardNeedsAttentionBookingRecord,
@@ -188,15 +189,14 @@ function mapDashboardScheduleCustomers(
  * @returns A compact activity summary.
  */
 function summarizeActivities(
-  activities: Array<{ activityType: ActivityType | null }>,
+  activities: Array<{
+    activityType: ActivityType | null;
+    specialtyCourse?: string | null;
+  }>,
   fallbackActivityType: ActivityType | null,
 ) {
   const labels = activities
-    .map((activity) =>
-      activity.activityType
-        ? formatScheduleActivityLabel(activity.activityType)
-        : null,
-    )
+    .map((activity) => (activity.activityType ? getActivityShortLabel(activity) : null))
     .filter((label): label is string => label !== null);
 
   if (labels.length === 0) {

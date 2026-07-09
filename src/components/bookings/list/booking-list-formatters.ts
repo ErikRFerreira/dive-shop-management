@@ -1,4 +1,5 @@
 import type { BookingListItem } from '@/features/bookings/queries';
+import { getActivityDisplayLabel } from '@/features/bookings/activity-utils';
 import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import type { BookingSource } from '@/generated/prisma/client';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
@@ -77,16 +78,7 @@ export function formatBookingHotel(booking: BookingListItem) {
  * @returns Activity label with specialty detail when available.
  */
 export function formatBookingActivityName(activity: BookingActivityListItem) {
-  const activityLabel = formatEnumLabel(activity.activityType, {
-    emptyValue: null,
-  });
-  const specialtyCourse = activity.specialtyCourse?.trim();
-
-  if (activityLabel && specialtyCourse) {
-    return `${activityLabel}: ${specialtyCourse}`;
-  }
-
-  return specialtyCourse || activityLabel || EMPTY_VALUE;
+  return getActivityDisplayLabel(activity);
 }
 
 /**
@@ -107,8 +99,10 @@ export function getBookingActivityLines(booking: BookingListItem) {
     {
       key: `${booking.id}-fallback-activity`,
       label:
-        formatEnumLabel(booking.activityType, { emptyValue: null }) ||
-        EMPTY_VALUE,
+        getActivityDisplayLabel({
+          activityType: booking.activityType,
+          specialtyCourse: booking.specialtyCourse,
+        }) || EMPTY_VALUE,
     },
   ];
 }
@@ -138,11 +132,15 @@ export function formatBookingSchedule(booking: BookingListItem) {
  * @returns Staff labels keyed by assignment, or a state placeholder.
  */
 export function getStaffAssignmentLines(booking: BookingListItem) {
-  if (!booking.scheduleItem) {
+  const scheduleItems =
+    booking.scheduleItems ?? (booking.scheduleItem ? [booking.scheduleItem] : []);
+
+  if (scheduleItems.length === 0) {
     return [{ key: `${booking.id}-unscheduled-staff`, label: EMPTY_VALUE }];
   }
 
-  const staffLines = booking.scheduleItem.assignments
+  const staffLines = scheduleItems
+    .flatMap((scheduleItem) => scheduleItem.assignments)
     .map((assignment) => ({
       key: assignment.id,
       label: assignment.user.name.trim(),

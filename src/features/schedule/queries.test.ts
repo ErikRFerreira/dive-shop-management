@@ -341,6 +341,7 @@ test('queries calendar items by broad courses schedule type', async () => {
     ActivityType.OPEN_WATER_COURSE,
     ActivityType.ADVANCED_OPEN_WATER_COURSE,
     ActivityType.RESCUE_DIVER_COURSE,
+    ActivityType.EMERGENCY_FIRST_RESPONSE,
     ActivityType.SPECIALTY_COURSE,
   ];
 
@@ -420,6 +421,7 @@ test('queries calendar items with combined schedule filters', async () => {
                     ActivityType.OPEN_WATER_COURSE,
                     ActivityType.ADVANCED_OPEN_WATER_COURSE,
                     ActivityType.RESCUE_DIVER_COURSE,
+                    ActivityType.EMERGENCY_FIRST_RESPONSE,
                     ActivityType.SPECIALTY_COURSE,
                   ],
                 },
@@ -434,6 +436,7 @@ test('queries calendar items with combined schedule filters', async () => {
                           ActivityType.OPEN_WATER_COURSE,
                           ActivityType.ADVANCED_OPEN_WATER_COURSE,
                           ActivityType.RESCUE_DIVER_COURSE,
+                          ActivityType.EMERGENCY_FIRST_RESPONSE,
                           ActivityType.SPECIALTY_COURSE,
                         ],
                       },

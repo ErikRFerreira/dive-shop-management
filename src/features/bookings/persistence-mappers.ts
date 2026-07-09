@@ -45,6 +45,7 @@ export function mapBookingActivityCreateData(
   return {
     activityType: activity.activityType,
     specialtyCourse: activity.specialtyCourse,
+    durationDays: activity.durationDays,
     requestedDate: activity.requestedDate,
     requestedTime: activity.requestedTime,
     notes: activity.notes,

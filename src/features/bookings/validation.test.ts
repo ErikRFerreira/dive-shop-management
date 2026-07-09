@@ -28,6 +28,7 @@ function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
       {
         activityType: ActivityType.OPEN_WATER_COURSE,
         specialtyCourse: '',
+        durationDays: '',
         requestedDate: '2026-07-14',
         requestedTime: '',
         notes: '',
@@ -299,6 +300,7 @@ test('requires Fun Dive details for every entered customer', () => {
         {
           activityType: ActivityType.FUN_DIVE,
           specialtyCourse: '',
+          durationDays: '',
           requestedDate: '2026-07-14',
           requestedTime: '',
           notes: '',
@@ -343,6 +345,7 @@ test('requires a specialty course for each Specialty Course activity', () => {
         {
           activityType: ActivityType.SPECIALTY_COURSE,
           specialtyCourse: '',
+          durationDays: '',
           requestedDate: '2026-07-14',
           requestedTime: '',
           notes: '',
@@ -410,6 +413,7 @@ test('accepts a valid multi-activity, multi-customer submission', () => {
         {
           activityType: ActivityType.OPEN_WATER_COURSE,
           specialtyCourse: '',
+          durationDays: '',
           requestedDate: '2026-07-14',
           requestedTime: '',
           notes: '',
@@ -417,6 +421,7 @@ test('accepts a valid multi-activity, multi-customer submission', () => {
         {
           activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
           specialtyCourse: '',
+          durationDays: '',
           requestedDate: '2026-07-16',
           requestedTime: '09:00',
           notes: 'Continue after Open Water.',

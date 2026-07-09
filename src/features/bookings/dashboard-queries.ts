@@ -22,6 +22,7 @@ const dashboardNeedsAttentionBookingArgs = {
     activities: {
       select: {
         activityType: true,
+        specialtyCourse: true,
         sortOrder: true,
       },
       orderBy: {
@@ -58,6 +59,7 @@ const dashboardRecentActivityBookingArgs = {
     activities: {
       select: {
         activityType: true,
+        specialtyCourse: true,
         sortOrder: true,
       },
       orderBy: {
@@ -288,8 +290,8 @@ export async function getRecentDashboardBookingsForInstructor(
     ...dashboardRecentActivityBookingArgs,
     where: {
       status: BookingStatus.SCHEDULED,
-      scheduleItem: {
-        is: {
+      scheduleItems: {
+        some: {
           assignments: {
             some: {
               userId,

@@ -19,6 +19,7 @@ import {
   bookingSourceOptions,
 } from '@/features/bookings/form-options';
 import { bookingActivityDefaultValues } from '@/features/bookings/form-values';
+import { getDefaultActivityDurationDays } from '@/features/bookings/activity-utils';
 import type {
   BookingActivityFormValues,
   BookingFormValues,
@@ -131,7 +132,7 @@ export function BookingDetailsSection({
                     </Button>
                   ) : null}
                 </div>
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,0.65fr)_minmax(7rem,0.35fr)]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(7rem,0.35fr)_minmax(0,0.65fr)_minmax(7rem,0.35fr)]">
                   <BookingFormField
                     id={`${prefix}.activityType`}
                     label="Activity type"
@@ -144,12 +145,48 @@ export function BookingDetailsSection({
                         <EnumSelect
                           id={field.name}
                           value={field.value}
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            const currentDuration = form.getValues(
+                              `${prefix}.durationDays`,
+                            );
+                            const previousDefault =
+                              getDefaultActivityDurationDays(field.value);
+
+                            field.onChange(value);
+
+                            if (
+                              !currentDuration.trim() ||
+                              Number(currentDuration) === previousDefault
+                            ) {
+                              form.setValue(
+                                `${prefix}.durationDays`,
+                                String(getDefaultActivityDurationDays(value)),
+                                {
+                                  shouldDirty: true,
+                                  shouldValidate: false,
+                                },
+                              );
+                            }
+                          }}
                           values={activityTypeOptions}
                           placeholder="Select activity"
                           className={inputClassName}
                         />
                       )}
+                    />
+                  </BookingFormField>
+                  <BookingFormField
+                    id={`${prefix}.durationDays`}
+                    label="Duration days"
+                  >
+                    <Input
+                      id={`${prefix}.durationDays`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      {...form.register(`${prefix}.durationDays`)}
+                      className={inputClassName}
                     />
                   </BookingFormField>
                   <BookingFormField
@@ -173,7 +210,7 @@ export function BookingDetailsSection({
                     />
                   </BookingFormField>
                   {activityTypeError || requestedDateError ? (
-                    <div className="grid gap-1 md:col-span-3">
+                    <div className="grid gap-1 md:col-span-4">
                       <BookingFormFieldError error={activityTypeError} />
                       <BookingFormFieldError error={requestedDateError} />
                     </div>
@@ -184,7 +221,7 @@ export function BookingDetailsSection({
                       label="Specialty course"
                       required
                       error={getFieldError(`${prefix}.specialtyCourse`)}
-                      className="grid gap-2 md:col-span-3"
+                      className="grid gap-2 md:col-span-4"
                     >
                       <Input
                         id={`${prefix}.specialtyCourse`}
@@ -196,7 +233,7 @@ export function BookingDetailsSection({
                   <BookingFormField
                     id={`${prefix}.notes`}
                     label="Activity notes"
-                    className="grid gap-2 md:col-span-3"
+                    className="grid gap-2 md:col-span-4"
                   >
                     <Textarea
                       id={`${prefix}.notes`}

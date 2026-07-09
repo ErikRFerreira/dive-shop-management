@@ -17,6 +17,7 @@ import {
   getActiveParticipantCount,
   getPrimaryActiveBookingCustomer,
 } from '@/features/bookings/participants';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
@@ -602,7 +603,7 @@ function mapScheduleItemToCalendarEvent(
       id: activity.id,
       activityType: activity.activityType,
       activityLabel: activity.activityType
-        ? formatScheduleActivityLabel(activity.activityType)
+        ? getActivityShortLabel(activity)
         : null,
       specialtyCourse: activity.specialtyCourse,
       requestedDate: activity.requestedDate,
@@ -727,7 +728,7 @@ function mapScheduleItemToMyScheduleAssignment(
       id: activity.id,
       activityType: activity.activityType,
       activityLabel: activity.activityType
-        ? formatScheduleActivityLabel(activity.activityType)
+        ? getActivityShortLabel(activity)
         : null,
       specialtyCourse: activity.specialtyCourse,
       requestedDate: activity.requestedDate,
@@ -934,11 +935,7 @@ function summarizeScheduleActivities(
   fallbackActivityType: ScheduleItemForSchedulePage['activityType'],
 ) {
   const labels = activities
-    .map((activity) =>
-      activity.activityType
-        ? formatScheduleActivityLabel(activity.activityType)
-        : null,
-    )
+    .map((activity) => (activity.activityType ? getActivityShortLabel(activity) : null))
     .filter((label): label is string => label !== null);
 
   if (labels.length === 0) {

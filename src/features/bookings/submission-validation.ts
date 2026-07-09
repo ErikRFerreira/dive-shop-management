@@ -8,6 +8,7 @@
 
 import { Currency, DepositStatus } from '@/generated/prisma/enums';
 
+import { getDefaultActivityDurationDays } from './activity-utils';
 import { getActiveParticipantCount } from './participants';
 import type { NormalizedBookingFormValues } from './types';
 import { validateBookingIntake } from './validation';
@@ -25,6 +26,7 @@ type StoredBookingForSubmission = {
   activities: Array<{
     activityType: NormalizedBookingFormValues['activities'][number]['activityType'];
     specialtyCourse: string | null;
+    durationDays?: number | null;
     requestedDate: Date | null;
     requestedTime: string | null;
     notes: string | null;
@@ -104,6 +106,7 @@ function mapStoredBookingToNormalizedValues(
           {
             activityType: booking.activityType,
             specialtyCourse: booking.specialtyCourse,
+            durationDays: null,
             requestedDate: booking.requestedDate,
             requestedTime: booking.requestedTime,
             notes: null,
@@ -116,6 +119,9 @@ function mapStoredBookingToNormalizedValues(
     activities: activities.map((activity) => ({
       activityType: activity.activityType,
       specialtyCourse: activity.specialtyCourse,
+      durationDays:
+        activity.durationDays ??
+        getDefaultActivityDurationDays(activity.activityType),
       requestedDate: activity.requestedDate,
       requestedTime: activity.requestedTime,
       notes: activity.notes,

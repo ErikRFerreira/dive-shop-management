@@ -32,6 +32,7 @@ const dashboardScheduleAttentionArgs = {
         activities: {
           select: {
             activityType: true,
+            specialtyCourse: true,
             sortOrder: true,
           },
           orderBy: {
@@ -93,6 +94,7 @@ const dashboardTodayScheduleArgs = {
 	        activities: {
           select: {
             activityType: true,
+            specialtyCourse: true,
             sortOrder: true,
           },
           orderBy: {

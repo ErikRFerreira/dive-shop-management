@@ -7,8 +7,9 @@ import type {
   SchedulePageItem,
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import { ActivityType } from '@/generated/prisma/enums';
-import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
+import { formatDateInputValue } from '@/lib/format';
 import { getShopDateOnlyRange } from '@/lib/operational-date';
 
 /**
@@ -163,17 +164,5 @@ export function serializeScheduleCalendarEvents(
  * @returns A short staff-facing label for schedule filters and calendar titles.
  */
 export function formatScheduleActivityLabel(activityType: ActivityType) {
-  if (activityType === ActivityType.DISCOVER_SCUBA_DIVING) {
-    return 'DSD';
-  }
-
-  if (activityType === ActivityType.OPEN_WATER_COURSE) {
-    return 'Open Water';
-  }
-
-  if (activityType === ActivityType.ADVANCED_OPEN_WATER_COURSE) {
-    return 'Advanced Open Water';
-  }
-
-  return formatEnumLabel(activityType);
+  return getActivityShortLabel({ activityType });
 }
