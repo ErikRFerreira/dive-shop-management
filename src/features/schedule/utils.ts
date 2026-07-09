@@ -166,3 +166,24 @@ export function serializeScheduleCalendarEvents(
 export function formatScheduleActivityLabel(activityType: ActivityType) {
   return getActivityShortLabel({ activityType });
 }
+
+/**
+ * Formats persisted course-day metadata for schedule rows.
+ *
+ * Single-day activities omit the label so dense schedule UIs do not repeat
+ * redundant "Day 1/1" copy, while multi-day courses show a stable Day N/M label.
+ *
+ * @param dayNumber - One-based persisted day number for this schedule item.
+ * @param totalDays - Persisted total day count for the scheduled activity.
+ * @returns A compact day label for multi-day rows, or null for single-day rows.
+ */
+export function formatScheduleDayLabel(
+  dayNumber: number | null,
+  totalDays: number,
+) {
+  if (totalDays <= 1) {
+    return null;
+  }
+
+  return `Day ${dayNumber ?? 1}/${totalDays}`;
+}

@@ -34,7 +34,7 @@ import type {
   ScheduleFilters,
   SchedulePageItem,
 } from './types';
-import { formatScheduleActivityLabel } from './utils';
+import { formatScheduleActivityLabel, formatScheduleDayLabel } from './utils';
 
 const MY_ASSIGNMENTS_UPCOMING_LIMIT = 20;
 const scheduleAssignmentOrderBy = [
@@ -50,8 +50,20 @@ const schedulePageItemArgs = {
     date: true,
     startTime: true,
     activityType: true,
+    dayNumber: true,
+    totalDays: true,
     scheduleNotes: true,
     createdAt: true,
+    bookingActivity: {
+      select: {
+        id: true,
+        activityType: true,
+        specialtyCourse: true,
+        requestedDate: true,
+        requestedTime: true,
+        notes: true,
+      },
+    },
     assignments: {
       select: {
         id: true,
@@ -130,8 +142,20 @@ const myScheduleAssignmentArgs = {
     date: true,
     startTime: true,
     activityType: true,
+    dayNumber: true,
+    totalDays: true,
     scheduleNotes: true,
     createdAt: true,
+    bookingActivity: {
+      select: {
+        id: true,
+        activityType: true,
+        specialtyCourse: true,
+        requestedDate: true,
+        requestedTime: true,
+        notes: true,
+      },
+    },
     assignments: {
       select: {
         id: true,
@@ -524,6 +548,14 @@ export function mapScheduleItemForSchedulePage(
     date: scheduleItem.date,
     startTime: scheduleItem.startTime,
     activityType: scheduleItem.activityType,
+    activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
+    activitySummary: summarizeScheduleItemActivity(scheduleItem),
+    dayNumber: scheduleItem.dayNumber,
+    totalDays: scheduleItem.totalDays,
+    dayLabel: formatScheduleDayLabel(
+      scheduleItem.dayNumber,
+      scheduleItem.totalDays,
+    ),
     primaryCustomerName: formatCustomerName(
       displayBookingCustomer?.customer ?? null,
     ),
@@ -573,9 +605,10 @@ function mapScheduleItemToCalendarEvent(
   const endTime = startTime ? getCalendarEndTime(booking.endAt) : null;
   const isTimeTbd = startTime === null;
   const activityLabel = formatScheduleActivityLabel(scheduleItem.activityType);
-  const activitySummary = summarizeScheduleActivities(
-    booking.activities,
-    scheduleItem.activityType,
+  const activitySummary = summarizeScheduleItemActivity(scheduleItem);
+  const dayLabel = formatScheduleDayLabel(
+    scheduleItem.dayNumber,
+    scheduleItem.totalDays,
   );
   const assignments = mapScheduleAssignments(scheduleItem.assignments);
 
@@ -585,6 +618,7 @@ function mapScheduleItemToCalendarEvent(
       activitySummary,
       assignments,
       customerName: primaryCustomerName,
+      dayLabel,
       numberOfPeople: getActiveParticipantCount(booking.customers),
     }),
     start: startTime ? `${dateKey}T${startTime}:00` : dateKey,
@@ -599,6 +633,9 @@ function mapScheduleItemToCalendarEvent(
     activityType: scheduleItem.activityType,
     activityLabel,
     activitySummary,
+    dayNumber: scheduleItem.dayNumber,
+    totalDays: scheduleItem.totalDays,
+    dayLabel,
     activities: booking.activities.map((activity) => ({
       id: activity.id,
       activityType: activity.activityType,
@@ -720,9 +757,12 @@ function mapScheduleItemToMyScheduleAssignment(
     isTimeTbd: startTime === null,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
-    activitySummary: summarizeScheduleActivities(
-      booking.activities,
-      scheduleItem.activityType,
+    activitySummary: summarizeScheduleItemActivity(scheduleItem),
+    dayNumber: scheduleItem.dayNumber,
+    totalDays: scheduleItem.totalDays,
+    dayLabel: formatScheduleDayLabel(
+      scheduleItem.dayNumber,
+      scheduleItem.totalDays,
     ),
     activities: booking.activities.map((activity) => ({
       id: activity.id,
@@ -873,14 +913,18 @@ function buildScheduleCalendarEventTitle(input: {
   activitySummary: string;
   assignments: ScheduleAssignmentDetail[];
   customerName: string | null;
+  dayLabel: string | null;
   numberOfPeople: number | null;
 }) {
   return [
     buildScheduleStaffPrefix(input.assignments),
     input.activitySummary,
+    input.dayLabel,
     formatPeopleCountLabel(input.numberOfPeople),
     input.customerName ?? 'Customer TBD',
-  ].join(' ');
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' ');
 }
 
 /**
@@ -951,6 +995,25 @@ function summarizeScheduleActivities(
   }
 
   return `${labels[0]} + ${labels.length - 1} more`;
+}
+
+/**
+ * Summarizes the activity for one schedule row, preferring the linked activity.
+ *
+ * @param scheduleItem - Schedule row selected with booking and optional activity relations.
+ * @returns A compact activity label for row-specific schedule displays.
+ */
+function summarizeScheduleItemActivity(
+  scheduleItem: ScheduleItemForSchedulePage | ScheduleItemForMyAssignments,
+) {
+  if (scheduleItem.bookingActivity?.activityType) {
+    return getActivityShortLabel(scheduleItem.bookingActivity);
+  }
+
+  return summarizeScheduleActivities(
+    scheduleItem.bookingRequest.activities,
+    scheduleItem.activityType,
+  );
 }
 
 /**

@@ -180,6 +180,11 @@ function AssignmentActivitySummary({
   return (
     <div className="space-y-1.5">
       <p className="font-medium">{assignment.activitySummary}</p>
+      {assignment.dayLabel ? (
+        <p className="text-xs font-medium text-muted-foreground">
+          {assignment.dayLabel}
+        </p>
+      ) : null}
       {assignment.activities.length > 1 ? (
         <ul className="space-y-1 text-xs text-muted-foreground">
           {assignment.activities.map((activity) => (

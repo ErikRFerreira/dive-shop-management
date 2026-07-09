@@ -348,6 +348,9 @@ function scheduleItem(
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     primaryCustomerName: 'Maria Santos',
     customers: [
       {

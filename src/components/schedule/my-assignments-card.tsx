@@ -68,7 +68,9 @@ export function MyAssignmentCard({ assignment }: MyAssignmentCardProps) {
       <CardHeader className="gap-3 px-1 md:flex md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle className="text-base">
-            {assignment.activitySummary}
+            {[assignment.activitySummary, assignment.dayLabel]
+              .filter(Boolean)
+              .join(' / ')}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {assignment.primaryCustomerName ?? 'Customer not recorded'}

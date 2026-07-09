@@ -5,6 +5,7 @@ import {
   getActivityDisplayLabel,
   getActivityShortLabel,
   getDefaultActivityDurationDays,
+  hasUsefulSpecialtyCourseName,
 } from './activity-utils';
 import { ActivityType } from '@/generated/prisma/enums';
 
@@ -54,3 +55,18 @@ test('formats duration days for display', () => {
   expect(formatActivityDurationDays(3)).toBe('3 days');
   expect(formatActivityDurationDays(null)).toBe('1 day');
 });
+
+test.each([
+  ['Nitrox', true],
+  [' Deep ', true],
+  ['N', false],
+  ['', false],
+  ['specialty', false],
+  ['Specialty Course', false],
+  ['course', false],
+] as const)(
+  'checks whether %s is a useful specialty course name',
+  (specialtyCourse, expected) => {
+    expect(hasUsefulSpecialtyCourseName(specialtyCourse)).toBe(expected);
+  },
+);

@@ -8,6 +8,7 @@ import type {
 import {
   groupMyScheduleAssignmentsByDay,
   groupScheduleItemsByDate,
+  formatScheduleDayLabel,
   serializeScheduleCalendarEvents,
 } from '@/features/schedule/utils';
 import {
@@ -26,6 +27,11 @@ function scheduleItem(
     date: new Date('2026-07-14T00:00:00.000Z'),
     startTime: null,
     activityType: ActivityType.FUN_DIVE,
+    activityLabel: 'Fun Dive',
+    activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     primaryCustomerName: null,
     numberOfPeople: null,
     hotel: null,
@@ -56,6 +62,9 @@ function myAssignment(
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     activities: [],
     primaryCustomerName: null,
     customers: [],
@@ -189,6 +198,9 @@ test('serializes calendar event date fields for client props', () => {
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
+    dayNumber: 1,
+    totalDays: 1,
+    dayLabel: null,
     activities: [
       {
         id: 'activity-1',
@@ -228,4 +240,10 @@ test('serializes calendar event date fields for client props', () => {
       ],
     }),
   ]);
+});
+
+test('formats only multi-day schedule labels', () => {
+  expect(formatScheduleDayLabel(1, 3)).toBe('Day 1/3');
+  expect(formatScheduleDayLabel(null, 3)).toBe('Day 1/3');
+  expect(formatScheduleDayLabel(1, 1)).toBeNull();
 });

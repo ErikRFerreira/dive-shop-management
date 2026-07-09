@@ -128,8 +128,11 @@ function scheduleCalendarQueryItem(
     date: scheduleDate,
     startTime: '08:00',
     activityType: ActivityType.FUN_DIVE,
+    dayNumber: 1,
+    totalDays: 1,
     scheduleNotes: null,
     createdAt: new Date('2026-06-25T00:00:00.000Z'),
+    bookingActivity: null,
     assignments: [],
     ...overrides,
     bookingRequest,
@@ -581,8 +584,11 @@ test('maps my assignments with the current user role from multiple assignments',
       date: scheduleDate,
       startTime: '08:00',
       activityType: ActivityType.FUN_DIVE,
+      dayNumber: 1,
+      totalDays: 1,
       scheduleNotes: 'Meet at the shop.',
       createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      bookingActivity: null,
       assignments: [
         {
           id: 'assignment-other',
@@ -676,6 +682,9 @@ test('maps my assignments with the current user role from multiple assignments',
       activityType: ActivityType.FUN_DIVE,
       activityLabel: 'Fun Dive',
       activitySummary: 'Fun Dive + Snorkeling',
+      dayNumber: 1,
+      totalDays: 1,
+      dayLabel: null,
       activities: [
         {
           id: 'activity-1',
@@ -931,8 +940,11 @@ test('maps schedule rows into schedule page items', async () => {
       date: scheduleDate,
       startTime: '08:00',
       activityType: ActivityType.FUN_DIVE,
+      dayNumber: 1,
+      totalDays: 1,
       scheduleNotes: 'Bring cash for marine park fees.',
       createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      bookingActivity: null,
       assignments: [
         {
           id: 'assignment-1',
@@ -955,6 +967,7 @@ test('maps schedule rows into schedule page items', async () => {
         source: BookingSource.WECHAT,
         referrerName: 'Lina',
         internalNotes: 'Customer prefers a morning slot.',
+        activities: [],
         customers: [
 	          {
 	            role: BookingCustomerRole.PARTICIPANT,
@@ -994,6 +1007,11 @@ test('maps schedule rows into schedule page items', async () => {
       date: scheduleDate,
       startTime: '08:00',
       activityType: ActivityType.FUN_DIVE,
+      activityLabel: 'Fun Dive',
+      activitySummary: 'Fun Dive',
+      dayNumber: 1,
+      totalDays: 1,
+      dayLabel: null,
       primaryCustomerName: 'Maria Santos',
       numberOfPeople: 2,
       hotel: 'Primary Booking Hotel',
@@ -1028,8 +1046,11 @@ test('falls back to booking internal notes and customer hotel', async () => {
       date: scheduleDate,
       startTime: null,
       activityType: ActivityType.OPEN_WATER_COURSE,
+      dayNumber: 1,
+      totalDays: 1,
       scheduleNotes: null,
       createdAt: new Date('2026-06-25T00:00:00.000Z'),
+      bookingActivity: null,
       assignments: [],
       bookingRequest: {
         id: 'booking-2',
@@ -1039,6 +1060,7 @@ test('falls back to booking internal notes and customer hotel', async () => {
         source: BookingSource.EMAIL,
         referrerName: null,
         internalNotes: 'Use the pool first.',
+        activities: [],
         customers: [
 	          {
 	            role: BookingCustomerRole.PRIMARY_CONTACT,
@@ -1079,8 +1101,11 @@ test('maps timed schedule rows into calendar events', () => {
         date: scheduleDate,
         startTime: '08:00',
         activityType: ActivityType.FUN_DIVE,
+        dayNumber: 1,
+        totalDays: 1,
         scheduleNotes: 'Bring cash for marine park fees.',
         createdAt: new Date('2026-06-25T00:00:00.000Z'),
+        bookingActivity: null,
         assignments: [
           {
             id: 'assignment-1',
@@ -1162,6 +1187,9 @@ test('maps timed schedule rows into calendar events', () => {
       activityType: ActivityType.FUN_DIVE,
       activityLabel: 'Fun Dive',
       activitySummary: 'Fun Dive',
+      dayNumber: 1,
+      totalDays: 1,
+      dayLabel: null,
       activities: [
         {
           id: 'activity-1',
@@ -1217,8 +1245,11 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
         date: scheduleDate,
         startTime: null,
         activityType: ActivityType.OPEN_WATER_COURSE,
+        dayNumber: 1,
+        totalDays: 1,
         scheduleNotes: null,
         createdAt: new Date('2026-06-25T00:00:00.000Z'),
+        bookingActivity: null,
         assignments: [],
         bookingRequest: {
           id: 'booking-2',
@@ -1259,9 +1290,56 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
       endTime: null,
       activityLabel: 'Open Water',
       activitySummary: 'Open Water',
+      dayNumber: 1,
+      totalDays: 1,
+      dayLabel: null,
       isTimeTbd: true,
     }),
   ]);
+});
+
+test('maps linked activity and course day labels into calendar titles', () => {
+  const [event] = mapScheduleItemsToCalendarEvents([
+    scheduleCalendarQueryItem({
+      activityType: ActivityType.OPEN_WATER_COURSE,
+      dayNumber: 2,
+      totalDays: 3,
+      bookingActivity: {
+        id: 'activity-2',
+        activityType: ActivityType.SPECIALTY_COURSE,
+        specialtyCourse: 'Nitrox',
+        requestedDate: new Date('2026-07-15T00:00:00.000Z'),
+        requestedTime: '08:00',
+        notes: null,
+      },
+      bookingRequest: {
+        activities: [
+          {
+            id: 'activity-1',
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            specialtyCourse: null,
+            requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+            requestedTime: '08:00',
+            notes: null,
+            sortOrder: 0,
+          },
+          {
+            id: 'activity-2',
+            activityType: ActivityType.SPECIALTY_COURSE,
+            specialtyCourse: 'Nitrox',
+            requestedDate: new Date('2026-07-15T00:00:00.000Z'),
+            requestedTime: '08:00',
+            notes: null,
+            sortOrder: 1,
+          },
+        ],
+      },
+    }),
+  ]);
+
+  expect(event?.activitySummary).toBe('Nitrox');
+  expect(event?.dayLabel).toBe('Day 2/3');
+  expect(event?.title).toBe('[Unassigned] Nitrox Day 2/3 x1 Maria Santos');
 });
 
 test('maps multiple assigned staff into a compact calendar event title prefix', () => {

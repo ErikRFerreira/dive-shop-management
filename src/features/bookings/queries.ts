@@ -79,6 +79,7 @@ const bookingRequestListArgs = {
         date: true,
         startTime: true,
         dayNumber: true,
+        totalDays: true,
         activityType: true,
         assignments: {
           select: {
@@ -113,6 +114,7 @@ const bookingRequestDetailArgs = {
         date: true,
         startTime: true,
         dayNumber: true,
+        totalDays: true,
         activityType: true,
         scheduleNotes: true,
         assignments: {

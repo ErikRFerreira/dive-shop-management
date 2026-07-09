@@ -15,6 +15,7 @@ import {
   BookingParticipantStatus,
   BookingStatus,
 } from '@/generated/prisma/enums';
+import { getDefaultActivityDurationDays } from '@/features/bookings/activity-utils';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
 import { db } from '@/lib/db';
 import { requireCurrentUser } from '@/lib/current-user';
@@ -114,6 +115,7 @@ type ApprovableBookingActivity = {
   activityType: ActivityType | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  durationDays: number;
   notes: string | null;
   sortOrder: number;
 };
@@ -125,6 +127,7 @@ type ScheduleItemCreateInput = {
   startTime: string | null;
   activityType: ActivityType;
   dayNumber: number;
+  totalDays: number;
   scheduleNotes: string | null;
 };
 
@@ -139,33 +142,12 @@ function getEditSaveValidationIntent(status: BookingStatus) {
 }
 
 /**
- * Returns the default number of schedule days for a booking activity.
- *
- * @param activityType - Activity type selected by customer service.
- * @returns The default operational duration in schedule rows.
- */
-function getDefaultScheduleDurationDays(activityType: ActivityType) {
-  switch (activityType) {
-    case ActivityType.OPEN_WATER_COURSE:
-      return 3;
-    case ActivityType.ADVANCED_OPEN_WATER_COURSE:
-      return 2;
-    case ActivityType.RESCUE_DIVER_COURSE:
-      return 3;
-    case ActivityType.EMERGENCY_FIRST_RESPONSE:
-      return 1;
-    default:
-      return 1;
-  }
-}
-
-/**
  * Expands one approved booking activity into one or more dated schedule rows.
  *
  * @param bookingId - Booking request being published to the schedule.
  * @param activity - Stored activity row with requested scheduling details.
  * @param scheduleNotes - Notes copied from admin/internal booking notes.
- * @returns Schedule row create inputs for each default course day.
+ * @returns Schedule row create inputs for each persisted activity duration day.
  */
 function buildScheduleItemsForActivity(
   bookingId: string,
@@ -178,9 +160,10 @@ function buildScheduleItemsForActivity(
 
   const activityType = activity.activityType;
   const requestedDate = activity.requestedDate;
+  const totalDays = activity.durationDays;
 
   return Array.from({
-    length: getDefaultScheduleDurationDays(activityType),
+    length: totalDays,
   }).map((_, index) => ({
     bookingRequestId: bookingId,
     bookingActivityId: activity.id,
@@ -188,6 +171,7 @@ function buildScheduleItemsForActivity(
     startTime: activity.requestedTime,
     activityType,
     dayNumber: index + 1,
+    totalDays,
     scheduleNotes,
   }));
 }
@@ -235,6 +219,7 @@ function buildScheduleItemsForApproval(
           activityType: booking.activityType,
           requestedDate: booking.requestedDate,
           requestedTime: booking.requestedTime,
+          durationDays: getDefaultActivityDurationDays(booking.activityType),
           notes: null,
           sortOrder: 0,
         },
@@ -981,12 +966,13 @@ export async function approveBooking(
 	      activities: {
 	        select: {
 	          id: true,
-	          activityType: true,
-	          requestedDate: true,
-	          requestedTime: true,
-	          notes: true,
-	          sortOrder: true,
-	        },
+          activityType: true,
+          requestedDate: true,
+          requestedTime: true,
+          durationDays: true,
+          notes: true,
+          sortOrder: true,
+        },
 	        orderBy: {
 	          sortOrder: 'asc',
 	        },

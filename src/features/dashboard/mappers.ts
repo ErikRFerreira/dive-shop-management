@@ -11,7 +11,10 @@ import {
   getPrimaryActiveBookingCustomer,
 } from '@/features/bookings/participants';
 import { getActivityShortLabel } from '@/features/bookings/activity-utils';
-import { formatScheduleActivityLabel } from '@/features/schedule/utils';
+import {
+  formatScheduleActivityLabel,
+  formatScheduleDayLabel,
+} from '@/features/schedule/utils';
 import type {
   DashboardNeedsAttentionBookingRecord,
   DashboardRecentActivityBookingRecord,
@@ -70,10 +73,7 @@ export function mapScheduleItemToNeedsAttentionItem(
     bookingId: scheduleItem.bookingRequestId,
     scheduleItemId: scheduleItem.id,
     status: scheduleItem.bookingRequest.status,
-    activitySummary: summarizeActivities(
-      scheduleItem.bookingRequest.activities,
-      scheduleItem.activityType,
-    ),
+    activitySummary: summarizeDashboardScheduleActivity(scheduleItem),
     primaryCustomerName: getPrimaryCustomerName(
       scheduleItem.bookingRequest.customers,
     ),
@@ -104,9 +104,12 @@ export function mapScheduleItemToDashboardScheduleItem(
     isTimeTbd: startTime === null,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
-    activitySummary: summarizeActivities(
-      booking.activities,
-      scheduleItem.activityType,
+    activitySummary: summarizeDashboardScheduleActivity(scheduleItem),
+    dayNumber: scheduleItem.dayNumber,
+    totalDays: scheduleItem.totalDays,
+    dayLabel: formatScheduleDayLabel(
+      scheduleItem.dayNumber,
+      scheduleItem.totalDays,
     ),
     primaryCustomerName: getPrimaryCustomerName(booking.customers),
     customers: mapDashboardScheduleCustomers(booking.customers),
@@ -214,6 +217,25 @@ function summarizeActivities(
   }
 
   return `${labels[0]} + ${labels.length - 1} more`;
+}
+
+/**
+ * Summarizes the activity attached to one dashboard schedule row.
+ *
+ * @param scheduleItem - Schedule row selected for dashboard sections.
+ * @returns A compact activity summary, preferring the linked booking activity.
+ */
+function summarizeDashboardScheduleActivity(
+  scheduleItem: DashboardScheduleAttentionRecord | DashboardTodayScheduleRecord,
+) {
+  if (scheduleItem.bookingActivity?.activityType) {
+    return getActivityShortLabel(scheduleItem.bookingActivity);
+  }
+
+  return summarizeActivities(
+    scheduleItem.bookingRequest.activities,
+    scheduleItem.activityType,
+  );
 }
 
 /**

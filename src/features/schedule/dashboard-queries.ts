@@ -24,7 +24,15 @@ const dashboardScheduleAttentionArgs = {
     date: true,
     startTime: true,
     activityType: true,
+    dayNumber: true,
+    totalDays: true,
     updatedAt: true,
+    bookingActivity: {
+      select: {
+        activityType: true,
+        specialtyCourse: true,
+      },
+    },
     bookingRequest: {
       select: {
         id: true,
@@ -69,6 +77,14 @@ const dashboardTodayScheduleArgs = {
     date: true,
     startTime: true,
     activityType: true,
+    dayNumber: true,
+    totalDays: true,
+    bookingActivity: {
+      select: {
+        activityType: true,
+        specialtyCourse: true,
+      },
+    },
     assignments: {
       select: {
         id: true,

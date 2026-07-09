@@ -94,6 +94,9 @@ export type DashboardScheduleItem = {
   activityType: ActivityType;
   activityLabel: string;
   activitySummary: string;
+  dayNumber: number | null;
+  totalDays: number;
+  dayLabel: string | null;
   primaryCustomerName: string | null;
   customers: DashboardScheduleCustomer[];
   /** Active operational participant count derived from booking/customer rows. */

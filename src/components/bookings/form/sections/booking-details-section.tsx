@@ -177,7 +177,7 @@ export function BookingDetailsSection({
                   </BookingFormField>
                   <BookingFormField
                     id={`${prefix}.durationDays`}
-                    label="Duration days"
+                    label="Course duration"
                   >
                     <Input
                       id={`${prefix}.durationDays`}
@@ -185,6 +185,7 @@ export function BookingDetailsSection({
                       min="1"
                       step="1"
                       inputMode="numeric"
+                      placeholder="Number of days"
                       {...form.register(`${prefix}.durationDays`)}
                       className={inputClassName}
                     />
@@ -218,13 +219,14 @@ export function BookingDetailsSection({
                   {isSpecialtyCourse ? (
                     <BookingFormField
                       id={`${prefix}.specialtyCourse`}
-                      label="Specialty course"
+                      label="Specialty name"
                       required
                       error={getFieldError(`${prefix}.specialtyCourse`)}
                       className="grid gap-2 md:col-span-4"
                     >
                       <Input
                         id={`${prefix}.specialtyCourse`}
+                        placeholder="Example: Nitrox, Deep, Wreck, Sidemount"
                         {...form.register(`${prefix}.specialtyCourse`)}
                         className={inputClassName}
                       />

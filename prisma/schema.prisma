@@ -232,6 +232,7 @@ model ScheduleItem {
   startTime         String?
   activityType      ActivityType
   dayNumber         Int?
+  totalDays         Int                  @default(1)
   scheduleNotes     String?              @db.Text
   assignments       ScheduleAssignment[]
   createdAt         DateTime             @default(now())

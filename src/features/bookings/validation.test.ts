@@ -359,9 +359,89 @@ test('requires a specialty course for each Specialty Course activity', () => {
     success: false,
     fieldErrors: {
       'activities.0.specialtyCourse': [
-        'Specialty course is required for this activity.',
+        'Enter a specific specialty name for this activity.',
       ],
     },
+  });
+});
+
+test.each(['specialty', 'Specialty Course', 'course'] as const)(
+  'requires a useful specialty name instead of %s',
+  (specialtyCourse) => {
+    const result = validateBookingIntake(
+      validSubmitValues({
+        activities: [
+          {
+            activityType: ActivityType.SPECIALTY_COURSE,
+            specialtyCourse,
+            durationDays: '',
+            requestedDate: '2026-07-14',
+            requestedTime: '',
+            notes: '',
+          },
+        ],
+      }),
+      'submit',
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      fieldErrors: {
+        'activities.0.specialtyCourse': [
+          'Enter a specific specialty name for this activity.',
+        ],
+      },
+    });
+  },
+);
+
+test('accepts a useful specialty name for submission', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({
+      activities: [
+        {
+          activityType: ActivityType.SPECIALTY_COURSE,
+          specialtyCourse: 'Nitrox',
+          durationDays: '',
+          requestedDate: '2026-07-14',
+          requestedTime: '',
+          notes: '',
+        },
+      ],
+    }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
+  });
+});
+
+test('allows incomplete specialty course details for draft saves with content', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer asked about a specialty course.',
+      activities: [
+        {
+          activityType: ActivityType.SPECIALTY_COURSE,
+          specialtyCourse: '',
+          durationDays: '',
+          requestedDate: '',
+          requestedTime: '',
+          notes: '',
+        },
+      ],
+    }),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
   });
 });
 

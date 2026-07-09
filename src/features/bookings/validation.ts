@@ -20,6 +20,7 @@ import {
 import { hasPersistableBookingCustomer } from './form-mappers';
 import { primaryContactMethodError } from './validation-messages';
 import type { NormalizedBookingFormValues } from './types';
+import { hasUsefulSpecialtyCourseName } from './activity-utils';
 
 export type BookingIntakeIntent = 'draft' | 'submit';
 
@@ -387,12 +388,12 @@ export const submitBookingIntakeSchema =
 
       if (
         activity.activityType === ActivityType.SPECIALTY_COURSE &&
-        activity.specialtyCourse === null
+        !hasUsefulSpecialtyCourseName(activity.specialtyCourse)
       ) {
         context.addIssue({
           code: 'custom',
           path: ['activities', index, 'specialtyCourse'],
-          message: 'Specialty course is required for this activity.',
+          message: 'Enter a specific specialty name for this activity.',
         });
       }
     });

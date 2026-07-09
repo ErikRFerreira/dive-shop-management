@@ -1,6 +1,9 @@
 import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { formatScheduleActivityLabel } from '@/features/schedule/utils';
+import {
+  formatScheduleActivityLabel,
+  formatScheduleDayLabel,
+} from '@/features/schedule/utils';
 import type { AssignableStaff } from '@/features/schedule/types';
 import {
   formatBookingDate,
@@ -66,7 +69,11 @@ export function ScheduleSection({
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <BookingInfoField
-                label={getScheduleItemLabel(scheduleItem.dayNumber, index)}
+                label={getScheduleItemDateLabel(
+                  scheduleItem.dayNumber,
+                  scheduleItem.totalDays,
+                  index,
+                )}
                 value={formatBookingDate(scheduleItem.date)}
               />
               <BookingInfoField
@@ -98,12 +105,19 @@ export function ScheduleSection({
 }
 
 /**
- * Builds the display label for one scheduled course day or activity slot.
+ * Builds the date field label for one scheduled course day or activity slot.
  *
  * @param dayNumber - Persisted one-based course day number, when available.
+ * @param totalDays - Persisted total days for the scheduled activity.
  * @param index - Zero-based display position used as a fallback.
  * @returns A concise field label for the schedule timeline.
  */
-function getScheduleItemLabel(dayNumber: number | null, index: number) {
-  return `Day ${dayNumber ?? index + 1} date`;
+function getScheduleItemDateLabel(
+  dayNumber: number | null,
+  totalDays: number,
+  index: number,
+) {
+  const dayLabel = formatScheduleDayLabel(dayNumber, totalDays);
+
+  return dayLabel ? `${dayLabel} date` : `Schedule ${index + 1} date`;
 }

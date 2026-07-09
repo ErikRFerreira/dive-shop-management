@@ -50,7 +50,7 @@ export function TodaysScheduleItem({
       <div className="space-y-2">
         <div className="space-y-1">
           <h3 className="text-base font-semibold text-foreground">
-            {item.activitySummary}
+            {[item.activitySummary, item.dayLabel].filter(Boolean).join(' / ')}
           </h3>
           <p className="text-sm text-muted-foreground/90">
             {participantSummary}

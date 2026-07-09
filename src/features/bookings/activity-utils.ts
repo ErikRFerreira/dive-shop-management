@@ -11,6 +11,12 @@ const DEFAULT_ACTIVITY_DURATION_DAYS: Partial<Record<ActivityType, number>> = {
   [ActivityType.SPECIALTY_COURSE]: 1,
 };
 
+const GENERIC_SPECIALTY_NAMES = new Set([
+  'course',
+  'specialty',
+  'specialty course',
+]);
+
 export type ActivityLabelInput = {
   activityType: ActivityType | string | null | undefined;
   specialtyCourse?: string | null;
@@ -28,6 +34,27 @@ export function getDefaultActivityDurationDays(
   return activityType && activityType in DEFAULT_ACTIVITY_DURATION_DAYS
     ? DEFAULT_ACTIVITY_DURATION_DAYS[activityType as ActivityType]!
     : 1;
+}
+
+/**
+ * Checks whether a Specialty Course name is specific enough for approval.
+ *
+ * Submit validation should reject blank or generic labels so staff capture the
+ * actual specialty, such as Nitrox, Deep, Wreck, or Sidemount.
+ *
+ * @param specialtyCourse - Browser or normalized specialty name value.
+ * @returns True when the trimmed value is a useful specialty name.
+ */
+export function hasUsefulSpecialtyCourseName(
+  specialtyCourse: string | null | undefined,
+) {
+  const normalized = specialtyCourse?.trim().toLowerCase();
+
+  return Boolean(
+    normalized &&
+      normalized.length >= 2 &&
+      !GENERIC_SPECIALTY_NAMES.has(normalized),
+  );
 }
 
 /**
