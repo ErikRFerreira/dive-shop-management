@@ -384,9 +384,9 @@ export function ScheduleAssignmentForm({
   const pendingActionRef = useRef(false);
   const [isActionInFlight, setIsActionInFlight] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<ScheduleAssignmentRoleValue>(
-    ScheduleAssignmentRole.STAFF,
-  );
+  const [selectedRole, setSelectedRole] = useState<
+    ScheduleAssignmentRoleValue | ''
+  >('');
   const [error, setError] = useState<string>();
   const staffSelectId = useId();
   const roleSelectId = useId();
@@ -415,6 +415,11 @@ export function ScheduleAssignmentForm({
       return;
     }
 
+    if (!selectedRole) {
+      setError('Select a role before adding an assignment.');
+      return;
+    }
+
     pendingActionRef.current = true;
     setIsActionInFlight(true);
     startTransition(async () => {
@@ -427,6 +432,7 @@ export function ScheduleAssignmentForm({
 
         if (result.success) {
           setSelectedUserId('');
+          setSelectedRole('');
         }
 
         handleAssignmentActionResult(result, router.refresh, setError);
@@ -493,12 +499,12 @@ export function ScheduleAssignmentForm({
           <Select
             disabled={isActionPending}
             onValueChange={(role) =>
-              setSelectedRole(role as ScheduleAssignmentRoleValue)
+              setSelectedRole(role as ScheduleAssignmentRoleValue | '')
             }
             value={selectedRole}
           >
             <SelectTrigger id={roleSelectId} className={selectClass}>
-              <SelectValue />
+              <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
               {assignmentRoles.map((role) => (
