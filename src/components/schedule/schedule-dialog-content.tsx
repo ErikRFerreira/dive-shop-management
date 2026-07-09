@@ -28,6 +28,7 @@ import type {
   AssignableStaff,
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
+import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -83,7 +84,7 @@ export function ScheduleEventDialogContent({
           <div className="grid gap-5 sm:grid-cols-2">
             <SummaryField
               icon={CalendarClock}
-              label="Date / time"
+              label="Date / slot"
               value={formatDateTimeSummary(event)}
             />
             <SummaryField
@@ -325,19 +326,15 @@ function getActivityCategoryLabel(activityType: ActivityType) {
 }
 
 /**
- * Formats the scheduled date and time for the dialog summary.
+ * Formats the scheduled date and operational slot for the dialog summary.
  *
  * @param event - Selected schedule event with date and time data.
- * @returns Staff-facing date with time range, start time, or TBD label.
+ * @returns Staff-facing date with operational slot.
  */
 function formatDateTimeSummary(event: SerializedScheduleCalendarEvent) {
   const date = formatDisplayDate(new Date(event.date));
 
-  if (event.isTimeTbd) {
-    return `${date} / time TBD`;
-  }
-
-  return `${date} / ${formatEventTimeLabel(event)}`;
+  return `${date} / ${getScheduleTimeSlotLabel(event.timeSlot)}`;
 }
 
 /**
@@ -356,20 +353,3 @@ function formatSourceSummary(event: SerializedScheduleCalendarEvent) {
   return event.referrerName ? `${source} / ${event.referrerName}` : source;
 }
 
-/**
- * Formats the scheduled time without repeating the full date.
- *
- * @param event - Selected schedule event with time fields.
- * @returns Time range, single start time, or a TBD label.
- */
-function formatEventTimeLabel(event: SerializedScheduleCalendarEvent) {
-  if (event.isTimeTbd) {
-    return 'TBD';
-  }
-
-  if (event.startTime && event.endTime) {
-    return `${event.startTime}-${event.endTime}`;
-  }
-
-  return event.startTime ?? 'TBD';
-}

@@ -17,6 +17,7 @@ const dashboardNeedsAttentionBookingArgs = {
     activityType: true,
     requestedDate: true,
     requestedTime: true,
+    requestedTimeSlot: true,
     needsMoreInfoReason: true,
     updatedAt: true,
     activities: {

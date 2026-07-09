@@ -4,11 +4,11 @@ import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import {
   formatScheduleActivityLabel,
   formatScheduleDayLabel,
+  getScheduleTimeSlotLabel,
 } from '@/features/schedule/utils';
 import type { AssignableStaff } from '@/features/schedule/types';
 import {
   formatBookingDate,
-  formatBookingTimeOrTbd,
 } from '../../booking-display-utils';
 import {
   BookingInfoField,
@@ -97,8 +97,8 @@ export function ScheduleSection({
                 value={formatBookingDate(scheduleItem.date)}
               />
               <BookingInfoField
-                label="Scheduled time"
-                value={formatBookingTimeOrTbd(scheduleItem.startTime)}
+                label="Scheduled slot"
+                value={getScheduleTimeSlotLabel(scheduleItem.timeSlot)}
               />
               <BookingInfoField
                 label="Course day"

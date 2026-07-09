@@ -14,6 +14,7 @@ import {
   BookingCustomerRole,
   BookingParticipantStatus,
   BookingStatus,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 import { getDefaultActivityDurationDays } from '@/features/bookings/activity-utils';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
@@ -115,6 +116,7 @@ type ApprovableBookingActivity = {
   activityType: ActivityType | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot?: ScheduleTimeSlot | null;
   durationDays: number;
   notes: string | null;
   sortOrder: number;
@@ -125,6 +127,7 @@ type ScheduleItemCreateInput = {
   bookingActivityId: string | null;
   date: Date;
   startTime: string | null;
+  timeSlot: ScheduleTimeSlot;
   activityType: ActivityType;
   dayNumber: number;
   totalDays: number;
@@ -168,7 +171,8 @@ function buildScheduleItemsForActivity(
     bookingRequestId: bookingId,
     bookingActivityId: activity.id,
     date: addUtcDateOnlyDays(requestedDate, index),
-    startTime: activity.requestedTime,
+    startTime: null,
+    timeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
     activityType,
     dayNumber: index + 1,
     totalDays,
@@ -188,6 +192,7 @@ function buildScheduleItemsForApproval(
     id: string;
     requestedDate: Date | null;
     requestedTime: string | null;
+    requestedTimeSlot?: ScheduleTimeSlot | null;
     activityType: ActivityType | null;
     activities: ApprovableBookingActivity[];
   },
@@ -219,6 +224,7 @@ function buildScheduleItemsForApproval(
           activityType: booking.activityType,
           requestedDate: booking.requestedDate,
           requestedTime: booking.requestedTime,
+          requestedTimeSlot: booking.requestedTimeSlot,
           durationDays: getDefaultActivityDurationDays(booking.activityType),
           notes: null,
           sortOrder: 0,
@@ -954,6 +960,7 @@ export async function approveBooking(
       status: true,
       requestedDate: true,
       requestedTime: true,
+      requestedTimeSlot: true,
       activityType: true,
 	      internalNotes: true,
 	      adminNotes: true,
@@ -969,6 +976,7 @@ export async function approveBooking(
           activityType: true,
           requestedDate: true,
           requestedTime: true,
+          requestedTimeSlot: true,
           durationDays: true,
           notes: true,
           sortOrder: true,

@@ -54,6 +54,43 @@ export function getShopDateOnlyRange(
 }
 
 /**
+ * Returns today's shop-local date in the app's UTC-midnight date-only format.
+ *
+ * @param date - Instant used to determine the current shop-local calendar day.
+ * @returns UTC-midnight date-only value for today's shop calendar date.
+ */
+export function getShopTodayDate(date = new Date()) {
+  return parseDateOnlyKey(getShopDateOnlyKey(date));
+}
+
+/**
+ * Checks whether a date-only value is before today's shop-local date.
+ *
+ * @param date - Requested date-only value to evaluate.
+ * @param todayInstant - Instant used to determine today's shop-local date.
+ * @returns True when the requested date is before the shop's current date.
+ */
+export function isPastShopDate(date: Date, todayInstant = new Date()) {
+  return startOfUtcDateOnly(date) < getShopTodayDate(todayInstant);
+}
+
+/**
+ * Validates that a requested date is not in the past for the shop calendar.
+ *
+ * @param date - Requested date-only value to validate.
+ * @param todayInstant - Instant used to determine today's shop-local date.
+ * @returns A validation message for past dates, otherwise null.
+ */
+export function validateNotPastShopDate(
+  date: Date,
+  todayInstant = new Date(),
+) {
+  return isPastShopDate(date, todayInstant)
+    ? 'Requested date cannot be in the past.'
+    : null;
+}
+
+/**
  * Adds whole UTC date-only days without depending on the runtime timezone.
  *
  * @param date - Date-only value to offset.

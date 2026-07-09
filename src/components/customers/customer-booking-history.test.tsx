@@ -6,6 +6,7 @@ import {
   BookingCustomerRole,
   BookingSource,
   BookingStatus,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 import { CustomerBookingHistory } from './customer-booking-history';
 
@@ -23,14 +24,17 @@ test('renders operational booking history details with booking-specific values',
           date: new Date('2026-07-03T00:00:00.000Z'),
           requestedDate: new Date('2026-07-02T00:00:00.000Z'),
           requestedTime: '09:00',
+          requestedTimeSlot: ScheduleTimeSlot.AM,
           scheduledDate: new Date('2026-07-03T00:00:00.000Z'),
           scheduledTime: null,
+          scheduledTimeSlot: ScheduleTimeSlot.PM,
           activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
           activities: [
             {
               activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
               requestedDate: new Date('2026-07-02T00:00:00.000Z'),
               requestedTime: '09:00',
+              requestedTimeSlot: ScheduleTimeSlot.AM,
             },
           ],
           role: BookingCustomerRole.PRIMARY_CONTACT,

@@ -4,6 +4,7 @@ import {
   BookingSource,
   BookingStatus,
   PreferredLanguage,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 
 export type CustomerSearchResult = {
@@ -78,13 +79,16 @@ export type CustomerBookingHistoryItem = {
   date: Date | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot: ScheduleTimeSlot;
   scheduledDate: Date | null;
   scheduledTime: string | null;
+  scheduledTimeSlot: ScheduleTimeSlot | null;
   activityType: ActivityType | null;
   activities: Array<{
     activityType: ActivityType | null;
     requestedDate: Date | null;
     requestedTime: string | null;
+    requestedTimeSlot: ScheduleTimeSlot;
   }>;
   role: BookingCustomerRole;
   isPrimaryContact: boolean;

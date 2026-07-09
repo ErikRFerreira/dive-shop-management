@@ -13,6 +13,7 @@ import {
   Currency,
   DepositStatus,
   PreferredLanguage,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 import { formatDateInputValue } from '@/lib/format';
 import { getDefaultActivityDurationDays } from './activity-utils';
@@ -267,6 +268,9 @@ export function normalizeBookingFormValues(
         ),
         requestedDate: nullableDate(activity.requestedDate),
         requestedTime: nullableText(activity.requestedTime),
+        requestedTimeSlot:
+          enumValue(ScheduleTimeSlot, activity.requestedTimeSlot ?? '') ??
+          ScheduleTimeSlot.TBD,
         notes: nullableText(activity.notes),
       };
     }),
@@ -396,6 +400,7 @@ export function mapBookingToFormValues(
             durationDays: null,
             requestedDate: booking.requestedDate,
             requestedTime: booking.requestedTime,
+            requestedTimeSlot: booking.requestedTimeSlot,
             notes: null,
           },
         ];
@@ -415,6 +420,7 @@ export function mapBookingToFormValues(
       ),
       requestedDate: formDate(activity.requestedDate),
       requestedTime: activity.requestedTime ?? '',
+      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
       notes: activity.notes ?? '',
     })),
     source: booking.source ?? '',

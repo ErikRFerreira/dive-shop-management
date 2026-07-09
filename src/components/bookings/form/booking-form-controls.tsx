@@ -29,6 +29,7 @@ type EnumSelectProps<T extends string> = {
   values: T[];
   placeholder: string;
   className?: string;
+  getOptionLabel?: (value: T) => string;
 };
 
 type BookingFormFieldErrorProps = {
@@ -89,7 +90,7 @@ export function BookingFormFieldError({
 /**
  * Renders a booking enum select using the app's enum label formatter.
  *
- * @param props - Select identity, current value, change handler, options, and placeholder.
+ * @param props - Select identity, current value, change handler, options, placeholder, and optional label formatter.
  * @returns A shadcn select configured for enum-backed booking form fields.
  */
 export function EnumSelect<T extends string>({
@@ -98,18 +99,19 @@ export function EnumSelect<T extends string>({
   onValueChange,
   values,
   placeholder,
+  getOptionLabel = formatEnumLabel,
 }: EnumSelectProps<T>) {
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger id={id} className={inputClassName}>
         <SelectValue placeholder={placeholder}>
-          {value ? formatEnumLabel(value) : undefined}
+          {value ? getOptionLabel(value) : undefined}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {values.map((option) => (
           <SelectItem key={option} value={option}>
-            {formatEnumLabel(option)}
+            {getOptionLabel(option)}
           </SelectItem>
         ))}
       </SelectContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 
 import { PendingButton } from '@/components/common/pending-button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +17,7 @@ type ApproveBookingFormProps = {
   defaultAdminNotes?: string | null;
   noteDescription?: string;
   noteLabel?: string;
+  onPendingChange?: (pending: boolean) => void;
 };
 
 /**
@@ -30,11 +31,16 @@ export function ApproveBookingForm({
   defaultAdminNotes,
   noteLabel = 'Admin/schedule notes',
   noteDescription,
+  onPendingChange,
 }: ApproveBookingFormProps) {
   const [state, formAction, pending] = useActionState(
     approveBooking,
     getInitialBookingWorkflowActionState(),
   );
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   return (
     <form action={formAction} className="grid gap-3">

@@ -4,7 +4,11 @@
  * @module features/bookings/form-values
  */
 
-import { BookingCustomerRole, DepositStatus } from '@/generated/prisma/enums';
+import {
+  BookingCustomerRole,
+  DepositStatus,
+  ScheduleTimeSlot,
+} from '@/generated/prisma/enums';
 import type {
   BookingActivityFormValues,
   BookingCustomerFormValues,
@@ -17,6 +21,7 @@ export const bookingActivityDefaultValues: BookingActivityFormValues = {
   durationDays: '',
   requestedDate: '',
   requestedTime: '',
+  requestedTimeSlot: ScheduleTimeSlot.TBD,
   notes: '',
 };
 

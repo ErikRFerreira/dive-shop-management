@@ -5,6 +5,8 @@
  * @module features/bookings/persistence-mappers
  */
 
+import { ScheduleTimeSlot } from '@/generated/prisma/enums';
+
 import type { NormalizedBookingFormValues } from './types';
 
 /**
@@ -24,6 +26,7 @@ export function mapBookingRequestIntakeData(
     source: bookingValues.source,
     requestedDate: firstActivity?.requestedDate ?? null,
     requestedTime: firstActivity?.requestedTime ?? null,
+    requestedTimeSlot: firstActivity?.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
     numberOfPeople: bookingValues.numberOfPeople,
     referrerName: bookingValues.referrerName,
     notes: bookingValues.rawBookingText,
@@ -48,6 +51,7 @@ export function mapBookingActivityCreateData(
     durationDays: activity.durationDays,
     requestedDate: activity.requestedDate,
     requestedTime: activity.requestedTime,
+    requestedTimeSlot: activity.requestedTimeSlot,
     notes: activity.notes,
     sortOrder,
   };

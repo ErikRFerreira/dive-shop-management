@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { ActivityType } from '@/generated/prisma/enums';
+import { ActivityType, ScheduleTimeSlot } from '@/generated/prisma/enums';
 import {
   getReviewActivities,
   getReviewOverviewRequestedDateTime,
@@ -21,6 +21,7 @@ function booking(overrides: Partial<BookingDetailsItem>): BookingDetailsItem {
     specialtyCourse: null,
     requestedDate: null,
     requestedTime: null,
+    requestedTimeSlot: ScheduleTimeSlot.TBD,
     ...overrides,
   } as BookingDetailsItem;
 }
@@ -35,6 +36,7 @@ test('uses legacy activity fields when a reviewed booking has no activity rows',
         specialtyCourse: 'Nitrox',
         requestedDate,
         requestedTime: '08:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
       }),
     ),
   ).toEqual([
@@ -45,6 +47,7 @@ test('uses legacy activity fields when a reviewed booking has no activity rows',
       durationDays: null,
       requestedDate,
       requestedTime: '08:00',
+      requestedTimeSlot: ScheduleTimeSlot.AM,
       notes: null,
     },
   ]);
@@ -60,6 +63,7 @@ test('detects fun dives from normalized review activities', () => {
         durationDays: 3,
         requestedDate: null,
         requestedTime: null,
+        requestedTimeSlot: ScheduleTimeSlot.TBD,
         notes: null,
       },
       {
@@ -69,6 +73,7 @@ test('detects fun dives from normalized review activities', () => {
         durationDays: 1,
         requestedDate: null,
         requestedTime: null,
+        requestedTimeSlot: ScheduleTimeSlot.TBD,
         notes: null,
       },
     ]),
@@ -96,6 +101,7 @@ test('uses the first dated activity for the review overview requested date and t
       booking({
         requestedDate: new Date('2026-07-10T00:00:00.000Z'),
         requestedTime: '07:00',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
       }),
       [
         {
@@ -105,6 +111,7 @@ test('uses the first dated activity for the review overview requested date and t
           durationDays: 3,
           requestedDate: null,
           requestedTime: null,
+          requestedTimeSlot: ScheduleTimeSlot.TBD,
           notes: null,
         },
         {
@@ -114,12 +121,13 @@ test('uses the first dated activity for the review overview requested date and t
           durationDays: 1,
           requestedDate: firstDate,
           requestedTime: '10:30',
+          requestedTimeSlot: ScheduleTimeSlot.PM,
           notes: null,
         },
       ],
     ),
   ).toEqual({
     requestedDate: firstDate,
-    requestedTime: '10:30',
+    requestedTimeSlot: ScheduleTimeSlot.PM,
   });
 });

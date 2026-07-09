@@ -8,7 +8,7 @@
 import 'server-only';
 
 import { Prisma } from '@/generated/prisma/client';
-import { BookingCustomerRole } from '@/generated/prisma/enums';
+import { BookingCustomerRole, ScheduleTimeSlot } from '@/generated/prisma/enums';
 import { db } from '@/lib/db';
 import type {
   CustomerBookingHistoryItem,
@@ -111,6 +111,7 @@ const customerDetailArgs = {
             activityType: true,
             requestedDate: true,
             requestedTime: true,
+            requestedTimeSlot: true,
             startAt: true,
             numberOfPeople: true,
             source: true,
@@ -121,6 +122,7 @@ const customerDetailArgs = {
               select: {
                 date: true,
                 startTime: true,
+                timeSlot: true,
               },
               orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
             },
@@ -132,6 +134,7 @@ const customerDetailArgs = {
                 activityType: true,
                 requestedDate: true,
                 requestedTime: true,
+                requestedTimeSlot: true,
               },
             },
           },
@@ -353,7 +356,11 @@ export function getCustomerBookingHistory(
       const booking = bookingCustomer.bookingRequest;
       const legacyScheduleItem = (
         booking as {
-          scheduleItem?: { date: Date | null; startTime: string | null } | null;
+          scheduleItem?: {
+            date: Date | null;
+            startTime: string | null;
+            timeSlot: ScheduleTimeSlot;
+          } | null;
         }
       ).scheduleItem;
 
@@ -363,11 +370,16 @@ export function getCustomerBookingHistory(
         date: getBookingHistoryDate(booking),
         requestedDate: booking.requestedDate,
         requestedTime: booking.requestedTime,
+        requestedTimeSlot: booking.requestedTimeSlot,
         scheduledDate:
           booking.scheduleItems?.[0]?.date ?? legacyScheduleItem?.date ?? null,
         scheduledTime:
           booking.scheduleItems?.[0]?.startTime ??
           legacyScheduleItem?.startTime ??
+          null,
+        scheduledTimeSlot:
+          booking.scheduleItems?.[0]?.timeSlot ??
+          legacyScheduleItem?.timeSlot ??
           null,
         activityType: booking.activityType,
         activities: booking.activities,

@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import {
   bookingCustomerDefaultValues,
@@ -20,6 +20,15 @@ import {
   validateBookingIntake,
 } from './validation';
 import { primaryContactMethodError } from './validation-messages';
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-09T04:00:00.000Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function validSubmitValues(overrides: Partial<BookingFormValues> = {}) {
   return normalizeBookingFormValues({
@@ -182,6 +191,95 @@ test('requires an activity and its requested date for submission', () => {
     fieldErrors: {
       activities: ['Add at least one activity before submitting for approval.'],
     },
+  });
+});
+
+test('rejects past requested dates for submission', () => {
+  const result = validateBookingIntake(
+    validSubmitValues({
+      activities: [
+        {
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: '',
+          durationDays: '',
+          requestedDate: '2026-07-08',
+          requestedTime: '',
+          notes: '',
+        },
+      ],
+    }),
+    'submit',
+  );
+
+  expect(result).toMatchObject({
+    success: false,
+    fieldErrors: {
+      'activities.0.requestedDate': ['Requested date cannot be in the past.'],
+    },
+  });
+});
+
+test('accepts today and future requested dates for submission', () => {
+  expect(
+    validateBookingIntake(
+      validSubmitValues({
+        activities: [
+          {
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            specialtyCourse: '',
+            durationDays: '',
+            requestedDate: '2026-07-09',
+            requestedTime: '',
+            notes: '',
+          },
+        ],
+      }),
+      'submit',
+    ),
+  ).toMatchObject({ success: true });
+
+  expect(
+    validateBookingIntake(
+      validSubmitValues({
+        activities: [
+          {
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            specialtyCourse: '',
+            durationDays: '',
+            requestedDate: '2026-07-10',
+            requestedTime: '',
+            notes: '',
+          },
+        ],
+      }),
+      'submit',
+    ),
+  ).toMatchObject({ success: true });
+});
+
+test('allows past requested dates for draft saves with content', () => {
+  const result = validateBookingIntake(
+    normalizeBookingFormValues({
+      ...bookingFormDefaultValues,
+      rawBookingText: 'Customer asked about an old booking date.',
+      activities: [
+        {
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: '',
+          durationDays: '',
+          requestedDate: '2026-07-08',
+          requestedTime: '',
+          notes: '',
+        },
+      ],
+    }),
+    'draft',
+  );
+
+  expect(result).toMatchObject({
+    success: true,
+    fieldErrors: {},
+    formErrors: [],
   });
 });
 

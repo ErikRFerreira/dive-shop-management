@@ -10,6 +10,7 @@ import {
   Currency,
   DepositStatus,
   PreferredLanguage,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 
 export const bookingStatusFilters = [
@@ -37,6 +38,7 @@ export type BookingActivityFormValues = {
   durationDays: string;
   requestedDate: string;
   requestedTime: string;
+  requestedTimeSlot?: ScheduleTimeSlot | '';
   notes: string;
 };
 
@@ -86,6 +88,7 @@ export type NormalizedBookingActivityFormValues = {
   durationDays: number;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot: ScheduleTimeSlot;
   notes: string | null;
 };
 

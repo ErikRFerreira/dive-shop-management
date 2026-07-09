@@ -8,8 +8,8 @@ import type {
   SerializedScheduleCalendarEvent,
 } from '@/features/schedule/types';
 import { getActivityShortLabel } from '@/features/bookings/activity-utils';
-import { ActivityType } from '@/generated/prisma/enums';
-import { formatDateInputValue } from '@/lib/format';
+import { ActivityType, ScheduleTimeSlot } from '@/generated/prisma/enums';
+import { formatDateInputValue, formatDisplayDate } from '@/lib/format';
 import { getShopDateOnlyRange } from '@/lib/operational-date';
 
 export type ScheduleEventTitleInput = {
@@ -92,6 +92,55 @@ export function groupMyScheduleAssignmentsByDay(
  */
 export function getScheduleDateKey(date: Date) {
   return formatDateInputValue(date) ?? '';
+}
+
+/**
+ * Formats an operational schedule slot for staff-facing displays.
+ *
+ * @param slot - Persisted broad schedule slot.
+ * @returns The compact label staff use across booking and schedule views.
+ */
+export function getScheduleTimeSlotLabel(slot: ScheduleTimeSlot) {
+  switch (slot) {
+    case ScheduleTimeSlot.AM:
+      return 'AM';
+    case ScheduleTimeSlot.PM:
+      return 'PM';
+    case ScheduleTimeSlot.NIGHT:
+      return 'Night';
+    case ScheduleTimeSlot.TBD:
+      return 'TBD';
+  }
+}
+
+/**
+ * Returns the operational sort rank for schedule slots.
+ *
+ * @param slot - Persisted broad schedule slot.
+ * @returns Numeric rank for AM, PM, Night, then TBD ordering.
+ */
+export function getScheduleTimeSlotSortValue(slot: ScheduleTimeSlot) {
+  switch (slot) {
+    case ScheduleTimeSlot.AM:
+      return 1;
+    case ScheduleTimeSlot.PM:
+      return 2;
+    case ScheduleTimeSlot.NIGHT:
+      return 3;
+    case ScheduleTimeSlot.TBD:
+      return 4;
+  }
+}
+
+/**
+ * Formats a date-only schedule value together with its operational slot.
+ *
+ * @param date - Schedule or requested date.
+ * @param slot - Persisted broad schedule slot.
+ * @returns Staff-facing date and slot label.
+ */
+export function formatScheduleDateSlot(date: Date | null, slot: ScheduleTimeSlot) {
+  return `${formatDisplayDate(date, { emptyValue: 'TBD' })} / ${getScheduleTimeSlotLabel(slot)}`;
 }
 
 /**

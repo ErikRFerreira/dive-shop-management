@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import { MessageCircleQuestion } from 'lucide-react';
 
@@ -15,6 +15,7 @@ import {
 
 type MarkNeedsMoreInfoFormProps = {
   bookingId: string;
+  onPendingChange?: (pending: boolean) => void;
 };
 
 /**
@@ -25,6 +26,7 @@ type MarkNeedsMoreInfoFormProps = {
  */
 export function MarkNeedsMoreInfoForm({
   bookingId,
+  onPendingChange,
 }: MarkNeedsMoreInfoFormProps) {
   const [state, formAction, pending] = useActionState(
     markBookingNeedsMoreInfo,
@@ -34,6 +36,10 @@ export function MarkNeedsMoreInfoForm({
   const [clientReasonError, setClientReasonError] = useState<string>();
   const reasonError =
     clientReasonError ?? state.fieldErrors?.needsMoreInfoReason?.[0];
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   /**
    * Blocks empty reason submissions before calling the server action.

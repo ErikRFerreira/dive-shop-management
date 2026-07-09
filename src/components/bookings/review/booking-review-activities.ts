@@ -1,5 +1,5 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { ActivityType } from '@/generated/prisma/enums';
+import { ActivityType, ScheduleTimeSlot } from '@/generated/prisma/enums';
 
 export type ReviewActivity = Omit<
   Pick<
@@ -10,6 +10,7 @@ export type ReviewActivity = Omit<
     | 'durationDays'
     | 'requestedDate'
     | 'requestedTime'
+    | 'requestedTimeSlot'
     | 'notes'
   >,
   'durationDays'
@@ -34,6 +35,7 @@ export function getReviewActivities(booking: BookingDetailsItem): ReviewActivity
           durationDays: null,
           requestedDate: booking.requestedDate,
           requestedTime: booking.requestedTime,
+          requestedTimeSlot: booking.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
           notes: null,
         },
       ];
@@ -52,11 +54,11 @@ export function reviewActivitiesIncludeFunDive(activities: ReviewActivity[]) {
 }
 
 /**
- * Resolves the requested date/time shown in the review overview.
+ * Resolves the requested date and slot shown in the review overview.
  *
  * @param booking - Booking detail payload with legacy requested fields.
  * @param activities - Normalized review activity rows.
- * @returns Requested date and time, preferring the first activity with a requested date.
+ * @returns Requested date and slot, preferring the first activity with a requested date.
  */
 export function getReviewOverviewRequestedDateTime(
   booking: BookingDetailsItem,
@@ -68,7 +70,9 @@ export function getReviewOverviewRequestedDateTime(
   return {
     requestedDate:
       firstActivityWithDate?.requestedDate ?? booking.requestedDate,
-    requestedTime:
-      firstActivityWithDate?.requestedTime ?? booking.requestedTime ?? null,
+    requestedTimeSlot:
+      firstActivityWithDate?.requestedTimeSlot ??
+      booking.requestedTimeSlot ??
+      ScheduleTimeSlot.TBD,
   };
 }

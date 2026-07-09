@@ -6,7 +6,11 @@
  * @module features/bookings/submission-validation
  */
 
-import { Currency, DepositStatus } from '@/generated/prisma/enums';
+import {
+  Currency,
+  DepositStatus,
+  ScheduleTimeSlot,
+} from '@/generated/prisma/enums';
 
 import { getDefaultActivityDurationDays } from './activity-utils';
 import { getActiveParticipantCount } from './participants';
@@ -18,6 +22,7 @@ type StoredBookingForSubmission = {
   specialtyCourse: string | null;
   requestedDate: Date | null;
   requestedTime: string | null;
+  requestedTimeSlot?: ScheduleTimeSlot | null;
   numberOfPeople: number | null;
   source: NormalizedBookingFormValues['source'];
   referrerName: string | null;
@@ -29,6 +34,7 @@ type StoredBookingForSubmission = {
     durationDays?: number | null;
     requestedDate: Date | null;
     requestedTime: string | null;
+    requestedTimeSlot?: ScheduleTimeSlot | null;
     notes: string | null;
   }>;
   customers: Array<{
@@ -109,6 +115,7 @@ function mapStoredBookingToNormalizedValues(
             durationDays: null,
             requestedDate: booking.requestedDate,
             requestedTime: booking.requestedTime,
+            requestedTimeSlot: booking.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
             notes: null,
           },
         ];
@@ -124,6 +131,7 @@ function mapStoredBookingToNormalizedValues(
         getDefaultActivityDurationDays(activity.activityType),
       requestedDate: activity.requestedDate,
       requestedTime: activity.requestedTime,
+      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
       notes: activity.notes,
     })),
     numberOfPeople: getActiveParticipantCount(booking.customers),
