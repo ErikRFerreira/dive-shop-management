@@ -108,12 +108,8 @@ export function BookingDetailsSection({
         <div className="space-y-4 md:col-span-2">
           {fields.map((activity: { id: string }, index: number) => {
             const prefix = `activities.${index}` as const;
-            const activityTypeError = getFieldError(
-              `${prefix}.activityType`,
-            );
-            const requestedDateError = getFieldError(
-              `${prefix}.requestedDate`,
-            );
+            const activityTypeError = getFieldError(`${prefix}.activityType`);
+            const requestedDateError = getFieldError(`${prefix}.requestedDate`);
             const isSpecialtyCourse =
               activities[index]?.activityType === ActivityType.SPECIALTY_COURSE;
 
@@ -204,7 +200,7 @@ export function BookingDetailsSection({
                       type="date"
                       min={minRequestedDate}
                       {...form.register(`${prefix}.requestedDate`)}
-                      className={inputClassName}
+                      className={`${inputClassName} inline-block`}
                     />
                   </BookingFormField>
                   <BookingFormField
