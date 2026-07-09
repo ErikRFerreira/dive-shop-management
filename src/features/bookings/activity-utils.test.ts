@@ -21,6 +21,20 @@ test.each([
   expect(getDefaultActivityDurationDays(activityType)).toBe(durationDays);
 });
 
+test('keeps course default durations aligned with schedule generation rules', () => {
+  expect(getDefaultActivityDurationDays(ActivityType.OPEN_WATER_COURSE)).toBe(3);
+  expect(
+    getDefaultActivityDurationDays(ActivityType.ADVANCED_OPEN_WATER_COURSE),
+  ).toBe(2);
+  expect(getDefaultActivityDurationDays(ActivityType.RESCUE_DIVER_COURSE)).toBe(
+    3,
+  );
+  expect(
+    getDefaultActivityDurationDays(ActivityType.EMERGENCY_FIRST_RESPONSE),
+  ).toBe(1);
+  expect(getDefaultActivityDurationDays(ActivityType.SPECIALTY_COURSE)).toBe(1);
+});
+
 test('formats specialty course labels with the specialty name', () => {
   expect(
     getActivityDisplayLabel({

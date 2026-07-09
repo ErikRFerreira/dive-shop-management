@@ -245,6 +245,8 @@ test('serializes calendar event date fields for client props', () => {
 
 test('formats only multi-day schedule labels', () => {
   expect(formatScheduleDayLabel(1, 3)).toBe('Day 1/3');
+  expect(formatScheduleDayLabel(2, 3)).toBe('Day 2/3');
+  expect(formatScheduleDayLabel(3, 3)).toBe('Day 3/3');
   expect(formatScheduleDayLabel(null, 3)).toBe('Day 1/3');
   expect(formatScheduleDayLabel(1, 1)).toBeNull();
 });
@@ -268,4 +270,12 @@ test('builds compact schedule event titles with active participants and course d
       staffPrefix: '[Unassigned]',
     }),
   ).toBe('[Unassigned] Rescue x2 Chen Family (Day 2/3)');
+
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Nitrox',
+      customerName: 'Maria Santos',
+      numberOfPeople: 3,
+    }),
+  ).toBe('Nitrox x3 Maria Santos');
 });

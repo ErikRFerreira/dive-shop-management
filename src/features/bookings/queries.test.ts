@@ -78,6 +78,8 @@ test('queries scheduled bookings with schedule items that have no assignments', 
             date: true,
             startTime: true,
             dayNumber: true,
+            totalDays: true,
+            bookingActivityId: true,
             activityType: true,
             assignments: {
               select: {

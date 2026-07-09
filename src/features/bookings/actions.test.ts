@@ -883,6 +883,52 @@ test('approves a persisted one-day activity into one schedule item', async () =>
   });
 });
 
+test('approves a legacy course booking using the default activity duration', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+      requestedTime: '08:30',
+      activities: [],
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({ bookingId: 'booking-1' }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledTimes(2);
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(1, {
+    data: expect.objectContaining({
+      bookingRequestId: 'booking-1',
+      bookingActivityId: null,
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      date: new Date('2026-07-14T00:00:00.000Z'),
+      startTime: '08:30',
+      dayNumber: 1,
+      totalDays: 2,
+    }),
+  });
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenNthCalledWith(2, {
+    data: expect.objectContaining({
+      bookingRequestId: 'booking-1',
+      bookingActivityId: null,
+      activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
+      date: new Date('2026-07-15T00:00:00.000Z'),
+      startTime: '08:30',
+      dayNumber: 2,
+      totalDays: 2,
+    }),
+  });
+});
+
 test('approves a persisted three-day activity into consecutive schedule items', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
     id: 'admin-1',

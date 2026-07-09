@@ -184,6 +184,25 @@ test('queries calendar items with the official scheduled booking filter', async 
   ).toBe(true);
 });
 
+test('keeps cancelled bookings out of active calendar queries', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(adminUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+      }),
+    }),
+  );
+  expect(mocks.findMany.mock.calls[0]?.[0]?.where.bookingRequest.status).not.toBe(
+    BookingStatus.CANCELLED,
+  );
+});
+
 test('queries calendar items with a schedule date range filter', async () => {
   mocks.findMany.mockResolvedValue([]);
 
@@ -528,6 +547,32 @@ test('queries my assignments with scheduled status and current user assignment f
   ).toBe(true);
 });
 
+test('keeps cancelled bookings out of personal assignment queries', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
+  mocks.findMany.mockResolvedValue([]);
+
+  await getMyScheduleAssignments(instructorUser);
+
+  expect(mocks.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        bookingRequest: {
+          status: BookingStatus.SCHEDULED,
+        },
+        assignments: {
+          some: {
+            userId: instructorUser.id,
+          },
+        },
+      }),
+    }),
+  );
+  expect(mocks.findMany.mock.calls[0]?.[0]?.where.bookingRequest.status).not.toBe(
+    BookingStatus.CANCELLED,
+  );
+});
+
 test('queries divemaster assignments with the current user assignment filter', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
@@ -725,6 +770,96 @@ test('maps my assignments with the current user role from multiple assignments',
       scheduleNotes: 'Meet at the shop.',
       assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
     },
+  ]);
+});
+
+test('maps assigned multi-day schedule items with course day labels', async () => {
+  const scheduleDate = new Date('2026-07-16T00:00:00.000Z');
+
+  mocks.findMany.mockResolvedValue([
+    scheduleCalendarQueryItem({
+      id: 'schedule-day-3',
+      date: scheduleDate,
+      activityType: ActivityType.OPEN_WATER_COURSE,
+      dayNumber: 3,
+      totalDays: 3,
+      bookingActivity: {
+        id: 'activity-1',
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        specialtyCourse: null,
+        requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+        requestedTime: '08:00',
+        notes: null,
+      },
+      assignments: [
+        {
+          id: 'assignment-current',
+          userId: instructorUser.id,
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          notes: null,
+          user: {
+            id: instructorUser.id,
+            name: 'Inez Instructor',
+            email: 'inez@example.test',
+            role: UserRole.INSTRUCTOR,
+          },
+        },
+      ],
+      bookingRequest: {
+        numberOfPeople: 9,
+        activities: [
+          {
+            id: 'activity-1',
+            activityType: ActivityType.OPEN_WATER_COURSE,
+            specialtyCourse: null,
+            requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+            requestedTime: '08:00',
+            notes: null,
+            sortOrder: 0,
+          },
+        ],
+        customers: [
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            participationStatus: BookingParticipantStatus.ACTIVE,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:00:00.000Z'),
+            customer: {
+              fullName: 'Maria Santos',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            participationStatus: BookingParticipantStatus.CANCELLED,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:01:00.000Z'),
+            customer: {
+              fullName: 'Cancelled Diver',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+        ],
+      },
+    }),
+  ]);
+
+  await expect(getMyScheduleAssignments(instructorUser)).resolves.toEqual([
+    expect.objectContaining({
+      scheduleItemId: 'schedule-day-3',
+      activitySummary: 'Open Water',
+      dayNumber: 3,
+      totalDays: 3,
+      dayLabel: 'Day 3/3',
+      numberOfPeople: 1,
+      assignmentRole: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+    }),
   ]);
 });
 
@@ -1036,6 +1171,54 @@ test('maps schedule rows into schedule page items', async () => {
   ]);
 });
 
+test('maps schedule page participant count from active booking participants', async () => {
+  const scheduleDate = new Date('2026-07-14T00:00:00.000Z');
+
+  mocks.findMany.mockResolvedValue([
+    scheduleCalendarQueryItem({
+      date: scheduleDate,
+      bookingRequest: {
+        numberOfPeople: 5,
+        customers: [
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            participationStatus: BookingParticipantStatus.ACTIVE,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:00:00.000Z'),
+            customer: {
+              fullName: 'Maria Santos',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+          {
+            role: BookingCustomerRole.PARTICIPANT,
+            participationStatus: BookingParticipantStatus.NO_SHOW,
+            hotelAtBooking: null,
+            createdAt: new Date('2026-06-24T00:01:00.000Z'),
+            customer: {
+              fullName: 'No Show Diver',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+        ],
+      },
+    }),
+  ]);
+
+  await expect(getScheduledBookingsForSchedulePage(adminUser)).resolves.toEqual([
+    expect.objectContaining({
+      numberOfPeople: 1,
+      primaryCustomerName: 'Maria Santos',
+    }),
+  ]);
+});
+
 test('falls back to booking internal notes and customer hotel', async () => {
   const scheduleDate = new Date('2026-07-15T00:00:00.000Z');
 
@@ -1340,6 +1523,75 @@ test('maps linked activity and course day labels into calendar titles', () => {
   expect(event?.activitySummary).toBe('Nitrox');
   expect(event?.dayLabel).toBe('Day 2/3');
   expect(event?.title).toBe('[Unassigned] Nitrox x1 Maria Santos (Day 2/3)');
+  expect(event?.title).not.toContain('Specialty Course');
+});
+
+test('maps multi-day schedule rows into day-specific calendar titles', () => {
+  const events = mapScheduleItemsToCalendarEvents(
+    [1, 2, 3].map((dayNumber) =>
+      scheduleCalendarQueryItem({
+        id: `schedule-day-${dayNumber}`,
+        date: new Date(`2026-07-${13 + dayNumber}T00:00:00.000Z`),
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        dayNumber,
+        totalDays: 3,
+        bookingActivity: {
+          id: 'activity-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          specialtyCourse: null,
+          requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+          requestedTime: '08:00',
+          notes: null,
+        },
+        bookingRequest: {
+          numberOfPeople: 4,
+          activities: [
+            {
+              id: 'activity-1',
+              activityType: ActivityType.OPEN_WATER_COURSE,
+              specialtyCourse: null,
+              requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+              requestedTime: '08:00',
+              notes: null,
+              sortOrder: 0,
+            },
+          ],
+        },
+      }),
+    ),
+  );
+
+  expect(
+    events.map(({ dayLabel, dayNumber, totalDays, activitySummary, title }) => ({
+      activitySummary,
+      dayLabel,
+      dayNumber,
+      title,
+      totalDays,
+    })),
+  ).toEqual([
+    {
+      activitySummary: 'Open Water',
+      dayLabel: 'Day 1/3',
+      dayNumber: 1,
+      title: '[Unassigned] Open Water x1 Maria Santos (Day 1/3)',
+      totalDays: 3,
+    },
+    {
+      activitySummary: 'Open Water',
+      dayLabel: 'Day 2/3',
+      dayNumber: 2,
+      title: '[Unassigned] Open Water x1 Maria Santos (Day 2/3)',
+      totalDays: 3,
+    },
+    {
+      activitySummary: 'Open Water',
+      dayLabel: 'Day 3/3',
+      dayNumber: 3,
+      title: '[Unassigned] Open Water x1 Maria Santos (Day 3/3)',
+      totalDays: 3,
+    },
+  ]);
 });
 
 test('maps multiple assigned staff into a compact calendar event title prefix', () => {
