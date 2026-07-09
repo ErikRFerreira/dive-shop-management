@@ -20,10 +20,12 @@ import {
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
+  addCustomerToScheduledBooking: vi.fn(),
   addScheduleAssignment: vi.fn(),
   cancelBooking: vi.fn(),
   refresh: vi.fn(),
   removeScheduleAssignment: vi.fn(),
+  searchBookingCustomers: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
   updateBookingParticipantStatus: vi.fn(),
 }));
@@ -41,8 +43,13 @@ vi.mock('@/features/schedule/actions', () => ({
 }));
 
 vi.mock('@/features/bookings/actions', () => ({
+  addCustomerToScheduledBooking: mocks.addCustomerToScheduledBooking,
   cancelBooking: mocks.cancelBooking,
   updateBookingParticipantStatus: mocks.updateBookingParticipantStatus,
+}));
+
+vi.mock('@/features/customers/booking-actions', () => ({
+  searchBookingCustomers: mocks.searchBookingCustomers,
 }));
 
 vi.mock('@/components/ui/select', () => {
@@ -180,16 +187,20 @@ vi.mock('@/components/ui/select', () => {
 });
 
 beforeEach(() => {
+  mocks.addCustomerToScheduledBooking.mockResolvedValue({ success: true });
   mocks.cancelBooking.mockResolvedValue({});
+  mocks.searchBookingCustomers.mockResolvedValue([]);
   mocks.updateBookingParticipantStatus.mockResolvedValue({ success: true });
 });
 
 afterEach(() => {
   cleanup();
+  mocks.addCustomerToScheduledBooking.mockReset();
   mocks.addScheduleAssignment.mockReset();
   mocks.cancelBooking.mockReset();
   mocks.refresh.mockReset();
   mocks.removeScheduleAssignment.mockReset();
+  mocks.searchBookingCustomers.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
   mocks.updateBookingParticipantStatus.mockReset();
 });
@@ -615,6 +626,16 @@ test('renders participant status controls for scheduled admin and manager users'
   expect(screen.getByLabelText('Participant status')).not.toBeNull();
 });
 
+test('renders add participant control for scheduled participant managers', () => {
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  expect(
+    screen.getByRole('button', { name: 'Add customer / diver' }),
+  ).not.toBeNull();
+});
+
 test('hides participant status controls for read-only detail users', () => {
   renderBookingDetails({
     canManageParticipantStatus: false,
@@ -622,6 +643,9 @@ test('hides participant status controls for read-only detail users', () => {
 
   expect(screen.getByText('Active')).not.toBeNull();
   expect(screen.queryByLabelText('Participant status')).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Add customer / diver' }),
+  ).toBeNull();
 });
 
 test('refreshes booking details after updating a participant status', async () => {
@@ -641,6 +665,112 @@ test('refreshes booking details after updating a participant status', async () =
     );
   });
   expect(mocks.refresh).toHaveBeenCalled();
+});
+
+test('adds a new scheduled booking participant from booking details', async () => {
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add customer / diver' }));
+  fireEvent.change(await screen.findByLabelText('Customer name'), {
+    target: { value: 'Lina Park' },
+  });
+  fireEvent.change(screen.getByLabelText('Email'), {
+    target: { value: 'lina@example.test' },
+  });
+  fireEvent.change(screen.getByLabelText('Hotel / pickup location'), {
+    target: { value: 'Ocean View' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
+
+  await waitFor(() => {
+    expect(mocks.addCustomerToScheduledBooking).toHaveBeenCalledWith(
+      'booking-1',
+      expect.objectContaining({
+        customerName: 'Lina Park',
+        email: 'lina@example.test',
+        hotelAtBooking: 'Ocean View',
+      }),
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
+test('adds an existing searched customer from booking details', async () => {
+  mocks.searchBookingCustomers.mockResolvedValue([
+    {
+      id: 'customer-3',
+      name: 'Lina Park',
+      fullName: 'Lina Park',
+      firstName: null,
+      lastName: null,
+      chineseName: null,
+      hotel: 'Ocean View',
+      preferredLanguage: null,
+      certificationLevel: 'Open Water',
+      certificationAgency: 'PADI',
+      lastDiveDate: '2026-06-01',
+      divesLogged: 12,
+      email: 'lina@example.test',
+      phone: null,
+      weChatId: null,
+      whatsAppNumber: null,
+      lastBookingDate: '2026-07-01',
+      lastActivity: ActivityType.FUN_DIVE,
+      bookingCount: 2,
+    },
+  ]);
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add customer / diver' }));
+  fireEvent.change(await screen.findByLabelText('Search existing customers'), {
+    target: { value: 'Lina' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+  expect(await screen.findByText('Lina Park')).not.toBeNull();
+  expect(mocks.searchBookingCustomers).toHaveBeenCalledWith('Lina');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Use customer' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
+
+  await waitFor(() => {
+    expect(mocks.addCustomerToScheduledBooking).toHaveBeenCalledWith(
+      'booking-1',
+      expect.objectContaining({
+        customerId: 'customer-3',
+        customerName: 'Lina Park',
+        email: 'lina@example.test',
+      }),
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
+test('shows inline add participant errors returned by the server action', async () => {
+  mocks.addCustomerToScheduledBooking.mockResolvedValue({
+    success: false,
+    formError: 'Only scheduled bookings can have participants added.',
+  });
+  renderBookingDetails({
+    canManageParticipantStatus: true,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add customer / diver' }));
+  fireEvent.change(await screen.findByLabelText('Customer name'), {
+    target: { value: 'Lina Park' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Add participant' }));
+
+  expect(
+    await screen.findByText(
+      'Only scheduled bookings can have participants added.',
+    ),
+  ).not.toBeNull();
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 test('shows inline participant status errors returned by the server action', async () => {

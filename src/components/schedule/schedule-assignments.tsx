@@ -11,6 +11,7 @@ import {
   useTransition,
 } from 'react';
 
+import { AssignmentBadge } from '@/components/common/assignment-badge';
 import { PendingButton } from '@/components/common/pending-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -192,7 +193,13 @@ export function ScheduleAssignmentBadge({
     return <Badge variant="outline">Unassigned</Badge>;
   }
 
-  return <Badge variant="secondary">{formatEnumLabel(assignment.role)}</Badge>;
+  return (
+    <AssignmentBadge
+      label={formatEnumLabel(assignment.role)}
+      variant="secondary"
+      colorScheme="ocean"
+    />
+  );
 }
 
 /**
@@ -510,9 +517,7 @@ export function ScheduleAssignmentForm({
             pendingLabel="Adding..."
             type="submit"
           >
-            {variant === 'dialog' ? (
-              <Plus className="h-4 w-4" />
-            ) : null}
+            {variant === 'dialog' ? <Plus className="h-4 w-4" /> : null}
             {variant === 'dialog' ? 'Add' : 'Add assignment'}
           </PendingButton>
         </div>

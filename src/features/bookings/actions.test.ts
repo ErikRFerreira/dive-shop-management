@@ -20,11 +20,16 @@ const mocks = vi.hoisted(() => ({
   requireCurrentUser: vi.fn(),
   transactionRunner: vi.fn(),
   transaction: {
-    bookingRequest: { create: vi.fn(), updateMany: vi.fn() },
+    bookingRequest: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
     scheduleItem: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
     bookingActivity: { deleteMany: vi.fn(), createMany: vi.fn() },
-    customer: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
-    bookingCustomer: { deleteMany: vi.fn(), createMany: vi.fn() },
+    customer: {
+      update: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    bookingCustomer: { deleteMany: vi.fn(), create: vi.fn(), createMany: vi.fn() },
     deposit: { update: vi.fn(), create: vi.fn(), delete: vi.fn() },
   },
   findManyCustomers: vi.fn(),
@@ -57,6 +62,7 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 
 import {
+  addCustomerToScheduledBooking,
   cancelBooking,
   approveBooking,
   createBookingDraft,
@@ -181,6 +187,29 @@ function scheduledBooking(overrides = {}) {
   };
 }
 
+function addParticipantValues(overrides = {}) {
+  return {
+    customerName: 'Lina Park',
+    chineseName: '',
+    weChatId: '',
+    whatsAppNumber: '',
+    email: 'lina@example.test',
+    phone: '',
+    hotelAtBooking: 'Ocean View',
+    equipmentNeeded: 'YES',
+    customerNotes: 'Needs small fins.',
+    preferredLanguage: '',
+    heightCm: '165',
+    weightKg: '58.5',
+    shoeSize: '38',
+    certificationLevel: 'Open Water',
+    certificationAgency: 'PADI',
+    lastDiveDate: '2026-06-01',
+    divesLogged: '12',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.redirect.mockImplementation((url: string) => {
@@ -205,6 +234,20 @@ beforeEach(() => {
       callback(mocks.transaction),
   );
   mocks.transaction.bookingRequest.create.mockResolvedValue({ id: 'booking-1' });
+  mocks.transaction.bookingRequest.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.SCHEDULED,
+    customers: [
+      {
+        customerId: 'customer-1',
+        participationStatus: BookingParticipantStatus.ACTIVE,
+      },
+      {
+        customerId: 'customer-2',
+        participationStatus: BookingParticipantStatus.NO_SHOW,
+      },
+    ],
+  });
   mocks.transaction.bookingRequest.updateMany.mockResolvedValue({ count: 1 });
   mocks.transaction.scheduleItem.findUnique.mockResolvedValue(null);
   mocks.transaction.scheduleItem.create.mockResolvedValue({ id: 'schedule-1' });
@@ -214,7 +257,12 @@ beforeEach(() => {
   mocks.transaction.customer.update.mockResolvedValue({ id: 'customer-1' });
   mocks.transaction.customer.create.mockResolvedValue({ id: 'customer-new' });
   mocks.transaction.customer.delete.mockResolvedValue({ id: 'customer-1' });
+  mocks.transaction.customer.findUnique.mockResolvedValue({ id: 'customer-3' });
   mocks.transaction.bookingCustomer.deleteMany.mockResolvedValue({ count: 1 });
+  mocks.transaction.bookingCustomer.create.mockResolvedValue({
+    bookingRequestId: 'booking-1',
+    customerId: 'customer-3',
+  });
   mocks.transaction.bookingCustomer.createMany.mockResolvedValue({ count: 1 });
   mocks.transaction.deposit.update.mockResolvedValue({ id: 'deposit-1' });
   mocks.transaction.deposit.create.mockResolvedValue({ id: 'deposit-new' });
@@ -291,6 +339,242 @@ test.each([
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
   },
 );
+
+test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
+  'allows %s to add an existing customer to a scheduled booking',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+
+    await expect(
+      addCustomerToScheduledBooking(
+        'booking-1',
+        addParticipantValues({ customerId: 'customer-3' }),
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.transaction.bookingRequest.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'booking-1',
+      },
+      select: {
+        id: true,
+        status: true,
+        customers: {
+          select: {
+            customerId: true,
+            participationStatus: true,
+          },
+        },
+      },
+    });
+    expect(mocks.transaction.customer.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'customer-3',
+      },
+      select: {
+        id: true,
+      },
+    });
+    expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+      },
+      data: {
+        numberOfPeople: 2,
+      },
+    });
+    expect(mocks.transaction.bookingCustomer.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        bookingRequestId: 'booking-1',
+        customerId: 'customer-3',
+        role: BookingCustomerRole.PARTICIPANT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+        hotelAtBooking: 'Ocean View',
+        equipmentNeeded: 'YES',
+        notes: 'Needs small fins.',
+        certificationLevel: 'Open Water',
+        certificationAgency: 'PADI',
+        lastDiveAt: new Date('2026-06-01T00:00:00.000Z'),
+        heightCm: 165,
+        weightKg: 58.5,
+        shoeSize: 38,
+        divesLogged: 12,
+      }),
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/review',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/edit',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
+  },
+);
+
+test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
+  'allows %s to create and add a new customer to a scheduled booking',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+
+    await expect(
+      addCustomerToScheduledBooking('booking-1', addParticipantValues()),
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.transaction.customer.findUnique).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+      },
+      data: {
+        numberOfPeople: 2,
+      },
+    });
+    expect(mocks.transaction.customer.create).toHaveBeenCalledWith({
+      data: {
+        fullName: 'Lina Park',
+        chineseName: null,
+        weChatId: null,
+        whatsAppNumber: null,
+        email: 'lina@example.test',
+        phone: null,
+        preferredLanguage: null,
+      },
+    });
+    expect(mocks.transaction.bookingCustomer.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        bookingRequestId: 'booking-1',
+        customerId: 'customer-new',
+        role: BookingCustomerRole.PARTICIPANT,
+        participationStatus: BookingParticipantStatus.ACTIVE,
+      }),
+    });
+  },
+);
+
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
+  'does not allow %s to add a scheduled booking participant',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+
+    await expect(
+      addCustomerToScheduledBooking(
+        'booking-1',
+        addParticipantValues({ customerId: 'customer-3' }),
+      ),
+    ).resolves.toEqual({
+      success: false,
+      formError: 'You do not have permission to manage booking participants.',
+    });
+
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingCustomer.create).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects adding participants to non-scheduled bookings', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.transaction.bookingRequest.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.PENDING_APPROVAL,
+    customers: [],
+  });
+
+  await expect(
+    addCustomerToScheduledBooking(
+      'booking-1',
+      addParticipantValues({ customerId: 'customer-3' }),
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have participants added.',
+  });
+
+  expect(mocks.transaction.bookingCustomer.create).not.toHaveBeenCalled();
+});
+
+test('rejects an existing customer already attached to the scheduled booking', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+
+  await expect(
+    addCustomerToScheduledBooking(
+      'booking-1',
+      addParticipantValues({ customerId: 'customer-1' }),
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError:
+      'This customer is already attached to the booking. Update their participant status instead.',
+  });
+
+  expect(mocks.transaction.bookingRequest.updateMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.create).not.toHaveBeenCalled();
+});
+
+test('rejects adding a missing selected customer to a scheduled booking', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.transaction.customer.findUnique.mockResolvedValue(null);
+
+  await expect(
+    addCustomerToScheduledBooking(
+      'booking-1',
+      addParticipantValues({ customerId: 'customer-missing' }),
+    ),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Selected customer no longer exists. Search again and retry.',
+  });
+
+  expect(mocks.transaction.bookingRequest.updateMany).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.create).not.toHaveBeenCalled();
+});
+
+test('rejects add participant values without an identifiable customer', async () => {
+  await expect(
+    addCustomerToScheduledBooking(
+      'booking-1',
+      addParticipantValues({
+        customerName: ' ',
+        email: ' ',
+      }),
+    ),
+  ).resolves.toEqual({
+    success: false,
+    fieldErrors: {
+      customerName: [
+        'Select an existing customer or enter enough details for a new customer.',
+      ],
+    },
+    formError: undefined,
+  });
+
+  expect(mocks.requireCurrentUser).not.toHaveBeenCalled();
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+});
 
 test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
   'does not allow %s to update a scheduled booking participant status',

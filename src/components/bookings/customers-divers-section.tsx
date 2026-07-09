@@ -3,6 +3,8 @@
 import { useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { AssignmentBadge } from '@/components/common/assignment-badge';
+import { AddScheduledBookingParticipantDialog } from '@/components/bookings/add-scheduled-booking-participant-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
@@ -89,10 +91,12 @@ function CustomerDiverCard({
           {formatBookingCustomerName(customer)}
         </h3>
         {customerBooking.role === BookingCustomerRole.PRIMARY_CONTACT ? (
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-ocean/10 px-2.5 py-1 text-xs font-medium text-ocean ring-1 ring-inset ring-ocean/20">
-            <span className="size-1.5 rounded-full bg-current" aria-hidden />{' '}
-            Primary contact
-          </p>
+          <AssignmentBadge
+            label="Primary contact"
+            variant="secondary"
+            colorScheme="ocean"
+            className="px-2.5 py-1 text-xs font-medium"
+          />
         ) : null}
         <ParticipantStatusBadge status={customerBooking.participationStatus} />
         {canManageParticipantStatus ? (
@@ -220,7 +224,9 @@ function ParticipantStatusBadge({
         ? 'destructive'
         : 'outline';
 
-  return <Badge variant={variant}>{formatParticipantStatusLabel(status)}</Badge>;
+  return (
+    <Badge variant={variant}>{formatParticipantStatusLabel(status)}</Badge>
+  );
 }
 
 /**
@@ -338,7 +344,9 @@ function getParticipantStatusActionErrorMessage(
     ? Object.values(result.fieldErrors).flat()[0]
     : undefined;
 
-  return result.formError ?? fieldError ?? 'Unable to update participant status.';
+  return (
+    result.formError ?? fieldError ?? 'Unable to update participant status.'
+  );
 }
 
 /**
@@ -431,6 +439,11 @@ export function CustomersDiversSection({
 
   return (
     <BookingInfoSection title="Customers & divers">
+      {canManageParticipantStatus ? (
+        <div className="flex justify-end sm:col-span-2">
+          <AddScheduledBookingParticipantDialog booking={booking} />
+        </div>
+      ) : null}
       {booking.customers.length === 0 ? (
         <p className="text-sm text-muted-foreground sm:col-span-2">
           No customer or diver details.

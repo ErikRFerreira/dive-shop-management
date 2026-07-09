@@ -88,6 +88,88 @@ export const updateBookingParticipantStatusSchema = z.object({
   participationStatus: z.enum(BookingParticipantStatus),
 });
 
+const nullableTextSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() || null : null),
+  z.string().nullable(),
+);
+
+const optionalCustomerIdSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return undefined;
+  return value.trim() || undefined;
+}, z.string().min(1).optional());
+
+const nullablePreferredLanguageSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() ? value : null),
+  z.enum(PreferredLanguage).nullable(),
+);
+
+const nullableDateSchema = z.preprocess((value) => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}, z.date().nullable());
+
+const nullableIntegerSchema = z.preprocess((value) => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const number = Number(value);
+  return Number.isInteger(number) ? number : null;
+}, z.number().int().nullable());
+
+const nullableNumberSchema = z.preprocess((value) => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}, z.number().nullable());
+
+/** Validates the participant payload appended to an already scheduled booking. */
+export const addScheduledBookingParticipantSchema = z
+  .object({
+    bookingId: z.string().trim().min(1, 'Booking ID is required.'),
+    customerId: optionalCustomerIdSchema,
+    customerName: nullableTextSchema,
+    chineseName: nullableTextSchema,
+    weChatId: nullableTextSchema,
+    whatsAppNumber: nullableTextSchema,
+    email: nullableTextSchema,
+    phone: nullableTextSchema,
+    hotelAtBooking: nullableTextSchema,
+    equipmentNeeded: nullableTextSchema,
+    customerNotes: nullableTextSchema,
+    preferredLanguage: nullablePreferredLanguageSchema,
+    heightCm: nullableIntegerSchema,
+    weightKg: nullableNumberSchema,
+    shoeSize: nullableNumberSchema,
+    certificationLevel: nullableTextSchema,
+    certificationAgency: nullableTextSchema,
+    lastDiveDate: nullableDateSchema,
+    divesLogged: nullableIntegerSchema,
+  })
+  .superRefine((values, context) => {
+    const identifiesCustomer = Boolean(
+      values.customerId ||
+        values.customerName ||
+        values.chineseName ||
+        values.weChatId ||
+        values.whatsAppNumber ||
+        values.email ||
+        values.phone,
+    );
+
+    if (!identifiesCustomer) {
+      context.addIssue({
+        code: 'custom',
+        path: ['customerName'],
+        message:
+          'Select an existing customer or enter enough details for a new customer.',
+      });
+    }
+  });
+
 const activitySchema = z.object({
   activityType: z.enum(ActivityType).nullable(),
   specialtyCourse: z.string().nullable(),

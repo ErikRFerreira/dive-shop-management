@@ -5,7 +5,10 @@ import {
   formatBookingDate,
   formatBookingTimeOrTbd,
 } from '../../booking-display-utils';
-import { BookingInfoField, BookingInfoSection } from '../../booking-info-layout';
+import {
+  BookingInfoField,
+  BookingInfoSection,
+} from '../../booking-info-layout';
 
 const MANAGER_ASSIGNMENT_AVAILABILITY_MESSAGE =
   'Approve and schedule this booking before assigning instructors or divemasters.';

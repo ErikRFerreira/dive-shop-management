@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { AssignmentBadge } from '@/components/common/assignment-badge';
 import { EmptyState } from '@/components/common/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -148,13 +149,11 @@ function UpcomingAssignmentRow({
         {formatHotelPickup(assignment.hotel)}
       </TableCell>
       <TableCell className="py-5 align-top">
-        <Badge
+        <AssignmentBadge
+          label={formatEnumLabel(assignment.assignmentRole)}
           variant="secondary"
-          className="bg-ocean/10 text-ocean ring-ocean/20 flex items-center gap-2"
-        >
-          <span className="size-1.5 rounded-full bg-current" aria-hidden />
-          {formatEnumLabel(assignment.assignmentRole)}
-        </Badge>
+          colorScheme="ocean"
+        />
       </TableCell>
       <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
         {assignment.scheduleNotes ? (
