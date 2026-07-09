@@ -87,6 +87,11 @@ export function ScheduleEventDialogContent({
               value={formatDateTimeSummary(event)}
             />
             <SummaryField
+              icon={CalendarCheck}
+              label="Course day"
+              value={event.dayLabel ?? 'Single day'}
+            />
+            <SummaryField
               icon={MapPin}
               label="Hotel"
               value={event.hotel ?? 'No hotel / pickup location recorded'}

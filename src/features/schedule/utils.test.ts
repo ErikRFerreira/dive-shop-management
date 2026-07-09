@@ -6,6 +6,7 @@ import type {
   SchedulePageItem,
 } from '@/features/schedule/types';
 import {
+  buildScheduleEventTitle,
   groupMyScheduleAssignmentsByDay,
   groupScheduleItemsByDate,
   formatScheduleDayLabel,
@@ -246,4 +247,25 @@ test('formats only multi-day schedule labels', () => {
   expect(formatScheduleDayLabel(1, 3)).toBe('Day 1/3');
   expect(formatScheduleDayLabel(null, 3)).toBe('Day 1/3');
   expect(formatScheduleDayLabel(1, 1)).toBeNull();
+});
+
+test('builds compact schedule event titles with active participants and course days', () => {
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Open Water',
+      customerName: 'Sarah',
+      dayLabel: 'Day 1/3',
+      numberOfPeople: 1,
+    }),
+  ).toBe('Open Water x1 Sarah (Day 1/3)');
+
+  expect(
+    buildScheduleEventTitle({
+      activityLabel: 'Rescue',
+      customerName: 'Chen Family',
+      dayLabel: 'Day 2/3',
+      numberOfPeople: 2,
+      staffPrefix: '[Unassigned]',
+    }),
+  ).toBe('[Unassigned] Rescue x2 Chen Family (Day 2/3)');
 });

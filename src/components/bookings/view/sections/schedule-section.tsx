@@ -1,5 +1,6 @@
 import { ScheduleAssignmentsList } from '@/components/schedule/schedule-assignments';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import {
   formatScheduleActivityLabel,
   formatScheduleDayLabel,
@@ -100,8 +101,23 @@ export function ScheduleSection({
                 value={formatBookingTimeOrTbd(scheduleItem.startTime)}
               />
               <BookingInfoField
+                label="Course day"
+                value={
+                  formatScheduleDayLabel(
+                    scheduleItem.dayNumber,
+                    scheduleItem.totalDays,
+                  ) ?? 'Single day'
+                }
+              />
+              <BookingInfoField
                 label="Activity"
-                value={formatScheduleActivityLabel(scheduleItem.activityType)}
+                value={getScheduleItemActivityLabel(booking, scheduleItem)}
+              />
+              <BookingInfoField
+                label="Active participants"
+                value={formatActiveParticipantSummary(
+                  booking.activeParticipantCount,
+                )}
               />
               {scheduleItem.scheduleNotes ? (
                 <BookingInfoField
@@ -121,6 +137,40 @@ export function ScheduleSection({
       </div>
     </BookingInfoSection>
   );
+}
+
+/**
+ * Resolves the display label for one scheduled day in booking detail.
+ *
+ * @param booking - Booking detail payload containing activities and schedule rows.
+ * @param scheduleItem - Scheduled day whose linked booking activity is preferred.
+ * @returns Specialty-aware compact activity label, falling back to the schedule type.
+ */
+function getScheduleItemActivityLabel(
+  booking: BookingDetailsItem,
+  scheduleItem: BookingDetailsItem['scheduleItems'][number],
+) {
+  const linkedActivity = booking.activities.find(
+    (activity) => activity.id === scheduleItem.bookingActivityId,
+  );
+
+  if (linkedActivity?.activityType) {
+    return getActivityShortLabel(linkedActivity);
+  }
+
+  return formatScheduleActivityLabel(scheduleItem.activityType);
+}
+
+/**
+ * Formats the booking's active participant count for each scheduled day.
+ *
+ * @param count - Active participant count derived from booking/customer rows.
+ * @returns Staff-facing active participant summary.
+ */
+function formatActiveParticipantSummary(count: number) {
+  const label = count === 1 ? 'participant' : 'participants';
+
+  return `${count} active ${label}`;
 }
 
 /**

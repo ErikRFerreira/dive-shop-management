@@ -34,7 +34,11 @@ import type {
   ScheduleFilters,
   SchedulePageItem,
 } from './types';
-import { formatScheduleActivityLabel, formatScheduleDayLabel } from './utils';
+import {
+  buildScheduleEventTitle,
+  formatScheduleActivityLabel,
+  formatScheduleDayLabel,
+} from './utils';
 
 const MY_ASSIGNMENTS_UPCOMING_LIMIT = 20;
 const scheduleAssignmentOrderBy = [
@@ -615,7 +619,7 @@ function mapScheduleItemToCalendarEvent(
   return {
     id: scheduleItem.id,
     title: buildScheduleCalendarEventTitle({
-      activitySummary,
+      activityLabel: activitySummary,
       assignments,
       customerName: primaryCustomerName,
       dayLabel,
@@ -910,21 +914,19 @@ function formatCustomerEnglishName(
  * @returns A compact operational title with staff, activity, active headcount, and customer.
  */
 function buildScheduleCalendarEventTitle(input: {
-  activitySummary: string;
+  activityLabel: string;
   assignments: ScheduleAssignmentDetail[];
   customerName: string | null;
   dayLabel: string | null;
   numberOfPeople: number | null;
 }) {
-  return [
-    buildScheduleStaffPrefix(input.assignments),
-    input.activitySummary,
-    input.dayLabel,
-    formatPeopleCountLabel(input.numberOfPeople),
-    input.customerName ?? 'Customer TBD',
-  ]
-    .filter((part): part is string => part !== null)
-    .join(' ');
+  return buildScheduleEventTitle({
+    activityLabel: input.activityLabel,
+    customerName: input.customerName,
+    dayLabel: input.dayLabel,
+    numberOfPeople: input.numberOfPeople,
+    staffPrefix: buildScheduleStaffPrefix(input.assignments),
+  });
 }
 
 /**
@@ -954,16 +956,6 @@ function formatScheduleStaffName(assignment: ScheduleAssignmentDetail) {
   const firstName = displayName.split(/\s+/)[0]?.trim();
 
   return firstName || formatEnumLabel(assignment.role) || 'Staff';
-}
-
-/**
- * Formats the active participant count for compact calendar event titles.
- *
- * @param numberOfPeople - The active operational participant count.
- * @returns A compact people count.
- */
-function formatPeopleCountLabel(numberOfPeople: number | null) {
-  return `x${numberOfPeople ?? 'TBD'}`;
 }
 
 /**

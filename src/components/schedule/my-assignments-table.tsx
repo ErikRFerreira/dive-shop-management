@@ -16,6 +16,7 @@ import type {
   MyScheduleAssignment,
   MyScheduleAssignmentBriefing,
 } from '@/features/schedule/types';
+import { buildScheduleEventTitle } from '@/features/schedule/utils';
 import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
 
 import {
@@ -177,14 +178,16 @@ function AssignmentActivitySummary({
 }: {
   assignment: MyScheduleAssignment;
 }) {
+  const title = buildScheduleEventTitle({
+    activityLabel: assignment.activitySummary,
+    customerName: assignment.primaryCustomerName,
+    dayLabel: assignment.dayLabel,
+    numberOfPeople: assignment.numberOfPeople,
+  });
+
   return (
     <div className="space-y-1.5">
-      <p className="font-medium">{assignment.activitySummary}</p>
-      {assignment.dayLabel ? (
-        <p className="text-xs font-medium text-muted-foreground">
-          {assignment.dayLabel}
-        </p>
-      ) : null}
+      <p className="font-medium">{title}</p>
       {assignment.activities.length > 1 ? (
         <ul className="space-y-1 text-xs text-muted-foreground">
           {assignment.activities.map((activity) => (

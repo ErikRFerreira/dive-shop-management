@@ -12,6 +12,14 @@ import { ActivityType } from '@/generated/prisma/enums';
 import { formatDateInputValue } from '@/lib/format';
 import { getShopDateOnlyRange } from '@/lib/operational-date';
 
+export type ScheduleEventTitleInput = {
+  activityLabel: string;
+  customerName: string | null;
+  dayLabel?: string | null;
+  numberOfPeople: number | null;
+  staffPrefix?: string | null;
+};
+
 /**
  * Groups already-sorted schedule rows by calendar date for the simple schedule page.
  *
@@ -181,9 +189,54 @@ export function formatScheduleDayLabel(
   dayNumber: number | null,
   totalDays: number,
 ) {
+  return formatCourseDayLabel(dayNumber, totalDays);
+}
+
+/**
+ * Formats course-day metadata for schedule titles and detail fields.
+ *
+ * @param dayNumber - One-based persisted day number for this schedule item.
+ * @param totalDays - Persisted total day count for the scheduled activity.
+ * @returns `Day N/M` for multi-day courses, or null for single-day activities.
+ */
+export function formatCourseDayLabel(
+  dayNumber: number | null,
+  totalDays: number,
+) {
   if (totalDays <= 1) {
     return null;
   }
 
   return `Day ${dayNumber ?? 1}/${totalDays}`;
+}
+
+/**
+ * Builds one operational schedule title shared by calendar, dashboard, lists,
+ * and assignment surfaces.
+ *
+ * @param input - Activity, active participant count, customer, optional staff,
+ * and optional course-day metadata for the schedule item.
+ * @returns A compact label such as `Open Water x1 Sarah (Day 1/3)`.
+ */
+export function buildScheduleEventTitle(input: ScheduleEventTitleInput) {
+  const title = [
+    input.staffPrefix,
+    input.activityLabel,
+    formatScheduleParticipantCount(input.numberOfPeople),
+    input.customerName ?? 'Customer TBD',
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(' ');
+
+  return input.dayLabel ? `${title} (${input.dayLabel})` : title;
+}
+
+/**
+ * Formats active participant count for compact operational schedule titles.
+ *
+ * @param numberOfPeople - Active participant count derived from booking/customer rows.
+ * @returns A compact `xN` count or `xTBD` when no count is available.
+ */
+function formatScheduleParticipantCount(numberOfPeople: number | null) {
+  return `x${numberOfPeople ?? 'TBD'}`;
 }

@@ -1339,7 +1339,7 @@ test('maps linked activity and course day labels into calendar titles', () => {
 
   expect(event?.activitySummary).toBe('Nitrox');
   expect(event?.dayLabel).toBe('Day 2/3');
-  expect(event?.title).toBe('[Unassigned] Nitrox Day 2/3 x1 Maria Santos');
+  expect(event?.title).toBe('[Unassigned] Nitrox x1 Maria Santos (Day 2/3)');
 });
 
 test('maps multiple assigned staff into a compact calendar event title prefix', () => {
