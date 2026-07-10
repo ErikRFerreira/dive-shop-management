@@ -135,12 +135,14 @@ export function CustomerDiverRow({
           suppressedDuplicateSnapshot={suppressedDuplicateSnapshot}
           onDuplicateIdentityEdited={onDuplicateIdentityEdited}
         />
-        <DivingExperienceFields
-          form={form}
-          index={index}
-          requiresDivingExperience={includesFunDive}
-          getFieldError={getFieldError}
-        />
+        {includesFunDive ? (
+          <DivingExperienceFields
+            form={form}
+            index={index}
+            requiresDivingExperience={includesFunDive}
+            getFieldError={getFieldError}
+          />
+        ) : null}
         <EquipmentSizingFields form={form} index={index} />
         <CustomerNotesField form={form} index={index} />
       </div>

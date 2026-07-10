@@ -42,6 +42,10 @@ function makeBooking(
         certificationLevel: null,
         lastDiveAt: null,
         divesLogged: null,
+        equipmentNeeded: 'NO',
+        heightCm: null,
+        weightKg: null,
+        shoeSize: null,
         customer: {
           fullName: 'Ada Diver',
           firstName: null,
@@ -178,21 +182,24 @@ test('returns complete and not-required readiness states for a reviewable non-fu
       description: 'Primary contact has at least one contact method.',
     },
     {
-      label: 'Diving experience',
-      status: 'not required',
-      description: 'Not required for the selected activity type.',
-    },
-    {
       label: 'Deposit info',
       status: 'not required',
       description: 'No paid deposit details are required.',
     },
     {
       label: 'Equipment sizing',
-      status: 'recommended/optional',
-      description: 'Confirm whether rental equipment is needed when possible.',
+      status: 'not required',
+      description: 'No rental equipment sizing is required.',
     },
   ]);
+});
+
+test('omits review diving experience readiness when the booking has no fun dives', () => {
+  expect(
+    getBookingReviewReadiness(makeBooking()).some(
+      (item) => item.label === 'Diving experience',
+    ),
+  ).toBe(false);
 });
 
 test('marks required readiness items as missing when review data is incomplete', () => {
@@ -216,6 +223,10 @@ test('marks required readiness items as missing when review data is incomplete',
           certificationLevel: null,
           lastDiveAt: null,
           divesLogged: null,
+          equipmentNeeded: 'NO',
+          heightCm: null,
+          weightKg: null,
+          shoeSize: null,
           customer: {
             fullName: 'Ada Diver',
             firstName: null,
@@ -345,6 +356,31 @@ test('marks equipment sizing as not required when customers clearly do not need 
       expect.objectContaining({
         label: 'Equipment sizing',
         status: 'not required',
+      }),
+    ]),
+  );
+});
+
+test('treats blank legacy equipment values as needed for review readiness', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      customers: [
+        {
+          ...makeBooking().customers[0],
+          equipmentNeeded: null,
+          heightCm: null,
+          weightKg: null,
+          shoeSize: null,
+        },
+      ],
+    }),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Equipment sizing',
+        status: 'missing',
       }),
     ]),
   );

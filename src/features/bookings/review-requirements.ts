@@ -8,6 +8,7 @@
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { getActiveBookingParticipants } from '@/features/bookings/participants';
+import { isEquipmentNeeded } from '@/features/bookings/equipment';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -159,31 +160,6 @@ function hasCompletePaidDepositInfo(booking: BookingDetailsItem) {
 }
 
 /**
- * Classifies a free-text equipment field into a review readiness decision.
- *
- * @param value - Booking-specific equipment need text.
- * @returns Whether the field clearly requests equipment, clearly says it is not needed, or is unknown.
- */
-function getEquipmentNeedDecision(value: string | null | undefined) {
-  const normalized = value?.trim().toLowerCase();
-
-  if (!normalized) {
-    return 'unknown';
-  }
-
-  if (
-    ['no', 'none', 'n/a', 'na', 'not needed'].includes(normalized) ||
-    normalized.includes('no equipment') ||
-    normalized.includes('own equipment') ||
-    normalized.includes('bringing own')
-  ) {
-    return 'not-needed';
-  }
-
-  return 'needed';
-}
-
-/**
  * Checks whether equipment sizing is complete for active customers who clearly need equipment.
  *
  * @param booking - Booking detail payload with customer equipment fields.
@@ -191,9 +167,8 @@ function getEquipmentNeedDecision(value: string | null | undefined) {
  */
 function hasCompleteEquipmentSizing(booking: BookingDetailsItem) {
   return getActiveBookingParticipants(booking.customers)
-    .filter(
-      (bookingCustomer) =>
-        getEquipmentNeedDecision(bookingCustomer.equipmentNeeded) === 'needed',
+    .filter((bookingCustomer) =>
+      isEquipmentNeeded(bookingCustomer.equipmentNeeded),
     )
     .every(
       (bookingCustomer) =>
@@ -225,13 +200,11 @@ export function getBookingReviewReadiness(
       deposit.status === DepositStatus.PAID ||
       deposit.status === DepositStatus.PARTIALLY_PAID,
   );
-  const equipmentDecisions = activeCustomers.map((bookingCustomer) =>
-    getEquipmentNeedDecision(bookingCustomer.equipmentNeeded),
+  const hasEquipmentNeeded = activeCustomers.some((bookingCustomer) =>
+    isEquipmentNeeded(bookingCustomer.equipmentNeeded),
   );
-  const hasEquipmentNeeded = equipmentDecisions.includes('needed');
-  const hasUnknownEquipment = equipmentDecisions.includes('unknown');
 
-  return [
+  const readinessItems: ReviewReadinessItem[] = [
     {
       label: 'Activity selected',
       status: hasActivity ? 'complete' : 'missing',
@@ -265,17 +238,6 @@ export function getBookingReviewReadiness(
           : 'Primary contact needs WeChat, WhatsApp, email, or phone.',
     },
     {
-      label: 'Diving experience',
-      status: includesFunDive
-        ? hasCompleteDivingExperience(booking)
-          ? 'complete'
-          : 'missing'
-        : 'not required',
-      description: includesFunDive
-        ? 'Fun dives need certification, last dive date, and logged dives.'
-        : 'Not required for the selected activity type.',
-    },
-    {
       label: 'Deposit info',
       status:
         paidDeposits.length === 0
@@ -294,16 +256,23 @@ export function getBookingReviewReadiness(
         ? hasCompleteEquipmentSizing(booking)
           ? 'complete'
           : 'missing'
-        : hasUnknownEquipment
-          ? 'recommended/optional'
-          : 'not required',
+        : 'not required',
       description: hasEquipmentNeeded
         ? 'Equipment requests should include height, weight, and shoe size.'
-        : hasUnknownEquipment
-          ? 'Confirm whether rental equipment is needed when possible.'
-          : 'No rental equipment sizing is required.',
+        : 'No rental equipment sizing is required.',
     },
   ];
+
+  if (includesFunDive) {
+    readinessItems.splice(4, 0, {
+      label: 'Diving experience',
+      status: hasCompleteDivingExperience(booking) ? 'complete' : 'missing',
+      description:
+        'Fun dives need certification, last dive date, and logged dives.',
+    });
+  }
+
+  return readinessItems;
 }
 
 /**

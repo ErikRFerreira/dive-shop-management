@@ -34,7 +34,7 @@ export const bookingCustomerDefaultValues: BookingCustomerFormValues = {
   email: '',
   phone: '',
   hotelAtBooking: '',
-  equipmentNeeded: '',
+  equipmentNeeded: 'YES',
   customerNotes: '',
   preferredLanguage: '',
   heightCm: '',

@@ -47,7 +47,7 @@ export function BookingReadinessCard({
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         <div
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-visible px-5 pb-5 pt-4 lg:overflow-y-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-y-visible px-5 pb-5 pt-4 lg:overflow-y-auto"
           data-testid="booking-readiness-scroll-region"
         >
           <div>
@@ -105,9 +105,7 @@ export function BookingReadinessCard({
             })}
           </ul>
 
-          {feedback ? (
-            <div className="border-t border-border pt-4">{feedback}</div>
-          ) : null}
+          {feedback ? <div className="pt-4">{feedback}</div> : null}
         </div>
 
         <div className="shrink-0 border-t border-border px-5 py-4">

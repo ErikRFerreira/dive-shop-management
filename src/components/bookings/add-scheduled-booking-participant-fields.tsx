@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { AddScheduledBookingParticipantValues } from '@/features/bookings/actions';
+import { normalizeEquipmentNeededChoice } from '@/features/bookings/equipment';
 import {
   formatEnumLabel,
   preferredLanguageOptions,
@@ -148,6 +149,48 @@ function PreferredLanguageField({
 }
 
 /**
+ * Renders the current Yes/No rental equipment selector.
+ *
+ * @param props - Current add-participant values and field update callback.
+ * @returns Equipment-needed selector that clears sizing values when set to No.
+ */
+function EquipmentNeededField({
+  onFieldChange,
+  values,
+}: Pick<FieldsProps, 'onFieldChange' | 'values'>) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="add-participant-equipmentNeeded">
+        Equipment needed?
+      </Label>
+      <Select
+        value={normalizeEquipmentNeededChoice(values.equipmentNeeded)}
+        onValueChange={(value) => {
+          onFieldChange('equipmentNeeded', value);
+
+          if (value === 'NO') {
+            onFieldChange('heightCm', '');
+            onFieldChange('weightKg', '');
+            onFieldChange('shoeSize', '');
+          }
+        }}
+      >
+        <SelectTrigger
+          id="add-participant-equipmentNeeded"
+          className={inputClassName}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="YES">Yes</SelectItem>
+          <SelectItem value="NO">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/**
  * Renders the compact details form used when adding a scheduled participant.
  *
  * @param props - Current add-participant values and callbacks.
@@ -159,6 +202,9 @@ export function AddScheduledBookingParticipantFields({
   onFieldChange,
   values,
 }: FieldsProps) {
+  const shouldShowEquipmentSizing =
+    normalizeEquipmentNeededChoice(values.equipmentNeeded) === 'YES';
+
   return (
     <>
       <LinkedExistingCustomerSummary
@@ -248,33 +294,32 @@ export function AddScheduledBookingParticipantFields({
           type="number"
           value={values.divesLogged}
         />
-        <ParticipantInputField
-          label="Equipment needed?"
-          name="equipmentNeeded"
-          onChange={onFieldChange}
-          value={values.equipmentNeeded}
-        />
-        <ParticipantInputField
-          label="Height (cm)"
-          name="heightCm"
-          onChange={onFieldChange}
-          type="number"
-          value={values.heightCm}
-        />
-        <ParticipantInputField
-          label="Weight (kg)"
-          name="weightKg"
-          onChange={onFieldChange}
-          type="number"
-          value={values.weightKg}
-        />
-        <ParticipantInputField
-          label="Shoe size"
-          name="shoeSize"
-          onChange={onFieldChange}
-          type="number"
-          value={values.shoeSize}
-        />
+        <EquipmentNeededField onFieldChange={onFieldChange} values={values} />
+        {shouldShowEquipmentSizing ? (
+          <>
+            <ParticipantInputField
+              label="Height (cm)"
+              name="heightCm"
+              onChange={onFieldChange}
+              type="number"
+              value={values.heightCm}
+            />
+            <ParticipantInputField
+              label="Weight (kg)"
+              name="weightKg"
+              onChange={onFieldChange}
+              type="number"
+              value={values.weightKg}
+            />
+            <ParticipantInputField
+              label="Shoe size"
+              name="shoeSize"
+              onChange={onFieldChange}
+              type="number"
+              value={values.shoeSize}
+            />
+          </>
+        ) : null}
         <div className="grid gap-2 sm:col-span-2">
           <Label htmlFor="add-participant-customerNotes">Notes</Label>
           <Textarea

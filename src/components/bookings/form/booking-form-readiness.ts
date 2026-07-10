@@ -76,7 +76,7 @@ export function buildCreateReadinessItems(values: {
     (activity) => activity.activityType === ActivityType.SPECIALTY_COURSE,
   );
 
-  return [
+  const readinessItems: BookingReadinessItem[] = [
     {
       label: 'Source / referrer',
       complete: Boolean(values.source),
@@ -120,34 +120,33 @@ export function buildCreateReadinessItems(values: {
           hasText(values.paidTo)),
       helperText: hasPaidDeposit ? undefined : 'No deposit recorded',
     },
-    {
-      label: 'Specialty name',
-      complete:
-        !includesSpecialtyCourse ||
-        values.activities
-          .filter(
-            (activity) =>
-              activity.activityType === ActivityType.SPECIALTY_COURSE,
-          )
-          .every((activity) =>
-            hasUsefulSpecialtyCourseName(activity.specialtyCourse),
-          ),
-      helperText: includesSpecialtyCourse
-        ? 'Example: Nitrox, Deep, Wreck, Sidemount'
-        : 'No specialty courses',
-    },
-    {
-      label: 'Diving experience details',
-      complete:
-        !includesFunDive ||
-        values.customers.every(
-          (customer) =>
-            hasText(customer.certificationLevel) &&
-            hasPositiveNumber(customer.divesLogged),
-        ),
-      helperText: includesFunDive
-        ? 'Recommended for course activities'
-        : 'No fun dive activities',
-    },
   ];
+
+  if (includesSpecialtyCourse) {
+    readinessItems.push({
+      label: 'Specialty name',
+      complete: values.activities
+        .filter(
+          (activity) => activity.activityType === ActivityType.SPECIALTY_COURSE,
+        )
+        .every((activity) =>
+          hasUsefulSpecialtyCourseName(activity.specialtyCourse),
+        ),
+      helperText: 'Example: Nitrox, Deep, Wreck, Sidemount',
+    });
+  }
+
+  if (includesFunDive) {
+    readinessItems.push({
+      label: 'Diving experience details',
+      complete: values.customers.every(
+        (customer) =>
+          hasText(customer.certificationLevel) &&
+          hasPositiveNumber(customer.divesLogged),
+      ),
+      helperText: 'Recommended for course activities',
+    });
+  }
+
+  return readinessItems;
 }

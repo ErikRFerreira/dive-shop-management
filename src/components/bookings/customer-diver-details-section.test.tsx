@@ -155,6 +155,41 @@ test('shows equipment sizing fields when equipment is needed', () => {
   expect(screen.getByLabelText('Shoe size')).not.toBeNull();
 });
 
+test('hides equipment sizing fields when equipment is not needed', () => {
+  render(
+    <CustomerDetailsHarness
+      defaultValues={bookingValues({
+        customers: [
+          {
+            ...bookingCustomerDefaultValues,
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            equipmentNeeded: 'NO',
+          },
+        ],
+      })}
+    />,
+  );
+
+  expect(screen.getByText('Equipment details')).not.toBeNull();
+  expect(screen.queryByLabelText('Height (cm)')).toBeNull();
+  expect(screen.queryByLabelText('Weight (kg)')).toBeNull();
+  expect(screen.queryByLabelText('Shoe size')).toBeNull();
+});
+
+test('hides diving experience fields when booking has no fun dives', () => {
+  render(<CustomerDetailsHarness includesFunDive={false} />);
+
+  expect(screen.queryByText('Diving experience')).toBeNull();
+  expect(screen.queryByText('Certification level')).toBeNull();
+});
+
+test('shows diving experience fields when booking includes a fun dive', () => {
+  render(<CustomerDetailsHarness includesFunDive />);
+
+  expect(screen.getByText('Diving experience')).not.toBeNull();
+  expect(screen.getByText('Certification level')).not.toBeNull();
+});
+
 test('links an existing customer selected from search results', async () => {
   mocks.searchBookingCustomers.mockResolvedValue([selectedCustomer]);
 

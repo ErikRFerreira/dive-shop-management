@@ -3,6 +3,7 @@ import {
   Controller,
   type FieldPath,
   type UseFormReturn,
+  useWatch,
 } from 'react-hook-form';
 
 import {
@@ -23,6 +24,7 @@ import {
   formatEnumLabel,
   preferredLanguageOptions,
 } from '@/features/bookings/form-options';
+import { normalizeEquipmentNeededChoice } from '@/features/bookings/equipment';
 import type { BookingFormValues } from '@/features/bookings/types';
 import { inputClassName } from '@/lib/consts';
 
@@ -55,7 +57,7 @@ type RegisteredTextAreaFieldProps = BaseCustomerFieldsProps & {
   className?: string;
 };
 
-type EquipmentNeededOption = 'UNKNOWN' | 'NO' | 'YES';
+type EquipmentNeededOption = 'NO' | 'YES';
 
 /**
  * Builds a React Hook Form path for one booking customer field.
@@ -77,9 +79,7 @@ function customerFieldPath(index: number, name: CustomerFieldName) {
 function equipmentNeededOptionFromValue(
   value: string | undefined,
 ): EquipmentNeededOption {
-  if (value === 'NO') return 'NO';
-  if (value === 'YES') return 'YES';
-  return value?.trim() ? 'YES' : 'UNKNOWN';
+  return normalizeEquipmentNeededChoice(value);
 }
 
 /**
@@ -89,7 +89,7 @@ function equipmentNeededOptionFromValue(
  * @returns The string stored in form state and later normalized for persistence.
  */
 function equipmentNeededValueFromOption(option: EquipmentNeededOption) {
-  return option === 'UNKNOWN' ? '' : option;
+  return option;
 }
 
 /**
@@ -273,7 +273,7 @@ export function CustomerFields({
  * Renders the controlled equipment-needed selector.
  *
  * @param props - Form state and row index for the equipment field.
- * @returns An Unknown/No/Yes selector backed by the existing string field.
+ * @returns A Yes/No selector backed by the existing string field.
  */
 export function EquipmentFields({ form, index }: BaseCustomerFieldsProps) {
   const path = customerFieldPath(index, 'equipmentNeeded');
@@ -286,19 +286,31 @@ export function EquipmentFields({ form, index }: BaseCustomerFieldsProps) {
         render={({ field }) => (
           <Select
             value={equipmentNeededOptionFromValue(field.value as string)}
-            onValueChange={(value) =>
-              field.onChange(
-                equipmentNeededValueFromOption(value as EquipmentNeededOption),
-              )
-            }
+            onValueChange={(value) => {
+              const nextValue = equipmentNeededValueFromOption(
+                value as EquipmentNeededOption,
+              );
+              field.onChange(nextValue);
+
+              if (nextValue === 'NO') {
+                form.setValue(customerFieldPath(index, 'heightCm'), '', {
+                  shouldDirty: true,
+                });
+                form.setValue(customerFieldPath(index, 'weightKg'), '', {
+                  shouldDirty: true,
+                });
+                form.setValue(customerFieldPath(index, 'shoeSize'), '', {
+                  shouldDirty: true,
+                });
+              }
+            }}
           >
             <SelectTrigger id={field.name} className={inputClassName}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="UNKNOWN">Unknown</SelectItem>
-              <SelectItem value="NO">No</SelectItem>
               <SelectItem value="YES">Yes</SelectItem>
+              <SelectItem value="NO">No</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -340,6 +352,13 @@ export function EquipmentSizingFields({
   form,
   index,
 }: BaseCustomerFieldsProps) {
+  const equipmentNeeded = useWatch({
+    control: form.control,
+    name: customerFieldPath(index, 'equipmentNeeded'),
+  });
+  const shouldShowSizing =
+    equipmentNeededOptionFromValue(equipmentNeeded as string) === 'YES';
+
   return (
     <div className="space-y-4 md:col-span-2 border-t border-border pt-5 mt-1">
       <h4 className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -347,27 +366,31 @@ export function EquipmentSizingFields({
       </h4>
       <div className="grid gap-4 md:grid-cols-2">
         <EquipmentFields form={form} index={index} />
-        <RegisteredInputField
-          form={form}
-          index={index}
-          name="shoeSize"
-          label="Shoe size"
-          inputProps={{ type: 'number', min: '0', step: '0.5' }}
-        />
-        <RegisteredInputField
-          form={form}
-          index={index}
-          name="heightCm"
-          label="Height (cm)"
-          inputProps={{ type: 'number', min: '0' }}
-        />
-        <RegisteredInputField
-          form={form}
-          index={index}
-          name="weightKg"
-          label="Weight (kg)"
-          inputProps={{ type: 'number', min: '0', step: '0.01' }}
-        />
+        {shouldShowSizing ? (
+          <>
+            <RegisteredInputField
+              form={form}
+              index={index}
+              name="shoeSize"
+              label="Shoe size"
+              inputProps={{ type: 'number', min: '0', step: '0.5' }}
+            />
+            <RegisteredInputField
+              form={form}
+              index={index}
+              name="heightCm"
+              label="Height (cm)"
+              inputProps={{ type: 'number', min: '0' }}
+            />
+            <RegisteredInputField
+              form={form}
+              index={index}
+              name="weightKg"
+              label="Weight (kg)"
+              inputProps={{ type: 'number', min: '0', step: '0.01' }}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   );

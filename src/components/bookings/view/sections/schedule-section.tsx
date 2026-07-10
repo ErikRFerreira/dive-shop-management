@@ -7,9 +7,7 @@ import {
   getScheduleTimeSlotLabel,
 } from '@/features/schedule/utils';
 import type { AssignableStaff } from '@/features/schedule/types';
-import {
-  formatBookingDate,
-} from '../../booking-display-utils';
+import { formatBookingDate } from '../../booking-display-utils';
 import {
   BookingInfoField,
   BookingInfoSection,
@@ -40,7 +38,8 @@ export function ScheduleSection({
   showManagerAssignmentAvailabilityCopy?: boolean;
 }) {
   const scheduleItems =
-    booking.scheduleItems ?? (booking.scheduleItem ? [booking.scheduleItem] : []);
+    booking.scheduleItems ??
+    (booking.scheduleItem ? [booking.scheduleItem] : []);
 
   if (scheduleItems.length === 0) {
     return (
@@ -112,12 +111,6 @@ export function ScheduleSection({
               <BookingInfoField
                 label="Activity"
                 value={getScheduleItemActivityLabel(booking, scheduleItem)}
-              />
-              <BookingInfoField
-                label="Active participants"
-                value={formatActiveParticipantSummary(
-                  booking.activeParticipantCount,
-                )}
               />
               {scheduleItem.scheduleNotes ? (
                 <BookingInfoField
@@ -204,5 +197,7 @@ function getScheduleItemHeading(
   totalDays: number,
   index: number,
 ) {
-  return formatScheduleDayLabel(dayNumber, totalDays) || `Schedule ${index + 1}`;
+  return (
+    formatScheduleDayLabel(dayNumber, totalDays) || `Schedule ${index + 1}`
+  );
 }
