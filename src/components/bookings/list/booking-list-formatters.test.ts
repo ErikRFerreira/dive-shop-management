@@ -115,8 +115,16 @@ test('resolves staff assignment labels for unscheduled, unassigned, and assigned
       booking({
         scheduleItem: {
           assignments: [
-            { id: 'assignment-1', user: { name: 'Inez Instructor' } },
-            { id: 'assignment-2', user: { name: 'Dina Divemaster' } },
+            {
+              id: 'assignment-1',
+              userId: 'staff-1',
+              user: { name: 'Inez Instructor' },
+            },
+            {
+              id: 'assignment-2',
+              userId: 'staff-2',
+              user: { name: 'Dina Divemaster' },
+            },
           ],
         },
       }),
@@ -124,5 +132,42 @@ test('resolves staff assignment labels for unscheduled, unassigned, and assigned
   ).toEqual([
     { key: 'assignment-1', label: 'Inez Instructor' },
     { key: 'assignment-2', label: 'Dina Divemaster' },
+  ]);
+});
+
+test('deduplicates staff assigned across multiple scheduled days', () => {
+  expect(
+    getStaffAssignmentLines(
+      booking({
+        scheduleItems: [
+          {
+            assignments: [
+              {
+                id: 'assignment-1',
+                userId: 'staff-1',
+                user: { name: 'Erik Instructor' },
+              },
+              {
+                id: 'assignment-2',
+                userId: 'staff-2',
+                user: { name: 'Mark Instructor' },
+              },
+            ],
+          },
+          {
+            assignments: [
+              {
+                id: 'assignment-3',
+                userId: 'staff-1',
+                user: { name: 'Erik Instructor' },
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  ).toEqual([
+    { key: 'assignment-1', label: 'Erik Instructor' },
+    { key: 'assignment-2', label: 'Mark Instructor' },
   ]);
 });

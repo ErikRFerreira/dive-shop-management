@@ -25,6 +25,22 @@ const compactTimeFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 /**
+ * Resolves a stable display key for one assignment in the booking list.
+ *
+ * @param assignment - Schedule assignment selected for a compact booking row.
+ * @param label - Trimmed staff name shown to users.
+ * @returns User identity when available, otherwise a normalized display label.
+ */
+function getStaffAssignmentDisplayKey(
+  assignment: BookingListItem['scheduleItems'][number]['assignments'][number],
+  label: string,
+) {
+  return 'userId' in assignment && assignment.userId
+    ? assignment.userId
+    : label.toLocaleLowerCase();
+}
+
+/**
  * Formats one linked customer/diver name for the booking list.
  *
  * @param bookingCustomer - Customer relation attached to a booking.
@@ -140,16 +156,29 @@ export function getStaffAssignmentLines(booking: BookingListItem) {
     return [{ key: `${booking.id}-unscheduled-staff`, label: EMPTY_VALUE }];
   }
 
-  const staffLines = scheduleItems
-    .flatMap((scheduleItem) => scheduleItem.assignments)
-    .map((assignment) => ({
-      key: assignment.id,
-      label: assignment.user.name.trim(),
-    }))
-    .filter((assignment) => assignment.label.length > 0);
+  const staffLines = new Map<string, { key: string; label: string }>();
 
-  return staffLines.length > 0
-    ? staffLines
+  for (const assignment of scheduleItems.flatMap(
+    (scheduleItem) => scheduleItem.assignments,
+  )) {
+    const label = assignment.user.name.trim();
+
+    if (label.length === 0) {
+      continue;
+    }
+
+    const displayKey = getStaffAssignmentDisplayKey(assignment, label);
+
+    if (!staffLines.has(displayKey)) {
+      staffLines.set(displayKey, {
+        key: assignment.id,
+        label,
+      });
+    }
+  }
+
+  return staffLines.size > 0
+    ? Array.from(staffLines.values())
     : [{ key: `${booking.id}-unassigned-staff`, label: 'Unassigned' }];
 }
 

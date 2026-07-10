@@ -92,6 +92,7 @@ const bookingRequestListArgs = {
         assignments: {
           select: {
             id: true,
+            userId: true,
             user: {
               select: {
                 name: true,
