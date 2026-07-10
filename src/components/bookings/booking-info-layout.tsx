@@ -1,7 +1,14 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+
 import type { LucideIcon } from 'lucide-react';
 import { EMPTY_BOOKING_VALUE } from './booking-display-utils';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 /**
  * Renders a label/value pair in read-only booking information sections.
@@ -48,16 +55,25 @@ export function BookingInfoSection({
 }) {
   return (
     <Card className="rounded-2xl shadow-sm">
-      <CardHeader className="border-b">
-        <h2 className="font-heading text-base font-semibold leading-snug">
-          {title}
-        </h2>
-      </CardHeader>
-      <CardContent
-        className={cn('grid gap-4 sm:grid-cols-2', contentClassName)}
-      >
-        {children}
-      </CardContent>
+      <Accordion type="single" collapsible defaultValue={title}>
+        <AccordionItem value={title} className="border-none">
+          <CardHeader className="border-b">
+            <AccordionTrigger className="p-0 no-underline">
+              <h2 className="font-heading text-base font-semibold leading-snug">
+                {title}
+              </h2>
+            </AccordionTrigger>
+          </CardHeader>
+
+          <AccordionContent>
+            <CardContent
+              className={cn('grid gap-4 pt-4 sm:grid-cols-2', contentClassName)}
+            >
+              {children}
+            </CardContent>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   );
 }
