@@ -120,23 +120,21 @@ export function buildCreateReadinessItems(values: {
           hasText(values.paidTo)),
       helperText: hasPaidDeposit ? undefined : 'No deposit recorded',
     },
-    {
-      label: 'Specialty name',
-      complete:
-        !includesSpecialtyCourse ||
-        values.activities
-          .filter(
-            (activity) =>
-              activity.activityType === ActivityType.SPECIALTY_COURSE,
-          )
-          .every((activity) =>
-            hasUsefulSpecialtyCourseName(activity.specialtyCourse),
-          ),
-      helperText: includesSpecialtyCourse
-        ? 'Example: Nitrox, Deep, Wreck, Sidemount'
-        : 'No specialty courses',
-    },
   ];
+
+  if (includesSpecialtyCourse) {
+    readinessItems.push({
+      label: 'Specialty name',
+      complete: values.activities
+        .filter(
+          (activity) => activity.activityType === ActivityType.SPECIALTY_COURSE,
+        )
+        .every((activity) =>
+          hasUsefulSpecialtyCourseName(activity.specialtyCourse),
+        ),
+      helperText: 'Example: Nitrox, Deep, Wreck, Sidemount',
+    });
+  }
 
   if (includesFunDive) {
     readinessItems.push({

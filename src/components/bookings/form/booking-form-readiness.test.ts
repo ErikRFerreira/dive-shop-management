@@ -187,6 +187,13 @@ test('omits diving experience details when the booking has no fun dives', () => 
   ).toBe(false);
 });
 
+test('omits specialty name readiness when the booking has no specialty courses', () => {
+  const readinessItems = buildCreateReadinessItems(readinessValues());
+
+  expect(hasReadinessItem('Specialty name', readinessValues())).toBe(false);
+  expect(readinessItems).toHaveLength(7);
+});
+
 test('requires a useful specialty name when the booking includes a specialty course', () => {
   const missingSpecialtyName = readinessValues({
     activities: [
@@ -212,6 +219,7 @@ test('requires a useful specialty name when the booking includes a specialty cou
   expect(readinessItem('Specialty name', missingSpecialtyName).complete).toBe(
     false,
   );
+  expect(buildCreateReadinessItems(missingSpecialtyName)).toHaveLength(8);
   expect(readinessItem('Specialty name', completeSpecialtyName).complete).toBe(
     true,
   );
