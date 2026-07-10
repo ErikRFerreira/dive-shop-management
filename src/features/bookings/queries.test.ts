@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
 
@@ -30,6 +30,10 @@ const adminUser = {
 beforeEach(() => {
   mocks.bookingRequestCount.mockReset();
   mocks.bookingRequestFindMany.mockReset();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 /**
@@ -148,7 +152,10 @@ test('sorts booking requests by newest created when requested', async () => {
 
 /** Verifies activity-date sorting across scheduled, requested, and undated bookings. */
 test('sorts booking requests by operational activity date', async () => {
-  mocks.bookingRequestCount.mockResolvedValue(4);
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-07-10T01:00:00.000Z'));
+
+  mocks.bookingRequestCount.mockResolvedValue(6);
   mocks.bookingRequestFindMany
     .mockResolvedValueOnce([
       {
@@ -159,9 +166,9 @@ test('sorts booking requests by operational activity date', async () => {
       },
       {
         id: 'scheduled-booking',
-        requestedDate: new Date('2026-07-01T00:00:00.000Z'),
+        requestedDate: null,
         scheduleItems: [{ date: new Date('2026-07-20T00:00:00.000Z') }],
-        activities: [{ requestedDate: new Date('2026-07-10T00:00:00.000Z') }],
+        activities: [{ requestedDate: new Date('2026-07-01T00:00:00.000Z') }],
       },
       {
         id: 'activity-booking',
@@ -170,17 +177,31 @@ test('sorts booking requests by operational activity date', async () => {
         activities: [{ requestedDate: new Date('2026-07-12T00:00:00.000Z') }],
       },
       {
-        id: 'legacy-booking',
-        requestedDate: new Date('2026-07-13T00:00:00.000Z'),
+        id: 'today-legacy-booking',
+        requestedDate: new Date('2026-07-10T00:00:00.000Z'),
         scheduleItems: [],
         activities: [{ requestedDate: null }],
+      },
+      {
+        id: 'older-past-booking',
+        requestedDate: null,
+        scheduleItems: [],
+        activities: [{ requestedDate: new Date('2026-06-01T00:00:00.000Z') }],
+      },
+      {
+        id: 'recent-past-booking',
+        requestedDate: null,
+        scheduleItems: [],
+        activities: [{ requestedDate: new Date('2026-07-09T00:00:00.000Z') }],
       },
     ])
     .mockResolvedValueOnce([
       bookingListRecord('undated-booking'),
       bookingListRecord('scheduled-booking'),
-      bookingListRecord('legacy-booking'),
+      bookingListRecord('today-legacy-booking'),
       bookingListRecord('activity-booking'),
+      bookingListRecord('older-past-booking'),
+      bookingListRecord('recent-past-booking'),
     ]);
 
   await expect(
@@ -196,10 +217,12 @@ test('sorts booking requests by operational activity date', async () => {
     ),
   ).resolves.toMatchObject({
     bookings: [
+      { id: 'today-legacy-booking' },
       { id: 'activity-booking' },
-      { id: 'legacy-booking' },
       { id: 'scheduled-booking' },
       { id: 'undated-booking' },
+      { id: 'recent-past-booking' },
+      { id: 'older-past-booking' },
     ],
   });
 
@@ -233,11 +256,65 @@ test('sorts booking requests by operational activity date', async () => {
           {
             id: {
               in: [
+                'today-legacy-booking',
                 'activity-booking',
-                'legacy-booking',
                 'scheduled-booking',
                 'undated-booking',
+                'recent-past-booking',
+                'older-past-booking',
               ],
+            },
+          },
+        ],
+      },
+    }),
+  );
+});
+
+/** Verifies that activity-date sorting keeps status filters in both query phases. */
+test('preserves booking filters when sorting by operational activity date', async () => {
+  mocks.bookingRequestCount.mockResolvedValue(1);
+  mocks.bookingRequestFindMany
+    .mockResolvedValueOnce([
+      {
+        id: 'draft-booking',
+        requestedDate: null,
+        scheduleItems: [],
+        activities: [{ requestedDate: new Date('2026-07-12T00:00:00.000Z') }],
+      },
+    ])
+    .mockResolvedValueOnce([bookingListRecord('draft-booking')]);
+
+  await getBookingRequests(
+    adminUser,
+    BookingStatus.DRAFT,
+    undefined,
+    {
+      page: 1,
+      pageSize: 10,
+    },
+    'activity-date',
+  );
+
+  expect(mocks.bookingRequestFindMany).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({
+      where: {
+        status: BookingStatus.DRAFT,
+      },
+    }),
+  );
+  expect(mocks.bookingRequestFindMany).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({
+      where: {
+        AND: [
+          {
+            status: BookingStatus.DRAFT,
+          },
+          {
+            id: {
+              in: ['draft-booking'],
             },
           },
         ],

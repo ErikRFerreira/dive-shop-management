@@ -172,7 +172,7 @@ test('renders supported booking sort options', () => {
   const sortSelect = screen.getByLabelText('Sort by') as HTMLSelectElement;
 
   expect(Array.from(sortSelect.options).map((option) => option.textContent)).toEqual(
-    ['Recently updated', 'Newest created', 'Activity date'],
+    ['Recently updated', 'Newest created', 'Upcoming activity date'],
   );
   expect(sortSelect.value).toBe('recently-updated');
 });

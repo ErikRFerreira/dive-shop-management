@@ -88,8 +88,10 @@ export function ApproveBookingForm({
                   {activity.label}
                 </span>
                 <select
-                  className={inputClassName}
-                  defaultValue={activity.defaultTimeSlot ?? ScheduleTimeSlot.TBD}
+                  className={`${inputClassName} p-1`}
+                  defaultValue={
+                    activity.defaultTimeSlot ?? ScheduleTimeSlot.TBD
+                  }
                   name={getApprovalScheduleTimeSlotFieldName(activity.id)}
                 >
                   {scheduleTimeSlotOptions.map((timeSlot) => (

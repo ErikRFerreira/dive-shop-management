@@ -30,7 +30,7 @@ type BookingSortSelectProps = {
 const sortLabels: Record<BookingSort, string> = {
   'recently-updated': 'Recently updated',
   'newest-created': 'Newest created',
-  'activity-date': 'Activity date',
+  'activity-date': 'Upcoming activity date',
 };
 
 const selectClass =

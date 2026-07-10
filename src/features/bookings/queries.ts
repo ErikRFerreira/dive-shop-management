@@ -10,6 +10,7 @@ import 'server-only';
 import { Prisma } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
+import { getShopTodayDate, startOfUtcDateOnly } from '@/lib/operational-date';
 import {
   bookingDefaultSort,
   bookingDefaultPageSize,
@@ -166,6 +167,19 @@ type BookingRequestActivityDateSortRow = {
   activities: { requestedDate: Date | null }[];
 };
 
+/** Sort buckets for the operational activity-date booking list order. */
+type BookingActivityDateSortBucket = 'upcoming' | 'undated' | 'past';
+
+/** Sort precedence for operational activity-date buckets. */
+const bookingActivityDateSortBucketOrder: Record<
+  BookingActivityDateSortBucket,
+  number
+> = {
+  upcoming: 0,
+  undated: 1,
+  past: 2,
+};
+
 /**
  * A booking-list row with the preferred customer selected for display.
  *
@@ -252,29 +266,58 @@ function getBookingActivitySortDate(
 }
 
 /**
- * Compares two minimally selected bookings by operational activity date.
+ * Classifies a booking activity date into the operational list bucket.
+ *
+ * @param date - Resolved activity or schedule date for a booking.
+ * @param today - Shop-local today represented in the app's UTC date-only format.
+ * @returns Upcoming for today/future dates, past for dates before today, or undated.
+ */
+function getBookingActivityDateSortBucket(
+  date: Date | null,
+  today: Date,
+): BookingActivityDateSortBucket {
+  if (!date) {
+    return 'undated';
+  }
+
+  return startOfUtcDateOnly(date) < today ? 'past' : 'upcoming';
+}
+
+/**
+ * Compares two minimally selected bookings by operational upcoming activity date.
  *
  * @param first - First booking sort row.
  * @param second - Second booking sort row.
- * @returns Standard Array.sort comparison result with undated bookings last.
+ * @param today - Shop-local today represented in the app's UTC date-only format.
+ * @returns Standard Array.sort comparison result with upcoming dates first,
+ * undated bookings next, and past dates last.
  */
 function compareBookingActivitySortRows(
   first: BookingRequestActivityDateSortRow,
   second: BookingRequestActivityDateSortRow,
+  today: Date,
 ) {
   const firstDate = getBookingActivitySortDate(first);
   const secondDate = getBookingActivitySortDate(second);
+  const firstBucket = getBookingActivityDateSortBucket(firstDate, today);
+  const secondBucket = getBookingActivityDateSortBucket(secondDate, today);
+  const bucketComparison =
+    bookingActivityDateSortBucketOrder[firstBucket] -
+    bookingActivityDateSortBucketOrder[secondBucket];
+
+  if (bucketComparison !== 0) {
+    return bucketComparison;
+  }
 
   if (firstDate && secondDate) {
-    const dateComparison = firstDate.getTime() - secondDate.getTime();
+    const firstTime = startOfUtcDateOnly(firstDate).getTime();
+    const secondTime = startOfUtcDateOnly(secondDate).getTime();
+    const dateComparison =
+      firstBucket === 'past' ? secondTime - firstTime : firstTime - secondTime;
 
     if (dateComparison !== 0) {
       return dateComparison;
     }
-  } else if (firstDate) {
-    return -1;
-  } else if (secondDate) {
-    return 1;
   }
 
   return first.id.localeCompare(second.id);
@@ -391,7 +434,7 @@ export async function getBookingRequests(
  * @param where - Visibility and filter constraints for the current request.
  * @param skip - Number of sorted matching rows to skip for pagination.
  * @param take - Number of sorted matching rows to hydrate.
- * @returns Hydrated booking rows in activity-date order.
+ * @returns Hydrated booking rows in shop-local upcoming activity-date order.
  */
 async function getActivityDateSortedBookingRequests(
   where: Prisma.BookingRequestWhereInput,
@@ -416,8 +459,9 @@ async function getActivityDateSortedBookingRequests(
       },
     },
   });
+  const today = getShopTodayDate();
   const ids = sortedRows
-    .sort(compareBookingActivitySortRows)
+    .sort((first, second) => compareBookingActivitySortRows(first, second, today))
     .slice(skip, skip + take)
     .map((bookingRequest) => bookingRequest.id);
 
