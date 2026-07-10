@@ -47,10 +47,7 @@ export function BookingsListShell({
    * @param href - Existing bookings filter URL to navigate to.
    * @param filterKey - Stable filter key used for optimistic active styling.
    */
-  function handleFilterSelect(
-    href: string,
-    filterKey: BookingStatusFilterKey,
-  ) {
+  function handleFilterSelect(href: string, filterKey: BookingStatusFilterKey) {
     setPendingFilterKey(filterKey);
     startTransition(() => {
       router.push(href);
