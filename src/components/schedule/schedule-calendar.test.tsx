@@ -38,6 +38,7 @@ vi.mock('@fullcalendar/react', () => ({
    * @returns A lightweight calendar representation for jsdom tests.
    */
   default: function MockFullCalendar(props: {
+    allDayText?: string;
     editable?: boolean;
     events?: Array<{
       id?: string;
@@ -62,6 +63,7 @@ vi.mock('@fullcalendar/react', () => ({
     return (
       <div
         data-editable={String(props.editable)}
+        data-all-day-text={props.allDayText}
         data-initial-view={props.initialView}
         data-selectable={String(props.selectable)}
         data-testid="full-calendar"
@@ -569,6 +571,17 @@ test('keeps assignment controls hidden for managers and admins until requested',
   expect(
     screen.queryByRole('button', { name: 'Assign to all course days' }),
   ).toBeNull();
+});
+
+test('renders month, week, day, and list schedule views without a TBD all-day label', () => {
+  renderScheduleCalendar();
+
+  const calendar = screen.getByTestId('full-calendar');
+
+  expect(calendar.getAttribute('data-views')).toBe(
+    'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+  );
+  expect(calendar.getAttribute('data-all-day-text')).toBe('');
 });
 
 test('shows all-days assignment action for multi-day schedule events', () => {
