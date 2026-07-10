@@ -4,14 +4,6 @@ Internal dashboard for dive shop booking intake, admin approval, and schedule pu
 
 The app helps customer service turn messy booking information from WeChat, WhatsApp, referrals, or instructors into structured booking requests. Admin reviews those requests before they become part of the official internal schedule.
 
-## Current Phase
-
-**MVP 0.1 / Sprint 1**
-
-Sprint 1 goal: `Create booking request → save draft → submit for approval → show as Pending Approval`
-
-Sprint 1 does not include admin approval, schedule publishing, file uploads, messaging automation, or instructor payroll reports.
-
 ## MVP Goal
 
 Smallest useful workflow:
@@ -112,11 +104,11 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
 
 After migrations have been applied, run `pnpm db:seed` (or `npx prisma db seed`) to create these idempotent local development users:
 
-| Name | Email | Role |
-| --- | --- | --- |
-| Admin User | `admin@diveshop.local` | `ADMIN` |
+| Name                  | Email                             | Role               |
+| --------------------- | --------------------------------- | ------------------ |
+| Admin User            | `admin@diveshop.local`            | `ADMIN`            |
 | Customer Service User | `customer-service@diveshop.local` | `CUSTOMER_SERVICE` |
-| Manager User | `manager@diveshop.local` | `MANAGER` |
-| Mark User | `mark@diveshop.local` | `INSTRUCTOR` |
+| Manager User          | `manager@diveshop.local`          | `MANAGER`          |
+| Mark User             | `mark@diveshop.local`             | `INSTRUCTOR`       |
 
 The seed does not create passwords, authentication records, bookings, or other demo data. It uses each email as a stable key, so re-running it safely updates the same users.
