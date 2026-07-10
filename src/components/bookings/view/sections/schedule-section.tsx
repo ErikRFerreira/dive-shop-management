@@ -130,6 +130,7 @@ export function ScheduleSection({
             <ScheduleAssignmentsList
               assignableStaff={assignableStaff}
               assignments={scheduleItem.assignments}
+              canAssignToAllCourseDays={scheduleItem.totalDays > 1}
               canManageAssignments={canManageAssignments}
               scheduleItemId={scheduleItem.id}
             />

@@ -126,6 +126,7 @@ export function ScheduleEventDialogContent({
             <ScheduleAssignmentsList
               assignableStaff={assignableStaff}
               assignments={event.assignments}
+              canAssignToAllCourseDays={event.totalDays > 1}
               canManageAssignments={canManageAssignments}
               isManagingAssignments={isManagingAssignments}
               managementMode="collapsible"

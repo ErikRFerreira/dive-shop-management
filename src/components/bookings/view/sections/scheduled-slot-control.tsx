@@ -78,7 +78,7 @@ export function ScheduledSlotControl({
       <label className="text-sm font-medium text-muted-foreground">
         Scheduled slot
         <select
-          className={`${inputClassName} mt-1`}
+          className={`${inputClassName} mt-1 py-1`}
           disabled={isActionPending}
           onChange={(event) =>
             handleTimeSlotChange(event.target.value as ScheduleTimeSlotValue)

@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import {
   addScheduleAssignment,
+  assignStaffToAllCourseDays,
   removeScheduleAssignment,
   updateScheduleAssignmentRole,
   type ScheduleAssignmentActionResult,
@@ -44,6 +45,7 @@ const assignmentRoles = Object.values(ScheduleAssignmentRole);
 type ScheduleAssignmentsListProps = {
   assignments: ScheduleAssignmentDetail[];
   assignableStaff: AssignableStaff[];
+  canAssignToAllCourseDays?: boolean;
   canManageAssignments: boolean;
   isManagingAssignments?: boolean;
   managementMode?: ScheduleAssignmentManagementMode;
@@ -58,6 +60,7 @@ type ScheduleAssignmentBadgeProps = {
 type ScheduleAssignmentFormProps = {
   assignments: ScheduleAssignmentDetail[];
   assignableStaff: AssignableStaff[];
+  canAssignToAllCourseDays?: boolean;
   scheduleItemId: string;
   variant?: ScheduleAssignmentFormVariant;
 };
@@ -85,6 +88,7 @@ const selectClass =
 export function ScheduleAssignmentsList({
   assignments,
   assignableStaff,
+  canAssignToAllCourseDays = false,
   canManageAssignments,
   isManagingAssignments = false,
   managementMode = 'always',
@@ -132,6 +136,7 @@ export function ScheduleAssignmentsList({
         <ScheduleAssignmentForm
           assignableStaff={assignableStaff}
           assignments={assignments}
+          canAssignToAllCourseDays={canAssignToAllCourseDays}
           scheduleItemId={scheduleItemId}
           variant="dialog"
         />
@@ -173,6 +178,7 @@ export function ScheduleAssignmentsList({
         <ScheduleAssignmentForm
           assignableStaff={assignableStaff}
           assignments={assignments}
+          canAssignToAllCourseDays={canAssignToAllCourseDays}
           scheduleItemId={scheduleItemId}
         />
       ) : null}
@@ -376,6 +382,7 @@ function ScheduleAssignmentRow({
 export function ScheduleAssignmentForm({
   assignments,
   assignableStaff,
+  canAssignToAllCourseDays = false,
   scheduleItemId,
   variant = 'default',
 }: ScheduleAssignmentFormProps) {
@@ -383,6 +390,9 @@ export function ScheduleAssignmentForm({
   const [isPending, startTransition] = useTransition();
   const pendingActionRef = useRef(false);
   const [isActionInFlight, setIsActionInFlight] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'add' | 'all' | null>(
+    null,
+  );
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<
     ScheduleAssignmentRoleValue | ''
@@ -394,20 +404,18 @@ export function ScheduleAssignmentForm({
     () => getAvailableAssignableStaff(assignableStaff, assignments),
     [assignableStaff, assignments],
   );
+  const staffOptions = canAssignToAllCourseDays
+    ? assignableStaff
+    : availableStaff;
   const isActionPending = isPending || isActionInFlight;
+  const isMissingSelection = !selectedUserId || !selectedRole;
 
   /**
-   * Adds the selected staff user to the schedule item.
+   * Validates the shared staff and role fields before assignment actions.
    *
-   * @param event - Form submit event from the add assignment form.
+   * @returns True when the assignment form has enough data to submit.
    */
-  function handleAddAssignment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (pendingActionRef.current || isActionPending) {
-      return;
-    }
-
+  function validateAssignmentSelection() {
     setError(undefined);
 
     if (!selectedUserId) {
@@ -420,15 +428,33 @@ export function ScheduleAssignmentForm({
       return;
     }
 
+    return true;
+  }
+
+  /**
+   * Runs one assignment mutation while guarding against duplicate submissions.
+   *
+   * @param action - Pending action identifier used for button feedback.
+   * @param mutation - Server action call to execute with the selected form data.
+   */
+  function runAssignmentMutation(
+    action: 'add' | 'all',
+    mutation: () => Promise<ScheduleAssignmentActionResult>,
+  ) {
+    if (pendingActionRef.current || isActionPending) {
+      return;
+    }
+
+    if (!validateAssignmentSelection()) {
+      return;
+    }
+
     pendingActionRef.current = true;
     setIsActionInFlight(true);
+    setPendingAction(action);
     startTransition(async () => {
       try {
-        const result = await addScheduleAssignment(
-          scheduleItemId,
-          selectedUserId,
-          selectedRole,
-        );
+        const result = await mutation();
 
         if (result.success) {
           setSelectedUserId('');
@@ -439,8 +465,31 @@ export function ScheduleAssignmentForm({
       } finally {
         pendingActionRef.current = false;
         setIsActionInFlight(false);
+        setPendingAction(null);
       }
     });
+  }
+
+  /**
+   * Adds the selected staff user to the current schedule item.
+   *
+   * @param event - Form submit event from the add assignment form.
+   */
+  function handleAddAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    runAssignmentMutation('add', () =>
+      addScheduleAssignment(scheduleItemId, selectedUserId, selectedRole),
+    );
+  }
+
+  /**
+   * Adds the selected staff user to every unassigned day in this course group.
+   */
+  function handleAssignToAllCourseDays() {
+    runAssignmentMutation('all', () =>
+      assignStaffToAllCourseDays(scheduleItemId, selectedUserId, selectedRole),
+    );
   }
 
   return (
@@ -466,21 +515,21 @@ export function ScheduleAssignmentForm({
             Staff
           </Label>
           <Select
-            disabled={isActionPending || availableStaff.length === 0}
+            disabled={isActionPending || staffOptions.length === 0}
             onValueChange={setSelectedUserId}
             value={selectedUserId}
           >
             <SelectTrigger id={staffSelectId} className={selectClass}>
               <SelectValue
                 placeholder={
-                  availableStaff.length === 0
+                  staffOptions.length === 0
                     ? 'All available staff assigned'
                     : 'Select staff'
                 }
               />
             </SelectTrigger>
             <SelectContent>
-              {availableStaff.map((staff) => (
+              {staffOptions.map((staff) => (
                 <SelectItem key={staff.id} value={staff.id}>
                   {formatStaffOption(staff)}
                 </SelectItem>
@@ -516,20 +565,38 @@ export function ScheduleAssignmentForm({
           </Select>
         </div>
 
-        <div className="flex items-end">
+        <div className="flex flex-wrap items-end gap-2">
           <PendingButton
-            disabled={availableStaff.length === 0}
-            pending={isActionPending}
+            disabled={
+              staffOptions.length === 0 || isMissingSelection || isActionPending
+            }
+            pending={pendingAction === 'add' && isActionPending}
             pendingLabel="Adding..."
             type="submit"
           >
             {variant === 'dialog' ? <Plus className="h-4 w-4" /> : null}
             {variant === 'dialog' ? 'Add' : 'Add assignment'}
           </PendingButton>
+          {canAssignToAllCourseDays ? (
+            <PendingButton
+              disabled={
+                staffOptions.length === 0 ||
+                isMissingSelection ||
+                isActionPending
+              }
+              onClick={handleAssignToAllCourseDays}
+              pending={pendingAction === 'all' && isActionPending}
+              pendingLabel="Assigning..."
+              type="button"
+              variant="outline"
+            >
+              Assign to all course days
+            </PendingButton>
+          ) : null}
         </div>
       </div>
 
-      {availableStaff.length === 0 ? (
+      {availableStaff.length === 0 && !canAssignToAllCourseDays ? (
         <p className="text-sm text-muted-foreground">
           All available staff are already assigned to this activity.
         </p>

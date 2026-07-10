@@ -58,6 +58,14 @@ type ScheduleItemAssignmentGuard = {
   };
 };
 
+type ScheduleItemCourseAssignmentGuard = ScheduleItemAssignmentGuard & {
+  bookingRequestId: string;
+  bookingActivityId: string | null;
+  bookingActivity: {
+    id: string;
+  } | null;
+};
+
 type ScheduleDayGuard = {
   id: string;
   bookingRequestId: string;
@@ -86,6 +94,13 @@ type ScheduleDaySibling = {
   createdAt: Date;
   dayNumber: number | null;
   totalDays: number;
+};
+
+type ScheduleAssignmentCourseDay = {
+  id: string;
+  assignments: {
+    id: string;
+  }[];
 };
 
 /**
@@ -157,6 +172,36 @@ async function loadScheduleItemAssignmentGuard(scheduleItemId: string) {
     where: { id: scheduleItemId },
     select: {
       id: true,
+      bookingRequest: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Loads a schedule item with the activity group fields needed for bulk assignment.
+ *
+ * @param scheduleItemId - Schedule item whose course day group is being assigned.
+ * @returns The schedule item, booking status, and linked booking activity, or null.
+ */
+async function loadScheduleItemCourseAssignmentGuard(
+  scheduleItemId: string,
+): Promise<ScheduleItemCourseAssignmentGuard | null> {
+  return db.scheduleItem.findUnique({
+    where: { id: scheduleItemId },
+    select: {
+      id: true,
+      bookingRequestId: true,
+      bookingActivityId: true,
+      bookingActivity: {
+        select: {
+          id: true,
+        },
+      },
       bookingRequest: {
         select: {
           id: true,
@@ -244,6 +289,42 @@ function getScheduleStatusError(scheduleItem: ScheduleItemAssignmentGuard) {
 }
 
 /**
+ * Validates the selected staff account before assignment mutations.
+ *
+ * @param userId - User selected in the assignment form.
+ * @returns A failure result when the staff member is missing or not assignable.
+ */
+async function getAssignableStaffSelectionError(
+  userId: string,
+): Promise<ScheduleAssignmentActionResult | null> {
+  const selectedUser = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      isActive: true,
+    },
+  });
+
+  if (!selectedUser) {
+    return {
+      success: false,
+      formError: 'Selected staff member not found. Refresh and try again.',
+    };
+  }
+
+  if (!selectedUser.isActive || !isAssignableStaffRole(selectedUser.role)) {
+    return {
+      success: false,
+      formError:
+        'Only active instructors and divemasters can be assigned to scheduled activities.',
+    };
+  }
+
+  return null;
+}
+
+/**
  * Validates that scheduled day changes are allowed for the related booking status.
  *
  * @param scheduleItem - Schedule item and booking status loaded for the action.
@@ -269,6 +350,49 @@ function buildScheduleDaySiblingWhere(scheduleItem: ScheduleDayGuard) {
     bookingRequestId: scheduleItem.bookingRequestId,
     bookingActivityId: scheduleItem.bookingActivityId,
   } satisfies Prisma.ScheduleItemWhereInput;
+}
+
+/**
+ * Builds the sibling predicate for schedule days in a linked booking activity.
+ *
+ * @param scheduleItem - Schedule item whose course/activity group is targeted.
+ * @returns Prisma where input for all days in that booking activity group.
+ */
+function buildCourseAssignmentSiblingWhere(
+  scheduleItem: ScheduleItemCourseAssignmentGuard,
+) {
+  return {
+    bookingRequestId: scheduleItem.bookingRequestId,
+    bookingActivityId: scheduleItem.bookingActivityId,
+  } satisfies Prisma.ScheduleItemWhereInput;
+}
+
+/**
+ * Loads every course day in the target activity group with selected-user matches.
+ *
+ * @param scheduleItem - Schedule item identifying the course/activity group.
+ * @param userId - Staff user whose existing assignments should be detected.
+ * @returns Course days and matching assignments for duplicate-safe creation.
+ */
+async function loadCourseAssignmentDays(
+  scheduleItem: ScheduleItemCourseAssignmentGuard,
+  userId: string,
+): Promise<ScheduleAssignmentCourseDay[]> {
+  return db.scheduleItem.findMany({
+    where: buildCourseAssignmentSiblingWhere(scheduleItem),
+    select: {
+      id: true,
+      assignments: {
+        where: {
+          userId,
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+    orderBy: [{ date: 'asc' }, { dayNumber: 'asc' }, { createdAt: 'asc' }],
+  });
 }
 
 /**
@@ -457,6 +581,100 @@ export async function addScheduleAssignment(
     }
 
     throw error;
+  }
+
+  revalidateScheduleAssignmentPaths(scheduleItem.bookingRequest.id);
+  return { success: true };
+}
+
+/**
+ * Adds one staff assignment to every day in the same scheduled course/activity.
+ *
+ * Existing assignments for the selected staff member are skipped so their
+ * current roles remain unchanged and duplicate rows are not created.
+ *
+ * @param scheduleItemId - Current schedule item identifying the course day group.
+ * @param userId - Active instructor or divemaster user to assign.
+ * @param role - Assignment role to use for newly created course-day assignments.
+ * @returns Success or validation/authorization/business-rule errors.
+ */
+export async function assignStaffToAllCourseDays(
+  scheduleItemId: string,
+  userId: string,
+  role: unknown,
+): Promise<ScheduleAssignmentActionResult> {
+  const validation = addScheduleAssignmentSchema.safeParse({
+    scheduleItemId,
+    userId,
+    role,
+  });
+
+  if (!validation.success) {
+    return getScheduleValidationErrors(validation.error);
+  }
+
+  const permissionError = await getScheduleAssignmentPermissionError();
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const scheduleItem = await loadScheduleItemCourseAssignmentGuard(
+    validation.data.scheduleItemId,
+  );
+
+  if (!scheduleItem) {
+    return {
+      success: false,
+      formError: 'Scheduled activity not found. Refresh and try again.',
+    };
+  }
+
+  const statusError = getScheduleStatusError(scheduleItem);
+  if (statusError) {
+    return statusError;
+  }
+
+  if (!scheduleItem.bookingActivityId || !scheduleItem.bookingActivity) {
+    return {
+      success: false,
+      formError:
+        'This scheduled activity is not linked to a course/activity group.',
+    };
+  }
+
+  const staffSelectionError = await getAssignableStaffSelectionError(
+    validation.data.userId,
+  );
+  if (staffSelectionError) {
+    return staffSelectionError;
+  }
+
+  const courseDays = await loadCourseAssignmentDays(
+    scheduleItem,
+    validation.data.userId,
+  );
+
+  if (courseDays.length <= 1) {
+    return {
+      success: false,
+      formError:
+        'Assign to all course days is only available for multi-day courses.',
+    };
+  }
+
+  const assignmentsToCreate = courseDays
+    .filter((courseDay) => courseDay.assignments.length === 0)
+    .map((courseDay) => ({
+      scheduleItemId: courseDay.id,
+      userId: validation.data.userId,
+      role: validation.data.role,
+    }));
+
+  if (assignmentsToCreate.length > 0) {
+    await db.scheduleAssignment.createMany({
+      data: assignmentsToCreate,
+      skipDuplicates: true,
+    });
   }
 
   revalidateScheduleAssignmentPaths(scheduleItem.bookingRequest.id);
