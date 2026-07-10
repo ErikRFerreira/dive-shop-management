@@ -22,7 +22,9 @@ function renderBookingStatusFilter(
   render(
     <BookingStatusFilter
       onFilterSelect={onFilterSelect}
+      pageSize={10}
       selectedQueue={props.selectedQueue}
+      selectedSort="activity-date"
       selectedStatus={props.selectedStatus}
       {...props}
     />,
@@ -32,31 +34,35 @@ function renderBookingStatusFilter(
 }
 
 test.each<[string, string, BookingStatus]>([
-  ['All', '/bookings?page=1&pageSize=10', BookingStatus.DRAFT],
-  ['Draft', '/bookings?status=DRAFT&page=1&pageSize=10', BookingStatus.APPROVED],
+  ['All', '/bookings?sort=activity-date&page=1&pageSize=10', BookingStatus.DRAFT],
+  [
+    'Draft',
+    '/bookings?status=DRAFT&sort=activity-date&page=1&pageSize=10',
+    BookingStatus.APPROVED,
+  ],
   [
     'Pending Approval',
-    '/bookings?status=PENDING_APPROVAL&page=1&pageSize=10',
+    '/bookings?status=PENDING_APPROVAL&sort=activity-date&page=1&pageSize=10',
     BookingStatus.DRAFT,
   ],
   [
     'Needs More Info',
-    '/bookings?status=NEEDS_MORE_INFO&page=1&pageSize=10',
+    '/bookings?status=NEEDS_MORE_INFO&sort=activity-date&page=1&pageSize=10',
     BookingStatus.DRAFT,
   ],
   [
     'Approved',
-    '/bookings?status=APPROVED&page=1&pageSize=10',
+    '/bookings?status=APPROVED&sort=activity-date&page=1&pageSize=10',
     BookingStatus.DRAFT,
   ],
   [
     'Cancelled',
-    '/bookings?status=CANCELLED&page=1&pageSize=10',
+    '/bookings?status=CANCELLED&sort=activity-date&page=1&pageSize=10',
     BookingStatus.DRAFT,
   ],
   [
     'Unassigned',
-    '/bookings?queue=unassigned&page=1&pageSize=10',
+    '/bookings?queue=unassigned&sort=activity-date&page=1&pageSize=10',
     BookingStatus.DRAFT,
   ],
 ])(

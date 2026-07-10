@@ -134,6 +134,19 @@ type ScheduleItemCreateInput = {
   scheduleNotes: string | null;
 };
 
+type ApprovalScheduleTimeSlotsResult =
+  | {
+      success: true;
+      timeSlots: Map<string, ScheduleTimeSlot>;
+    }
+  | {
+      success: false;
+      fieldErrors: Record<string, string[]>;
+    };
+
+const approvalScheduleTimeSlotFieldPrefix = 'scheduleTimeSlot:';
+const legacyApprovalScheduleTimeSlotKey = 'legacy';
+
 /**
  * Persists one booking request and its related intake records atomically.
  *
@@ -145,16 +158,55 @@ function getEditSaveValidationIntent(status: BookingStatus) {
 }
 
 /**
+ * Reads admin-selected schedule slots from the approval form.
+ *
+ * @param formData - Submitted approval form data with activity-keyed slot fields.
+ * @returns Valid schedule slots by activity key, or field errors for invalid values.
+ */
+function getApprovalScheduleTimeSlots(
+  formData: FormData,
+): ApprovalScheduleTimeSlotsResult {
+  const timeSlots = new Map<string, ScheduleTimeSlot>();
+  const fieldErrors: Record<string, string[]> = {};
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith(approvalScheduleTimeSlotFieldPrefix)) {
+      continue;
+    }
+
+    const activityKey = key.slice(approvalScheduleTimeSlotFieldPrefix.length);
+    const parsedTimeSlot = Object.values(ScheduleTimeSlot).includes(
+      value as ScheduleTimeSlot,
+    )
+      ? (value as ScheduleTimeSlot)
+      : null;
+
+    if (!activityKey || !parsedTimeSlot) {
+      fieldErrors[key] = ['Select a valid schedule slot.'];
+      continue;
+    }
+
+    timeSlots.set(activityKey, parsedTimeSlot);
+  }
+
+  return Object.keys(fieldErrors).length > 0
+    ? { success: false, fieldErrors }
+    : { success: true, timeSlots };
+}
+
+/**
  * Expands one approved booking activity into one or more dated schedule rows.
  *
  * @param bookingId - Booking request being published to the schedule.
  * @param activity - Stored activity row with requested scheduling details.
+ * @param timeSlot - Admin-selected operational slot to write to each schedule row.
  * @param scheduleNotes - Notes copied from admin/internal booking notes.
  * @returns Schedule row create inputs for each persisted activity duration day.
  */
 function buildScheduleItemsForActivity(
   bookingId: string,
   activity: ApprovableBookingActivity,
+  timeSlot: ScheduleTimeSlot,
   scheduleNotes: string | null,
 ): ScheduleItemCreateInput[] {
   if (!activity.activityType || !activity.requestedDate) {
@@ -172,7 +224,7 @@ function buildScheduleItemsForActivity(
     bookingActivityId: activity.id,
     date: addUtcDateOnlyDays(requestedDate, index),
     startTime: null,
-    timeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
+    timeSlot,
     activityType,
     dayNumber: index + 1,
     totalDays,
@@ -184,6 +236,7 @@ function buildScheduleItemsForActivity(
  * Builds schedule rows for the approval action using activity rows first.
  *
  * @param booking - Booking fields required to publish schedule items.
+ * @param approvalTimeSlots - Admin-selected schedule slots keyed by activity ID.
  * @param scheduleNotes - Notes copied onto each schedule row.
  * @returns Schedule rows ready to create, or an error when required date/type data is missing.
  */
@@ -196,6 +249,7 @@ function buildScheduleItemsForApproval(
     activityType: ActivityType | null;
     activities: ApprovableBookingActivity[];
   },
+  approvalTimeSlots: Map<string, ScheduleTimeSlot>,
   scheduleNotes: string | null,
 ):
   | { success: true; scheduleItems: ScheduleItemCreateInput[] }
@@ -229,6 +283,8 @@ function buildScheduleItemsForApproval(
           notes: null,
           sortOrder: 0,
         },
+        approvalTimeSlots.get(legacyApprovalScheduleTimeSlotKey) ??
+          ScheduleTimeSlot.TBD,
         scheduleNotes,
       ).map((scheduleItem) => ({
         ...scheduleItem,
@@ -252,7 +308,12 @@ function buildScheduleItemsForApproval(
   return {
     success: true,
     scheduleItems: booking.activities.flatMap((activity) =>
-      buildScheduleItemsForActivity(booking.id, activity, scheduleNotes),
+      buildScheduleItemsForActivity(
+        booking.id,
+        activity,
+        approvalTimeSlots.get(activity.id) ?? ScheduleTimeSlot.TBD,
+        scheduleNotes,
+      ),
     ),
   };
 }
@@ -945,6 +1006,14 @@ export async function approveBooking(
     return getValidationErrors(validation.error);
   }
 
+  const approvalTimeSlots = getApprovalScheduleTimeSlots(formData);
+  if (!approvalTimeSlots.success) {
+    return {
+      fieldErrors: approvalTimeSlots.fieldErrors,
+      formError: 'Select a valid schedule slot before approving.',
+    };
+  }
+
   const currentUser = await requireCurrentUser();
 
   if (!canApproveBookingRequest(currentUser)) {
@@ -1017,6 +1086,7 @@ export async function approveBooking(
       ...booking,
       activities: booking.activities ?? [],
     },
+    approvalTimeSlots.timeSlots,
     scheduleNotes,
   );
 

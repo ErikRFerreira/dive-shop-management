@@ -17,16 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   activityTypeOptions,
   bookingSourceOptions,
-  scheduleTimeSlotOptions,
 } from '@/features/bookings/form-options';
 import { bookingActivityDefaultValues } from '@/features/bookings/form-values';
 import { getDefaultActivityDurationDays } from '@/features/bookings/activity-utils';
-import { getScheduleTimeSlotLabel } from '@/features/schedule/utils';
 import type {
   BookingActivityFormValues,
   BookingFormValues,
 } from '@/features/bookings/types';
-import { ActivityType, ScheduleTimeSlot } from '@/generated/prisma/enums';
+import { ActivityType } from '@/generated/prisma/enums';
 import { inputClassName } from '@/lib/consts';
 import { getShopDateOnlyKey } from '@/lib/operational-date';
 import { Plus, Trash2 } from 'lucide-react';
@@ -132,7 +130,7 @@ export function BookingDetailsSection({
                     </Button>
                   ) : null}
                 </div>
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(7rem,0.35fr)_minmax(0,0.65fr)_minmax(7rem,0.35fr)]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(7rem,0.35fr)_minmax(0,0.65fr)]">
                   <BookingFormField
                     id={`${prefix}.activityType`}
                     label="Activity type"
@@ -203,28 +201,8 @@ export function BookingDetailsSection({
                       className={`${inputClassName} inline-block`}
                     />
                   </BookingFormField>
-                  <BookingFormField
-                    id={`${prefix}.requestedTimeSlot`}
-                    label="Requested slot"
-                  >
-                    <Controller
-                      control={form.control}
-                      name={`${prefix}.requestedTimeSlot`}
-                      render={({ field }) => (
-                        <EnumSelect
-                          id={field.name}
-                          value={field.value ?? ScheduleTimeSlot.TBD}
-                          onValueChange={field.onChange}
-                          values={scheduleTimeSlotOptions}
-                          placeholder="Select slot"
-                          getOptionLabel={getScheduleTimeSlotLabel}
-                          className={inputClassName}
-                        />
-                      )}
-                    />
-                  </BookingFormField>
                   {activityTypeError || requestedDateError ? (
-                    <div className="grid gap-1 md:col-span-4">
+                    <div className="grid gap-1 md:col-span-3">
                       <BookingFormFieldError error={activityTypeError} />
                       <BookingFormFieldError error={requestedDateError} />
                     </div>
@@ -235,7 +213,7 @@ export function BookingDetailsSection({
                       label="Specialty name"
                       required
                       error={getFieldError(`${prefix}.specialtyCourse`)}
-                      className="grid gap-2 md:col-span-4"
+                      className="grid gap-2 md:col-span-3"
                     >
                       <Input
                         id={`${prefix}.specialtyCourse`}
@@ -248,7 +226,7 @@ export function BookingDetailsSection({
                   <BookingFormField
                     id={`${prefix}.notes`}
                     label="Activity notes"
-                    className="grid gap-2 md:col-span-4"
+                    className="grid gap-2 md:col-span-3"
                   >
                     <Textarea
                       id={`${prefix}.notes`}

@@ -27,6 +27,16 @@ export const bookingQueueFilters = ['unassigned'] as const;
 
 export type BookingQueueFilter = (typeof bookingQueueFilters)[number];
 
+export const bookingSortOptions = [
+  'recently-updated',
+  'newest-created',
+  'activity-date',
+] as const;
+
+export type BookingSort = (typeof bookingSortOptions)[number];
+
+export const bookingDefaultSort: BookingSort = 'recently-updated';
+
 export const bookingDefaultPageSize = 10;
 
 export type BookingRequestFilter = Prisma.BookingRequestWhereInput;

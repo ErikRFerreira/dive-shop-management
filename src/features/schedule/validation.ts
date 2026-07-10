@@ -6,7 +6,10 @@
 
 import { z } from 'zod';
 
-import { ScheduleAssignmentRole } from '@/generated/prisma/enums';
+import {
+  ScheduleAssignmentRole,
+  ScheduleTimeSlot,
+} from '@/generated/prisma/enums';
 
 /** Validates input for creating a schedule staff assignment. */
 export const addScheduleAssignmentSchema = z.object({
@@ -19,6 +22,12 @@ export const addScheduleAssignmentSchema = z.object({
 export const updateScheduleAssignmentRoleSchema = z.object({
   assignmentId: z.string().trim().min(1, 'Assignment ID is required.'),
   role: z.enum(ScheduleAssignmentRole),
+});
+
+/** Validates input for changing a scheduled activity's operational slot. */
+export const updateScheduleItemTimeSlotSchema = z.object({
+  scheduleItemId: z.string().trim().min(1, 'Schedule item ID is required.'),
+  timeSlot: z.enum(ScheduleTimeSlot),
 });
 
 /** Validates input for removing an existing schedule assignment. */

@@ -23,6 +23,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   addScheduleAssignment: vi.fn(),
+  assignStaffToAllCourseDays: vi.fn(),
   refresh: vi.fn(),
   removeScheduleAssignment: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@fullcalendar/react', () => ({
    * @returns A lightweight calendar representation for jsdom tests.
    */
   default: function MockFullCalendar(props: {
+    allDayText?: string;
     editable?: boolean;
     events?: Array<{
       id?: string;
@@ -61,6 +63,7 @@ vi.mock('@fullcalendar/react', () => ({
     return (
       <div
         data-editable={String(props.editable)}
+        data-all-day-text={props.allDayText}
         data-initial-view={props.initialView}
         data-selectable={String(props.selectable)}
         data-testid="full-calendar"
@@ -96,6 +99,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/features/schedule/actions', () => ({
   addScheduleAssignment: mocks.addScheduleAssignment,
+  assignStaffToAllCourseDays: mocks.assignStaffToAllCourseDays,
   removeScheduleAssignment: mocks.removeScheduleAssignment,
   updateScheduleAssignmentRole: mocks.updateScheduleAssignmentRole,
 }));
@@ -244,6 +248,7 @@ function pendingPromise() {
 afterEach(() => {
   cleanup();
   mocks.addScheduleAssignment.mockReset();
+  mocks.assignStaffToAllCourseDays.mockReset();
   mocks.refresh.mockReset();
   mocks.removeScheduleAssignment.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
@@ -563,6 +568,44 @@ test('keeps assignment controls hidden for managers and admins until requested',
   expect(screen.getByLabelText('Role')).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Add' })).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Done managing' })).not.toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Assign to all course days' }),
+  ).toBeNull();
+});
+
+test('renders month, week, day, and list schedule views without a TBD all-day label', () => {
+  renderScheduleCalendar();
+
+  const calendar = screen.getByTestId('full-calendar');
+
+  expect(calendar.getAttribute('data-views')).toBe(
+    'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+  );
+  expect(calendar.getAttribute('data-all-day-text')).toBe('');
+});
+
+test('shows all-days assignment action for multi-day schedule events', () => {
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+    events: [
+      scheduleEvent({
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        activityLabel: 'Open Water Course',
+        activitySummary: 'Open Water Course',
+        dayNumber: 1,
+        totalDays: 3,
+        dayLabel: 'Day 1/3',
+      }),
+    ],
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage assignments' }));
+
+  expect(
+    screen.getByRole('button', { name: 'Assign to all course days' }),
+  ).not.toBeNull();
 });
 
 test('hides assignment controls behind manage assignments when staff are assigned', () => {
@@ -679,6 +722,78 @@ test('refreshes the schedule after adding an assignment', async () => {
     ScheduleAssignmentRole.LEAD_INSTRUCTOR,
   );
   await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+});
+
+test('refreshes the schedule after assigning staff to all course days', async () => {
+  mocks.assignStaffToAllCourseDays.mockResolvedValue({ success: true });
+
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+    events: [
+      scheduleEvent({
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        activityLabel: 'Open Water Course',
+        activitySummary: 'Open Water Course',
+        dayNumber: 1,
+        totalDays: 3,
+        dayLabel: 'Day 1/3',
+      }),
+    ],
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage assignments' }));
+  fireEvent.change(screen.getByLabelText('Staff'), {
+    target: { value: 'instructor-1' },
+  });
+  fireEvent.change(screen.getByLabelText('Role'), {
+    target: { value: ScheduleAssignmentRole.LEAD_INSTRUCTOR },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Assign to all course days' }),
+  );
+
+  expect(mocks.assignStaffToAllCourseDays).toHaveBeenCalledWith(
+    'schedule-1',
+    'instructor-1',
+    ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+  );
+  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+});
+
+test('keeps all-days assignment disabled until staff and role are selected', () => {
+  renderScheduleCalendar({
+    assignableStaff: [assignableStaff()],
+    canManageAssignments: true,
+    events: [
+      scheduleEvent({
+        dayNumber: 1,
+        totalDays: 2,
+        dayLabel: 'Day 1/2',
+      }),
+    ],
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: DEFAULT_EVENT_TITLE }));
+  fireEvent.click(screen.getByRole('button', { name: 'Manage assignments' }));
+
+  const button = screen.getByRole('button', {
+    name: 'Assign to all course days',
+  });
+  expect(button.hasAttribute('disabled')).toBe(true);
+
+  fireEvent.change(screen.getByLabelText('Staff'), {
+    target: { value: 'instructor-1' },
+  });
+
+  expect(button.hasAttribute('disabled')).toBe(true);
+
+  fireEvent.change(screen.getByLabelText('Role'), {
+    target: { value: ScheduleAssignmentRole.LEAD_INSTRUCTOR },
+  });
+
+  expect(button.hasAttribute('disabled')).toBe(false);
 });
 
 test('shows pending feedback while adding an assignment', async () => {

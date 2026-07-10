@@ -15,7 +15,7 @@ vi.mock('@/features/bookings/actions', () => ({
   resubmitBookingForApproval: mocks.resubmitBookingForApproval,
 }));
 
-import { BookingStatus } from '@/generated/prisma/enums';
+import { BookingStatus, ScheduleTimeSlot } from '@/generated/prisma/enums';
 import { BookingReviewSidebar } from './booking-review-sidebar';
 import {
   ApproveBookingForm,
@@ -191,6 +191,27 @@ test('submits approval through the workflow action', () => {
   fireEvent.submit(form!);
 
   expect(mocks.approveBooking).toHaveBeenCalled();
+});
+
+test('renders schedule slot selectors in the approval form', () => {
+  render(
+    <ApproveBookingForm
+      bookingId="booking-1"
+      scheduleActivities={[
+        {
+          id: 'activity-1',
+          label: '1. Open Water',
+          defaultTimeSlot: ScheduleTimeSlot.TBD,
+        },
+      ]}
+    />,
+  );
+
+  const slot = screen.getByLabelText('1. Open Water') as HTMLSelectElement;
+
+  expect(slot.name).toBe('scheduleTimeSlot:activity-1');
+  expect(slot.value).toBe(ScheduleTimeSlot.TBD);
+  expect(screen.getByText('Night')).not.toBeNull();
 });
 
 test('shows approval pending copy and disables duplicate submission', async () => {

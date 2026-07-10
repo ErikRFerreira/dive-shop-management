@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { ReviewReadinessItem } from '@/features/bookings/review-requirements';
+import type { ApprovalScheduleActivitySlot } from '@/components/bookings/workflow/approve-booking-form';
 import { BookingStatus } from '@/generated/prisma/enums';
 import {
   AlertCircle,
@@ -24,6 +25,7 @@ type BookingReviewSidebarProps = {
   adminNotes: string | null;
   missingInformation: string[];
   reviewReadiness: ReviewReadinessItem[];
+  scheduleActivities?: ApprovalScheduleActivitySlot[];
   status: BookingStatus;
 };
 
@@ -137,6 +139,7 @@ export function BookingReviewSidebar({
   adminNotes,
   missingInformation,
   reviewReadiness,
+  scheduleActivities = [],
   status,
 }: BookingReviewSidebarProps) {
   const canApprovePendingBooking =
@@ -229,6 +232,7 @@ export function BookingReviewSidebar({
               canRequestMoreInfo={canRequestMoreInfo}
               canCancel={canCancel}
               adminNotes={adminNotes}
+              scheduleActivities={scheduleActivities}
               status={status}
             />
           </CardContent>

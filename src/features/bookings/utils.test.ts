@@ -5,6 +5,7 @@ import {
   parseBookingPageParam,
   parseBookingPageSizeParam,
   parseBookingQueueFilter,
+  parseBookingSortParam,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
   summarizeBookingActivities,
@@ -38,6 +39,16 @@ test('accepts only supported single booking queue filters', () => {
   expect(parseBookingQueueFilter(['unassigned'])).toBeUndefined();
   expect(parseBookingQueueFilter(BookingStatus.SCHEDULED)).toBeUndefined();
   expect(parseBookingQueueFilter('unknown')).toBeUndefined();
+});
+
+/** Verifies that booking sort params fall back to the default safely. */
+test('parses supported booking sort params', () => {
+  expect(parseBookingSortParam('recently-updated')).toBe('recently-updated');
+  expect(parseBookingSortParam('newest-created')).toBe('newest-created');
+  expect(parseBookingSortParam('activity-date')).toBe('activity-date');
+  expect(parseBookingSortParam(undefined)).toBe('recently-updated');
+  expect(parseBookingSortParam(['activity-date'])).toBe('recently-updated');
+  expect(parseBookingSortParam('unknown')).toBe('recently-updated');
 });
 
 /** Verifies that booking pagination URL params resolve to safe defaults. */

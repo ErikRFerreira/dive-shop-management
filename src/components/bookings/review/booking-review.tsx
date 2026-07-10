@@ -2,6 +2,7 @@ import { BookingMainSections } from '@/components/bookings/booking-main-sections
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import {
   getBookingReviewReadiness,
   getMissingBookingReviewInformation,
@@ -13,11 +14,27 @@ import {
 import { BookingReviewSidebar } from './booking-review-sidebar';
 import PageHeader from '@/components/common/page-header';
 import { ScheduleSection } from '../view/sections/schedule-section';
+import { ScheduleTimeSlot } from '@/generated/prisma/enums';
+import type { ReviewActivity } from './booking-review-activities';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
   canApprove: boolean;
 };
+
+/**
+ * Builds approval form slot rows from the activities shown in review.
+ *
+ * @param activities - Review activities that will create schedule rows on approval.
+ * @returns Activity-keyed schedule slot rows defaulting to TBD.
+ */
+function getApprovalScheduleActivities(activities: ReviewActivity[]) {
+  return activities.map((activity, index) => ({
+    id: activity.id === 'legacy-summary' ? 'legacy' : activity.id,
+    label: `${index + 1}. ${getActivityShortLabel(activity)}`,
+    defaultTimeSlot: ScheduleTimeSlot.TBD,
+  }));
+}
 
 /**
  * Renders the admin review page for one booking request.
@@ -43,6 +60,7 @@ export function BookingReview({ booking, canApprove }: BookingReviewProps) {
           adminNotes={booking.adminNotes}
           missingInformation={missingInformation}
           reviewReadiness={reviewReadiness}
+          scheduleActivities={getApprovalScheduleActivities(activities)}
           status={booking.status}
         />
       }

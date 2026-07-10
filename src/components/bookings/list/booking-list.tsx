@@ -18,6 +18,7 @@ import type {
   BookingListPagination,
   BookingListItem,
   BookingQueueFilter,
+  BookingSort,
   BookingStatusFilter,
 } from '@/features/bookings/queries';
 import type { CurrentUser } from '@/lib/current-user';
@@ -35,6 +36,7 @@ type BookingListProps = {
   currentUser: Pick<CurrentUser, 'id' | 'role'>;
   pagination: BookingListPagination;
   selectedQueue?: BookingQueueFilter;
+  selectedSort: BookingSort;
   selectedStatus?: BookingStatusFilter;
 };
 
@@ -49,6 +51,7 @@ export function BookingList({
   currentUser,
   pagination,
   selectedQueue,
+  selectedSort,
   selectedStatus,
 }: BookingListProps) {
   if (bookings.length === 0) {
@@ -130,6 +133,7 @@ export function BookingList({
           <BookingPagination
             pagination={pagination}
             selectedQueue={selectedQueue}
+            selectedSort={selectedSort}
             selectedStatus={selectedStatus}
           />
         </div>

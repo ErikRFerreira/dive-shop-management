@@ -5,7 +5,6 @@ import type {
 } from '@/features/schedule/types';
 import {
   ScheduleAssignmentRole,
-  type ScheduleAssignmentRole as ScheduleAssignmentRoleValue,
 } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
 

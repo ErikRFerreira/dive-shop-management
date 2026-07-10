@@ -806,7 +806,7 @@ test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
         bookingActivityId: null,
         date: new Date('2026-07-14T00:00:00.000Z'),
         startTime: null,
-        timeSlot: ScheduleTimeSlot.AM,
+        timeSlot: ScheduleTimeSlot.TBD,
         activityType: ActivityType.OPEN_WATER_COURSE,
         dayNumber: 1,
         totalDays: 3,
@@ -881,12 +881,52 @@ test('approves a persisted one-day activity into one schedule item', async () =>
       bookingActivityId: 'activity-1',
       date: new Date('2026-07-14T00:00:00.000Z'),
       startTime: null,
-      timeSlot: ScheduleTimeSlot.AM,
+      timeSlot: ScheduleTimeSlot.TBD,
       activityType: ActivityType.OPEN_WATER_COURSE,
       dayNumber: 1,
       totalDays: 1,
       scheduleNotes: 'Customer prefers a morning slot.',
     },
+  });
+});
+
+test('uses admin-selected approval slots when creating schedule items', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'admin-1',
+    role: UserRole.ADMIN,
+  });
+  mocks.findUnique.mockResolvedValue(
+    pendingApprovableBooking({
+      activities: [
+        {
+          id: 'activity-1',
+          activityType: ActivityType.OPEN_WATER_COURSE,
+          requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+          requestedTime: '09:00',
+          requestedTimeSlot: ScheduleTimeSlot.AM,
+          durationDays: 1,
+          notes: null,
+          sortOrder: 0,
+        },
+      ],
+    }),
+  );
+
+  await expect(
+    approveBooking(
+      initialBookingWorkflowActionState,
+      formData({
+        bookingId: 'booking-1',
+        'scheduleTimeSlot:activity-1': ScheduleTimeSlot.PM,
+      }),
+    ),
+  ).rejects.toThrow('redirect:/bookings/booking-1');
+
+  expect(mocks.transaction.scheduleItem.create).toHaveBeenCalledWith({
+    data: expect.objectContaining({
+      bookingActivityId: 'activity-1',
+      timeSlot: ScheduleTimeSlot.PM,
+    }),
   });
 });
 
@@ -920,7 +960,7 @@ test('approves a legacy course booking using the default activity duration', asy
       activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
       date: new Date('2026-07-14T00:00:00.000Z'),
       startTime: null,
-      timeSlot: ScheduleTimeSlot.AM,
+      timeSlot: ScheduleTimeSlot.TBD,
       dayNumber: 1,
       totalDays: 2,
     }),
@@ -932,7 +972,7 @@ test('approves a legacy course booking using the default activity duration', asy
       activityType: ActivityType.ADVANCED_OPEN_WATER_COURSE,
       date: new Date('2026-07-15T00:00:00.000Z'),
       startTime: null,
-      timeSlot: ScheduleTimeSlot.AM,
+      timeSlot: ScheduleTimeSlot.TBD,
       dayNumber: 2,
       totalDays: 2,
     }),

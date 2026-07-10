@@ -121,3 +121,9 @@ test('shows create validation feedback in the readiness region', async () => {
 
   expect(await within(scrollRegion).findByRole('alert')).not.toBeNull();
 });
+
+test('does not expose requested slot during booking intake', () => {
+  render(<BookingForm mode="create" />);
+
+  expect(screen.queryByText('Requested slot')).toBeNull();
+});

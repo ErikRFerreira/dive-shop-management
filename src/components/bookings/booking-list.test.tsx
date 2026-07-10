@@ -19,6 +19,7 @@ import type {
   BookingListItem,
   BookingListPagination,
   BookingQueueFilter,
+  BookingSort,
   BookingStatusFilter,
 } from '@/features/bookings/queries';
 import {
@@ -150,6 +151,7 @@ type RenderBookingListOptions = {
   };
   pagination?: BookingListPagination;
   selectedQueue?: BookingQueueFilter;
+  selectedSort?: BookingSort;
   selectedStatus?: BookingStatusFilter;
 };
 
@@ -179,6 +181,7 @@ function renderBookingList(
       }
       pagination={pagination}
       selectedQueue={options.selectedQueue}
+      selectedSort={options.selectedSort ?? 'recently-updated'}
       selectedStatus={options.selectedStatus}
     />,
   );
@@ -530,11 +533,11 @@ test('renders pagination links that preserve a status filter', () => {
     screen.getByRole('navigation', { name: 'pagination' }),
   ).not.toBeNull();
   expect(screen.getByRole('link', { name: '2' }).getAttribute('href')).toBe(
-    '/bookings?status=DRAFT&page=2&pageSize=10',
+    '/bookings?status=DRAFT&sort=recently-updated&page=2&pageSize=10',
   );
   expect(
     screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
-  ).toBe('/bookings?status=DRAFT&page=2&pageSize=10');
+  ).toBe('/bookings?status=DRAFT&sort=recently-updated&page=2&pageSize=10');
   expect(
     screen
       .getByRole('link', { name: 'Go to previous page' })
@@ -551,14 +554,15 @@ test('renders pagination links that preserve the unassigned queue filter', () =>
       totalPages: 3,
     },
     selectedQueue: 'unassigned',
+    selectedSort: 'activity-date',
   });
 
   expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe(
-    '/bookings?queue=unassigned&page=1&pageSize=10',
+    '/bookings?queue=unassigned&sort=activity-date&page=1&pageSize=10',
   );
   expect(
     screen.getByRole('link', { name: 'Go to next page' }).getAttribute('href'),
-  ).toBe('/bookings?queue=unassigned&page=3&pageSize=10');
+  ).toBe('/bookings?queue=unassigned&sort=activity-date&page=3&pageSize=10');
 });
 
 test('renders empty state without count label or pagination', () => {

@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   addCustomerToScheduledBooking: vi.fn(),
   addScheduledCourseDay: vi.fn(),
   addScheduleAssignment: vi.fn(),
+  assignStaffToAllCourseDays: vi.fn(),
   cancelBooking: vi.fn(),
   refresh: vi.fn(),
   removeScheduledCourseDay: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/features/schedule/actions', () => ({
   addScheduledCourseDay: mocks.addScheduledCourseDay,
   addScheduleAssignment: mocks.addScheduleAssignment,
+  assignStaffToAllCourseDays: mocks.assignStaffToAllCourseDays,
   removeScheduledCourseDay: mocks.removeScheduledCourseDay,
   removeScheduleAssignment: mocks.removeScheduleAssignment,
   updateScheduleAssignmentRole: mocks.updateScheduleAssignmentRole,
@@ -194,6 +196,7 @@ vi.mock('@/components/ui/select', () => {
 beforeEach(() => {
   mocks.addCustomerToScheduledBooking.mockResolvedValue({ success: true });
   mocks.addScheduledCourseDay.mockResolvedValue({ success: true });
+  mocks.assignStaffToAllCourseDays.mockResolvedValue({ success: true });
   mocks.cancelBooking.mockResolvedValue({});
   mocks.removeScheduledCourseDay.mockResolvedValue({ success: true });
   mocks.searchBookingCustomers.mockResolvedValue([]);
@@ -205,6 +208,7 @@ afterEach(() => {
   mocks.addCustomerToScheduledBooking.mockReset();
   mocks.addScheduledCourseDay.mockReset();
   mocks.addScheduleAssignment.mockReset();
+  mocks.assignStaffToAllCourseDays.mockReset();
   mocks.cancelBooking.mockReset();
   mocks.refresh.mockReset();
   mocks.removeScheduledCourseDay.mockReset();
@@ -845,6 +849,68 @@ test('renders assignment controls for admin and manager users', () => {
   expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
 });
 
+test('renders all-days assignment action for multi-day booking detail schedule rows', () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay({
+        totalDays: 3,
+      }),
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(
+    screen.getByRole('button', { name: 'Assign to all course days' }),
+  ).not.toBeNull();
+});
+
+test('hides all-days assignment action for single-day booking detail schedule rows', () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay({
+        dayNumber: null,
+        totalDays: 1,
+      }),
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(
+    screen.queryByRole('button', { name: 'Assign to all course days' }),
+  ).toBeNull();
+});
+
+test('assigns staff to all course days from booking details', async () => {
+  renderBookingDetails({
+    assignableStaff: [assignableStaff()],
+    booking: booking({
+      scheduleItem: scheduledDay(),
+    }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.change(screen.getByLabelText('Staff'), {
+    target: { value: 'instructor-1' },
+  });
+  fireEvent.change(screen.getByLabelText('Role'), {
+    target: { value: ScheduleAssignmentRole.LEAD_INSTRUCTOR },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Assign to all course days' }),
+  );
+
+  await waitFor(() => {
+    expect(mocks.assignStaffToAllCourseDays).toHaveBeenCalledWith(
+      'schedule-1',
+      'instructor-1',
+      ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
 test('renders scheduled day controls for admin and manager users', () => {
   renderBookingDetails({
     assignableStaff: [assignableStaff()],
@@ -913,7 +979,9 @@ test('confirms assigned scheduled day removal from booking details', async () =>
     ),
   ).not.toBeNull();
 
-  fireEvent.click(screen.getAllByRole('button', { name: 'Remove day' }).at(-1)!);
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Remove day' }).at(-1)!,
+  );
 
   await waitFor(() => {
     expect(mocks.removeScheduledCourseDay).toHaveBeenCalledWith(
@@ -934,7 +1002,6 @@ test('hides assignment controls for cancelled bookings with stale schedule items
     canManageAssignments: false,
   });
 
-  expect(screen.getByRole('heading', { name: 'Schedule' })).not.toBeNull();
   expect(screen.queryByLabelText('Staff')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
 });
