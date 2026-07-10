@@ -11,8 +11,10 @@ import { Prisma } from '@/generated/prisma/client';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import {
+  bookingDefaultSort,
   bookingDefaultPageSize,
   type BookingQueueFilter,
+  type BookingSort,
   type BookingStatusFilter,
 } from './types';
 import { getActiveParticipantCount } from './participants';
@@ -32,15 +34,18 @@ export {
   parseBookingPageParam,
   parseBookingPageSizeParam,
   parseBookingQueueFilter,
+  parseBookingSortParam,
   parseBookingStatusFilter,
   resolveDisplayCustomer,
 } from './utils';
 export {
+  bookingDefaultSort,
   bookingDefaultPageSize,
   bookingQueueFilters,
+  bookingSortOptions,
   bookingStatusFilters,
 } from './types';
-export type { BookingQueueFilter, BookingStatusFilter } from './types';
+export type { BookingQueueFilter, BookingSort, BookingStatusFilter } from './types';
 
 /**
  * Relations fetched for each row in the internal booking list.
@@ -153,6 +158,14 @@ type BookingRequestDetailWithRelations = Prisma.BookingRequestGetPayload<
   typeof bookingRequestDetailArgs
 >;
 
+/** Minimal fields needed to sort matching bookings by operational activity date. */
+type BookingRequestActivityDateSortRow = {
+  id: string;
+  requestedDate: Date | null;
+  scheduleItems: { date: Date }[];
+  activities: { requestedDate: Date | null }[];
+};
+
 /**
  * A booking-list row with the preferred customer selected for display.
  *
@@ -198,7 +211,119 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
 };
 
 /**
- * Returns a paginated page of visible bookings for the current user, newest first.
+ * Maps a booking request record into the booking-list presentation shape.
+ *
+ * @param bookingRequest - Booking request and relations selected for the list UI.
+ * @returns A booking-list row with derived display fields.
+ */
+function mapBookingRequestToListItem(
+  bookingRequest: BookingRequestWithRelations,
+): BookingListItem {
+  return {
+    ...bookingRequest,
+    activeParticipantCount: getActiveParticipantCount(bookingRequest.customers),
+    displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
+    scheduleItem: bookingRequest.scheduleItems[0] ?? null,
+  };
+}
+
+/**
+ * Resolves the earliest operational activity date for activity-date sorting.
+ *
+ * @param bookingRequest - Minimal booking date fields selected for sorting.
+ * @returns The earliest schedule date, requested activity date, legacy requested
+ * date, or null when the booking has no date.
+ */
+function getBookingActivitySortDate(
+  bookingRequest: BookingRequestActivityDateSortRow,
+) {
+  const scheduleDate = bookingRequest.scheduleItems[0]?.date;
+
+  if (scheduleDate) {
+    return scheduleDate;
+  }
+
+  const activityDates = bookingRequest.activities
+    .map((activity) => activity.requestedDate)
+    .filter((date): date is Date => date !== null)
+    .sort((first, second) => first.getTime() - second.getTime());
+
+  return activityDates[0] ?? bookingRequest.requestedDate;
+}
+
+/**
+ * Compares two minimally selected bookings by operational activity date.
+ *
+ * @param first - First booking sort row.
+ * @param second - Second booking sort row.
+ * @returns Standard Array.sort comparison result with undated bookings last.
+ */
+function compareBookingActivitySortRows(
+  first: BookingRequestActivityDateSortRow,
+  second: BookingRequestActivityDateSortRow,
+) {
+  const firstDate = getBookingActivitySortDate(first);
+  const secondDate = getBookingActivitySortDate(second);
+
+  if (firstDate && secondDate) {
+    const dateComparison = firstDate.getTime() - secondDate.getTime();
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+  } else if (firstDate) {
+    return -1;
+  } else if (secondDate) {
+    return 1;
+  }
+
+  return first.id.localeCompare(second.id);
+}
+
+/**
+ * Returns the stable Prisma order used for database-backed booking list sorts.
+ *
+ * @param sort - Validated booking list sort.
+ * @returns Prisma order clauses for sorts that can be expressed directly.
+ */
+function getBookingRequestOrderBy(
+  sort: Exclude<BookingSort, 'activity-date'>,
+): Prisma.BookingRequestOrderByWithRelationInput[] {
+  if (sort === 'newest-created') {
+    return [{ createdAt: 'desc' }, { id: 'asc' }];
+  }
+
+  return [{ updatedAt: 'desc' }, { id: 'asc' }];
+}
+
+/**
+ * Hydrates a sorted page of booking IDs through the standard list include.
+ *
+ * @param ids - Booking IDs already sliced into the requested page order.
+ * @param where - Visibility and filter constraints for the current request.
+ * @returns Hydrated booking rows sorted in the same order as the provided IDs.
+ */
+async function getBookingRequestsBySortedIds(
+  ids: string[],
+  where: Prisma.BookingRequestWhereInput,
+) {
+  const bookingRequests = await db.bookingRequest.findMany({
+    ...bookingRequestListArgs,
+    where: {
+      AND: [where, { id: { in: ids } }],
+    },
+  });
+  const order = new Map(ids.map((id, index) => [id, index]));
+
+  return bookingRequests.sort(
+    (first, second) =>
+      (order.get(first.id) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(second.id) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+/**
+ * Returns a paginated page of visible bookings for the current user.
  *
  * Customer Service users only receive bookings they created; Admin and Manager
  * users receive all bookings. Unsupported roles receive no bookings.
@@ -207,6 +332,7 @@ export type BookingDetailsItem = BookingRequestDetailWithRelations & {
  * @param status - Optional status filter validated from the request URL.
  * @param queue - Optional operational queue filter validated from the request URL.
  * @param paginationInput - Requested page and fixed page size parsed from the URL.
+ * @param sort - Validated URL-backed sort to apply to the booking list.
  * @returns Booking-list rows for the resolved page plus total-count metadata.
  */
 export async function getBookingRequests(
@@ -217,6 +343,7 @@ export async function getBookingRequests(
     page: 1,
     pageSize: bookingDefaultPageSize,
   },
+  sort: BookingSort = bookingDefaultSort,
 ): Promise<PaginatedBookingList> {
   const where = buildBookingRequestWhere(currentUser, status, queue);
   const totalCount = await db.bookingRequest.count({ where });
@@ -235,25 +362,20 @@ export async function getBookingRequests(
     };
   }
 
-  const bookingRequests = await db.bookingRequest.findMany({
-    ...bookingRequestListArgs,
-    where,
-    orderBy: {
-      createdAt: 'desc',
-    },
-    skip: (page - 1) * paginationInput.pageSize,
-    take: paginationInput.pageSize,
-  });
+  const skip = (page - 1) * paginationInput.pageSize;
+  const bookingRequests =
+    sort === 'activity-date'
+      ? await getActivityDateSortedBookingRequests(where, skip, paginationInput.pageSize)
+      : await db.bookingRequest.findMany({
+          ...bookingRequestListArgs,
+          where,
+          orderBy: getBookingRequestOrderBy(sort),
+          skip,
+          take: paginationInput.pageSize,
+        });
 
   return {
-    bookings: bookingRequests.map((bookingRequest) => ({
-      ...bookingRequest,
-      activeParticipantCount: getActiveParticipantCount(
-        bookingRequest.customers,
-      ),
-      displayCustomer: resolveDisplayCustomer(bookingRequest.customers),
-      scheduleItem: bookingRequest.scheduleItems[0] ?? null,
-    })),
+    bookings: bookingRequests.map(mapBookingRequestToListItem),
     pagination: {
       totalCount,
       page,
@@ -261,6 +383,45 @@ export async function getBookingRequests(
       totalPages,
     },
   };
+}
+
+/**
+ * Returns one hydrated page of bookings sorted by operational activity date.
+ *
+ * @param where - Visibility and filter constraints for the current request.
+ * @param skip - Number of sorted matching rows to skip for pagination.
+ * @param take - Number of sorted matching rows to hydrate.
+ * @returns Hydrated booking rows in activity-date order.
+ */
+async function getActivityDateSortedBookingRequests(
+  where: Prisma.BookingRequestWhereInput,
+  skip: number,
+  take: number,
+) {
+  const sortedRows = await db.bookingRequest.findMany({
+    where,
+    select: {
+      id: true,
+      requestedDate: true,
+      scheduleItems: {
+        select: {
+          date: true,
+        },
+        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      },
+      activities: {
+        select: {
+          requestedDate: true,
+        },
+      },
+    },
+  });
+  const ids = sortedRows
+    .sort(compareBookingActivitySortRows)
+    .slice(skip, skip + take)
+    .map((bookingRequest) => bookingRequest.id);
+
+  return getBookingRequestsBySortedIds(ids, where);
 }
 
 /**

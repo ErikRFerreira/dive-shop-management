@@ -8,6 +8,7 @@ import {
   parseBookingPageParam,
   parseBookingPageSizeParam,
   parseBookingQueueFilter,
+  parseBookingSortParam,
   parseBookingStatusFilter,
 } from '@/features/bookings/queries';
 import { requireCurrentUser } from '@/lib/current-user';
@@ -19,6 +20,7 @@ type BookingsPageProps = {
   searchParams: Promise<{
     queue?: string | string[];
     status?: string | string[];
+    sort?: string | string[];
     page?: string | string[];
     pageSize?: string | string[];
   }>;
@@ -38,6 +40,7 @@ export default async function BookingsPage({
   const params = await searchParams;
   const status = parseBookingStatusFilter(params.status);
   const queue = parseBookingQueueFilter(params.queue);
+  const sort = parseBookingSortParam(params.sort);
   const page = parseBookingPageParam(params.page);
   const pageSize = parseBookingPageSizeParam(params.pageSize);
   const { bookings, pagination } = await getBookingRequests(
@@ -45,6 +48,7 @@ export default async function BookingsPage({
     status,
     queue,
     { page, pageSize },
+    sort,
   );
 
   return (
@@ -65,12 +69,18 @@ export default async function BookingsPage({
         ) : null}
       </div>
 
-      <BookingsListShell selectedQueue={queue} selectedStatus={status}>
+      <BookingsListShell
+        pageSize={pageSize}
+        selectedQueue={queue}
+        selectedSort={sort}
+        selectedStatus={status}
+      >
         <BookingList
           bookings={bookings}
           currentUser={currentUser}
           pagination={pagination}
           selectedQueue={queue}
+          selectedSort={sort}
           selectedStatus={status}
         />
       </BookingsListShell>

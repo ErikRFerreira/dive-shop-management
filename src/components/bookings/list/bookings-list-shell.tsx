@@ -8,14 +8,18 @@ import {
   type BookingStatusFilterKey,
 } from '@/components/bookings/list/booking-status-filter';
 import { BookingListPendingSkeleton } from '@/components/bookings/list/booking-list-loading';
+import { BookingSortSelect } from '@/components/bookings/list/booking-sort-select';
 import type {
   BookingQueueFilter,
+  BookingSort,
   BookingStatusFilter as BookingStatusFilterValue,
 } from '@/features/bookings/types';
 
 type BookingsListShellProps = {
   children: ReactNode;
+  pageSize: number;
   selectedQueue?: BookingQueueFilter;
+  selectedSort: BookingSort;
   selectedStatus?: BookingStatusFilterValue;
 };
 
@@ -27,7 +31,9 @@ type BookingsListShellProps = {
  */
 export function BookingsListShell({
   children,
+  pageSize,
   selectedQueue,
+  selectedSort,
   selectedStatus,
 }: BookingsListShellProps) {
   const router = useRouter();
@@ -51,15 +57,39 @@ export function BookingsListShell({
     });
   }
 
+  /**
+   * Starts a URL-backed sort transition while showing pending booking results.
+   *
+   * @param href - Bookings URL with the next sort and current filters.
+   */
+  function handleSortSelect(href: string) {
+    setPendingFilterKey(undefined);
+    startTransition(() => {
+      router.push(href);
+    });
+  }
+
   return (
     <>
-      <BookingStatusFilter
-        disabled={isPending}
-        onFilterSelect={handleFilterSelect}
-        pendingFilterKey={isPending ? pendingFilterKey : undefined}
-        selectedQueue={selectedQueue}
-        selectedStatus={selectedStatus}
-      />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <BookingStatusFilter
+          disabled={isPending}
+          onFilterSelect={handleFilterSelect}
+          pageSize={pageSize}
+          pendingFilterKey={isPending ? pendingFilterKey : undefined}
+          selectedQueue={selectedQueue}
+          selectedSort={selectedSort}
+          selectedStatus={selectedStatus}
+        />
+        <BookingSortSelect
+          disabled={isPending}
+          onSortSelect={handleSortSelect}
+          pageSize={pageSize}
+          selectedQueue={selectedQueue}
+          selectedSort={selectedSort}
+          selectedStatus={selectedStatus}
+        />
+      </div>
       {isPending ? <BookingListPendingSkeleton /> : children}
     </>
   );

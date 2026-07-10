@@ -10,6 +10,7 @@ import {
 import type {
   BookingListPagination,
   BookingQueueFilter,
+  BookingSort,
   BookingStatusFilter,
 } from '@/features/bookings/queries';
 import {
@@ -20,6 +21,7 @@ import {
 type BookingPaginationProps = {
   pagination: BookingListPagination;
   selectedQueue?: BookingQueueFilter;
+  selectedSort: BookingSort;
   selectedStatus?: BookingStatusFilter;
 };
 
@@ -32,6 +34,7 @@ type BookingPaginationProps = {
 export function BookingPagination({
   pagination,
   selectedQueue,
+  selectedSort,
   selectedStatus,
 }: BookingPaginationProps) {
   if (pagination.totalCount <= pagination.pageSize) {
@@ -57,6 +60,7 @@ export function BookingPagination({
               page: previousPage,
               pageSize: pagination.pageSize,
               selectedQueue,
+              selectedSort,
               selectedStatus,
             })}
             tabIndex={hasPreviousPage ? undefined : -1}
@@ -76,6 +80,7 @@ export function BookingPagination({
                   page,
                   pageSize: pagination.pageSize,
                   selectedQueue,
+                  selectedSort,
                   selectedStatus,
                 })}
                 isActive={page === pagination.page}
@@ -94,6 +99,7 @@ export function BookingPagination({
               page: nextPage,
               pageSize: pagination.pageSize,
               selectedQueue,
+              selectedSort,
               selectedStatus,
             })}
             tabIndex={hasNextPage ? undefined : -1}

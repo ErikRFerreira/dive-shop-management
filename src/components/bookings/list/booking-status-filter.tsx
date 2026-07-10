@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { BookingStatus } from '@/generated/prisma/enums';
 import type {
   BookingQueueFilter,
+  BookingSort,
   BookingStatusFilter as BookingStatusFilterValue,
 } from '@/features/bookings/types';
-import { bookingDefaultPageSize } from '@/features/bookings/types';
 import { cn } from '@/lib/utils';
+import { buildBookingFilterHref } from './booking-pagination-helpers';
 
 export type BookingStatusFilterKey =
   | 'all'
@@ -19,49 +20,41 @@ export type BookingStatusFilterKey =
   | 'unassigned';
 
 const filters: {
-  href: string;
   key: BookingStatusFilterKey;
   label: string;
   queue?: BookingQueueFilter;
   status?: BookingStatusFilterValue;
 }[] = [
   {
-    href: `/bookings?page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'all',
     label: 'All',
   },
   {
-    href: `/bookings?status=DRAFT&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'draft',
     label: 'Draft',
     status: BookingStatus.DRAFT,
   },
   {
-    href: `/bookings?status=PENDING_APPROVAL&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'pending-approval',
     label: 'Pending Approval',
     status: BookingStatus.PENDING_APPROVAL,
   },
   {
-    href: `/bookings?status=NEEDS_MORE_INFO&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'needs-more-info',
     label: 'Needs More Info',
     status: BookingStatus.NEEDS_MORE_INFO,
   },
   {
-    href: `/bookings?status=APPROVED&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'approved',
     label: 'Approved',
     status: BookingStatus.APPROVED,
   },
   {
-    href: `/bookings?status=CANCELLED&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'cancelled',
     label: 'Cancelled',
     status: BookingStatus.CANCELLED,
   },
   {
-    href: `/bookings?queue=unassigned&page=1&pageSize=${bookingDefaultPageSize}`,
     key: 'unassigned',
     label: 'Unassigned',
     queue: 'unassigned',
@@ -71,8 +64,10 @@ const filters: {
 type BookingStatusFilterProps = {
   disabled?: boolean;
   onFilterSelect: (href: string, filterKey: BookingStatusFilterKey) => void;
+  pageSize: number;
   pendingFilterKey?: BookingStatusFilterKey;
   selectedQueue?: BookingQueueFilter;
+  selectedSort: BookingSort;
   selectedStatus?: BookingStatusFilterValue;
 };
 
@@ -85,8 +80,10 @@ type BookingStatusFilterProps = {
 export function BookingStatusFilter({
   disabled = false,
   onFilterSelect,
+  pageSize,
   pendingFilterKey,
   selectedQueue,
+  selectedSort,
   selectedStatus,
 }: BookingStatusFilterProps) {
   return (
@@ -102,6 +99,12 @@ export function BookingStatusFilter({
         const isActive = pendingFilterKey
           ? isPendingFilter
           : matchesCurrentFilter;
+        const href = buildBookingFilterHref({
+          pageSize,
+          selectedQueue: filter.queue,
+          selectedSort,
+          selectedStatus: filter.status,
+        });
 
         return (
           <Button
@@ -111,7 +114,7 @@ export function BookingStatusFilter({
             disabled={disabled}
             onClick={() => {
               if (!disabled && !matchesCurrentFilter) {
-                onFilterSelect(filter.href, filter.key);
+                onFilterSelect(href, filter.key);
               }
             }}
             size="sm"

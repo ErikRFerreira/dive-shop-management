@@ -17,10 +17,13 @@ import { getActivityDisplayLabel } from './activity-utils';
 import { getPrimaryActiveBookingCustomer } from './participants';
 import {
   bookingQueueFilters,
+  bookingDefaultSort,
   bookingDefaultPageSize,
+  bookingSortOptions,
   bookingStatusFilters,
   type BookingQueueFilter,
   type BookingRequestFilter,
+  type BookingSort,
   type BookingStatusFilter,
 } from './types';
 
@@ -62,6 +65,26 @@ export function parseBookingQueueFilter(
   }
 
   return bookingQueueFilters.find((queue) => queue === value);
+}
+
+/**
+ * Parses a single URL sort value into a supported booking-list sort.
+ *
+ * @param value - The raw value read from a URL search parameter.
+ * @returns The matching supported sort, or the default sort for missing,
+ * repeated, or unsupported values.
+ */
+export function parseBookingSortParam(
+  value: string | string[] | undefined,
+): BookingSort {
+  if (typeof value !== 'string') {
+    return bookingDefaultSort;
+  }
+
+  return (
+    bookingSortOptions.find((sortOption) => sortOption === value) ??
+    bookingDefaultSort
+  );
 }
 
 /**
