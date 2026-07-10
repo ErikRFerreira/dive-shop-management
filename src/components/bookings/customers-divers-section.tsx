@@ -3,6 +3,7 @@ import {
   getActiveBookingParticipants,
   getInactiveBookingParticipants,
 } from '@/features/bookings/participants';
+
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { BookingInfoSection } from './booking-info-layout';
 import { ParticipantGroup } from './participant-group';
