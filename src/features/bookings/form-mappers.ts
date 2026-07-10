@@ -16,6 +16,7 @@ import {
   ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 import { formatDateInputValue } from '@/lib/format';
+import { normalizeEquipmentNeededChoice } from './equipment';
 import { getDefaultActivityDurationDays } from './activity-utils';
 import { bookingCustomerDefaultValues } from './form-values';
 import type {
@@ -44,12 +45,10 @@ function nullableText(value: string) {
  * arbitrary equipment notes in the controlled field.
  *
  * @param value - Current browser form value for equipment needed.
- * @returns `YES`, `NO`, or null for unknown/unset.
+ * @returns `YES` unless the value clearly says equipment is not needed.
  */
 function normalizedEquipmentNeeded(value: string) {
-  const normalized = nullableText(value);
-  if (normalized === null) return null;
-  return normalized === 'NO' ? 'NO' : 'YES';
+  return normalizeEquipmentNeededChoice(value);
 }
 
 /**
@@ -368,7 +367,9 @@ function mapBookingCustomerToFormValues(
     email: bookingCustomer.customer.email ?? '',
     phone: bookingCustomer.customer.phone ?? '',
     hotelAtBooking: bookingCustomer.hotelAtBooking ?? '',
-    equipmentNeeded: bookingCustomer.equipmentNeeded ?? '',
+    equipmentNeeded: normalizeEquipmentNeededChoice(
+      bookingCustomer.equipmentNeeded,
+    ),
     customerNotes: bookingCustomer.notes ?? '',
     preferredLanguage: bookingCustomer.customer.preferredLanguage ?? '',
     heightCm: formNumber(bookingCustomer.heightCm),

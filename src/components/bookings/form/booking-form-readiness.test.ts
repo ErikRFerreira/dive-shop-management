@@ -65,6 +65,22 @@ function readinessItem(
   return item;
 }
 
+/**
+ * Looks up whether a readiness item label is present.
+ *
+ * @param label - Readiness item label shown in the form rail.
+ * @param values - Readiness helper input values.
+ * @returns True when the readiness helper includes the item.
+ */
+function hasReadinessItem(
+  label: string,
+  values: ReturnType<typeof readinessValues>,
+) {
+  return buildCreateReadinessItems(values).some(
+    (readiness) => readiness.label === label,
+  );
+}
+
 test('marks core create-booking requirements incomplete when intake values are missing', () => {
   const emptyValues = readinessValues({
     activities: [
@@ -163,6 +179,12 @@ test('requires diving experience details when the booking includes a fun dive', 
   expect(
     readinessItem('Diving experience details', completeExperience).complete,
   ).toBe(true);
+});
+
+test('omits diving experience details when the booking has no fun dives', () => {
+  expect(
+    hasReadinessItem('Diving experience details', readinessValues()),
+  ).toBe(false);
 });
 
 test('requires a useful specialty name when the booking includes a specialty course', () => {

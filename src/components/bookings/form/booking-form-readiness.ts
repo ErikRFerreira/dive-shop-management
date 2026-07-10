@@ -76,7 +76,7 @@ export function buildCreateReadinessItems(values: {
     (activity) => activity.activityType === ActivityType.SPECIALTY_COURSE,
   );
 
-  return [
+  const readinessItems: BookingReadinessItem[] = [
     {
       label: 'Source / referrer',
       complete: Boolean(values.source),
@@ -136,18 +136,19 @@ export function buildCreateReadinessItems(values: {
         ? 'Example: Nitrox, Deep, Wreck, Sidemount'
         : 'No specialty courses',
     },
-    {
-      label: 'Diving experience details',
-      complete:
-        !includesFunDive ||
-        values.customers.every(
-          (customer) =>
-            hasText(customer.certificationLevel) &&
-            hasPositiveNumber(customer.divesLogged),
-        ),
-      helperText: includesFunDive
-        ? 'Recommended for course activities'
-        : 'No fun dive activities',
-    },
   ];
+
+  if (includesFunDive) {
+    readinessItems.push({
+      label: 'Diving experience details',
+      complete: values.customers.every(
+        (customer) =>
+          hasText(customer.certificationLevel) &&
+          hasPositiveNumber(customer.divesLogged),
+      ),
+      helperText: 'Recommended for course activities',
+    });
+  }
+
+  return readinessItems;
 }

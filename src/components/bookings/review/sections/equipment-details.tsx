@@ -1,4 +1,8 @@
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import {
+  formatEquipmentNeeded,
+  isEquipmentNeeded,
+} from '@/features/bookings/equipment';
 import { Field } from '../booking-review-display';
 
 /**
@@ -12,28 +16,42 @@ export function EquipmentDetails({
 }: {
   bookingCustomer: BookingDetailsItem['customers'][number];
 }) {
+  const shouldShowEquipmentSizing = isEquipmentNeeded(
+    bookingCustomer.equipmentNeeded,
+  );
+
   return (
     <div>
       <h4 className="font-medium">Equipment details</h4>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Equipment needed" value={bookingCustomer.equipmentNeeded} />
         <Field
-          label="Height"
-          value={
-            bookingCustomer.heightCm === null
-              ? null
-              : `${bookingCustomer.heightCm} cm`
-          }
+          label="Equipment needed"
+          value={formatEquipmentNeeded(bookingCustomer.equipmentNeeded)}
         />
-        <Field
-          label="Weight"
-          value={
-            bookingCustomer.weightKg === null
-              ? null
-              : `${bookingCustomer.weightKg.toString()} kg`
-          }
-        />
-        <Field label="Shoe size" value={bookingCustomer.shoeSize?.toString()} />
+        {shouldShowEquipmentSizing ? (
+          <>
+            <Field
+              label="Height"
+              value={
+                bookingCustomer.heightCm === null
+                  ? null
+                  : `${bookingCustomer.heightCm} cm`
+              }
+            />
+            <Field
+              label="Weight"
+              value={
+                bookingCustomer.weightKg === null
+                  ? null
+                  : `${bookingCustomer.weightKg.toString()} kg`
+              }
+            />
+            <Field
+              label="Shoe size"
+              value={bookingCustomer.shoeSize?.toString()}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   );

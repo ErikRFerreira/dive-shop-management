@@ -130,7 +130,7 @@ function buildReviewReadinessItems(
   );
   const includesFunDive = includesFunDiveActivity(activities);
 
-  return [
+  const readinessItems: ReviewReadinessItem[] = [
     {
       label: 'Activity selected',
       complete: activities.some((activity) => activity.activityType !== null),
@@ -161,14 +161,17 @@ function buildReviewReadinessItems(
           ? 'No deposit on file.'
           : 'Paid deposits include amount, currency, and recipient.',
     },
-    {
-      label: 'Diving experience',
-      complete: !includesFunDive || hasDivingExperienceForFunDive(booking),
-      helperText: includesFunDive
-        ? 'Required for fun dive review.'
-        : 'Recommended before scheduling.',
-    },
   ];
+
+  if (includesFunDive) {
+    readinessItems.push({
+      label: 'Diving experience',
+      complete: hasDivingExperienceForFunDive(booking),
+      helperText: 'Required for fun dive review.',
+    });
+  }
+
+  return readinessItems;
 }
 
 /**

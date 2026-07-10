@@ -8,6 +8,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import {
+  formatEquipmentNeeded,
+  isEquipmentNeeded,
+} from '@/features/bookings/equipment';
 import { BookingCustomerRole } from '@/generated/prisma/enums';
 import { cn } from '@/lib/utils';
 import { UserRound } from 'lucide-react';
@@ -43,6 +47,9 @@ export function CustomerDiverCard({
   isHistorical?: boolean;
 }) {
   const customer = customerBooking.customer;
+  const shouldShowEquipmentSizing = isEquipmentNeeded(
+    customerBooking.equipmentNeeded,
+  );
 
   return (
     <div
@@ -157,28 +164,32 @@ export function CustomerDiverCard({
             <BookingInfoFieldGroup title="Equipment details" divider={true}>
               <BookingInfoField
                 label="Equipment needed?"
-                value={customerBooking.equipmentNeeded}
+                value={formatEquipmentNeeded(customerBooking.equipmentNeeded)}
               />
-              <BookingInfoField
-                label="Height"
-                value={
-                  customerBooking.heightCm === null
-                    ? null
-                    : `${customerBooking.heightCm} cm`
-                }
-              />
-              <BookingInfoField
-                label="Weight"
-                value={
-                  customerBooking.weightKg === null
-                    ? null
-                    : `${customerBooking.weightKg.toString()} kg`
-                }
-              />
-              <BookingInfoField
-                label="Shoe size"
-                value={customerBooking.shoeSize?.toString()}
-              />
+              {shouldShowEquipmentSizing ? (
+                <>
+                  <BookingInfoField
+                    label="Height"
+                    value={
+                      customerBooking.heightCm === null
+                        ? null
+                        : `${customerBooking.heightCm} cm`
+                    }
+                  />
+                  <BookingInfoField
+                    label="Weight"
+                    value={
+                      customerBooking.weightKg === null
+                        ? null
+                        : `${customerBooking.weightKg.toString()} kg`
+                    }
+                  />
+                  <BookingInfoField
+                    label="Shoe size"
+                    value={customerBooking.shoeSize?.toString()}
+                  />
+                </>
+              ) : null}
             </BookingInfoFieldGroup>
 
             <BookingInfoFieldGroup title="Notes" divider={true}>

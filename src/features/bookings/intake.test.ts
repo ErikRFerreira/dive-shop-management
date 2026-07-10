@@ -63,6 +63,10 @@ test('formats enum labels for display', () => {
   expect(formatEnumLabel(null)).toBe('—');
 });
 
+test('defaults new customer rows to needing equipment', () => {
+  expect(bookingCustomerDefaultValues.equipmentNeeded).toBe('YES');
+});
+
 test('normalizes nested activity and customer values for persistence', () => {
   const values = normalizeBookingFormValues({
     ...bookingFormDefaultValues,
@@ -197,6 +201,20 @@ test('normalizes legacy free-text equipment values to yes', () => {
   expect(values.customers[0].equipmentNeeded).toBe('YES');
 });
 
+test('normalizes blank legacy equipment values to yes', () => {
+  const values = normalizeBookingFormValues({
+    ...bookingFormDefaultValues,
+    customers: [
+      {
+        ...bookingCustomerDefaultValues,
+        equipmentNeeded: '',
+      },
+    ],
+  });
+
+  expect(values.customers[0].equipmentNeeded).toBe('YES');
+});
+
 test('creates deposits only for non-default status or supplied deposit values', () => {
   const noDeposit = normalizeBookingFormValues(bookingFormDefaultValues);
 
@@ -296,6 +314,7 @@ test('maps persisted booking relations into editable browser form values', () =>
       {
         customerId: 'customer-1',
         customerName: 'Maria Santos',
+        equipmentNeeded: 'YES',
         weightKg: '63.5',
         lastDiveDate: '2026-06-01',
       },
