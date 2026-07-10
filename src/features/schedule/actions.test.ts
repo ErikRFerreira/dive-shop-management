@@ -58,6 +58,7 @@ import {
   removeScheduledCourseDay,
   removeScheduleAssignment,
   updateScheduleAssignmentRole,
+  updateScheduleItemTimeSlot,
 } from './actions';
 
 const adminUser = {
@@ -455,6 +456,82 @@ test('rejects update when related booking is not scheduled', async () => {
   });
 
   expect(mocks.updateAssignment).not.toHaveBeenCalled();
+});
+
+test.each([adminUser, managerUser])(
+  'allows %s to update a scheduled item time slot',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+    mocks.findScheduleItemUnique.mockResolvedValue(scheduleDayGuard());
+
+    await expect(
+      updateScheduleItemTimeSlot('schedule-2', ScheduleTimeSlot.NIGHT),
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.updateScheduleItem).toHaveBeenCalledWith({
+      where: { id: 'schedule-2' },
+      data: { timeSlot: ScheduleTimeSlot.NIGHT },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+  },
+);
+
+test('rejects invalid scheduled item time slots before authorization', async () => {
+  await expect(
+    updateScheduleItemTimeSlot('schedule-2', 'MORNING'),
+  ).resolves.toMatchObject({
+    success: false,
+    fieldErrors: {
+      timeSlot: expect.any(Array),
+    },
+  });
+
+  expect(mocks.requireCurrentUser).not.toHaveBeenCalled();
+  expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
+});
+
+test('does not allow customer service to update a scheduled item time slot', async () => {
+  mocks.requireCurrentUser.mockResolvedValue(customerServiceUser);
+
+  await expect(
+    updateScheduleItemTimeSlot('schedule-2', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'You do not have permission to manage scheduled days.',
+  });
+
+  expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
+});
+
+test('rejects time slot updates when the scheduled day is missing', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(null);
+
+  await expect(
+    updateScheduleItemTimeSlot('missing-schedule', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Scheduled day not found. Refresh and try again.',
+  });
+
+  expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
+});
+
+test('rejects time slot updates when related booking is not scheduled', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    scheduleDayGuard({
+      bookingRequest: { id: 'booking-1', status: BookingStatus.CANCELLED },
+    }),
+  );
+
+  await expect(
+    updateScheduleItemTimeSlot('schedule-2', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have scheduled days changed.',
+  });
+
+  expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
 });
 
 test.each([adminUser, managerUser])(

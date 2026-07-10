@@ -13,6 +13,7 @@ import {
   BookingSource,
   Currency,
   DepositStatus,
+  ScheduleTimeSlot,
 } from '@/generated/prisma/enums';
 import {
   approveBookingSchema,
@@ -625,5 +626,26 @@ test('accepts a valid multi-activity, multi-customer submission', () => {
     success: true,
     fieldErrors: {},
     formErrors: [],
+  });
+});
+
+test('normalizes stale submitted activity slots to TBD', () => {
+  const values = validSubmitValues({
+    activities: [
+      {
+        activityType: ActivityType.OPEN_WATER_COURSE,
+        specialtyCourse: '',
+        durationDays: '',
+        requestedDate: '2026-07-14',
+        requestedTime: '',
+        requestedTimeSlot: ScheduleTimeSlot.AM,
+        notes: '',
+      },
+    ],
+  });
+
+  expect(values.activities[0].requestedTimeSlot).toBe(ScheduleTimeSlot.TBD);
+  expect(validateBookingIntake(values, 'submit')).toMatchObject({
+    success: true,
   });
 });

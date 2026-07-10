@@ -30,6 +30,7 @@ import {
   removeScheduledCourseDaySchema,
   removeScheduleAssignmentSchema,
   updateScheduleAssignmentRoleSchema,
+  updateScheduleItemTimeSlotSchema,
 } from './validation';
 
 export type ScheduleAssignmentActionResult =
@@ -512,6 +513,60 @@ export async function updateScheduleAssignmentRole(
   revalidateScheduleAssignmentPaths(
     assignment.scheduleItem.bookingRequest.id,
   );
+  return { success: true };
+}
+
+/**
+ * Updates the broad operational slot for one scheduled activity day.
+ *
+ * @param scheduleItemId - Schedule item whose slot should change.
+ * @param timeSlot - New operational AM/PM/Night/TBD slot.
+ * @returns Success or validation/authorization/business-rule errors.
+ */
+export async function updateScheduleItemTimeSlot(
+  scheduleItemId: string,
+  timeSlot: unknown,
+): Promise<ScheduleDayActionResult> {
+  const validation = updateScheduleItemTimeSlotSchema.safeParse({
+    scheduleItemId,
+    timeSlot,
+  });
+
+  if (!validation.success) {
+    return getScheduleValidationErrors(validation.error);
+  }
+
+  const permissionError = await getScheduleDayPermissionError();
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const scheduleItem = await loadScheduleDayGuard(
+    validation.data.scheduleItemId,
+  );
+
+  if (!scheduleItem) {
+    return {
+      success: false,
+      formError: 'Scheduled day not found. Refresh and try again.',
+    };
+  }
+
+  const statusError = getScheduleDayStatusError(scheduleItem);
+  if (statusError) {
+    return statusError;
+  }
+
+  await db.scheduleItem.update({
+    where: {
+      id: validation.data.scheduleItemId,
+    },
+    data: {
+      timeSlot: validation.data.timeSlot,
+    },
+  });
+
+  revalidateScheduleDayPaths(scheduleItem.bookingRequest.id);
   return { success: true };
 }
 

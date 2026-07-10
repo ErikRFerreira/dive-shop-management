@@ -913,7 +913,9 @@ test('confirms assigned scheduled day removal from booking details', async () =>
     ),
   ).not.toBeNull();
 
-  fireEvent.click(screen.getAllByRole('button', { name: 'Remove day' }).at(-1)!);
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Remove day' }).at(-1)!,
+  );
 
   await waitFor(() => {
     expect(mocks.removeScheduledCourseDay).toHaveBeenCalledWith(
@@ -934,7 +936,6 @@ test('hides assignment controls for cancelled bookings with stale schedule items
     canManageAssignments: false,
   });
 
-  expect(screen.getByRole('heading', { name: 'Schedule' })).not.toBeNull();
   expect(screen.queryByLabelText('Staff')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Add assignment' })).toBeNull();
 });

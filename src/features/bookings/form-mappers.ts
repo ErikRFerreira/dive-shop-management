@@ -267,9 +267,7 @@ export function normalizeBookingFormValues(
         ),
         requestedDate: nullableDate(activity.requestedDate),
         requestedTime: nullableText(activity.requestedTime),
-        requestedTimeSlot:
-          enumValue(ScheduleTimeSlot, activity.requestedTimeSlot ?? '') ??
-          ScheduleTimeSlot.TBD,
+        requestedTimeSlot: ScheduleTimeSlot.TBD,
         notes: nullableText(activity.notes),
       };
     }),

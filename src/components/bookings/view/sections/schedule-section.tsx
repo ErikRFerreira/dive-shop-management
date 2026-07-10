@@ -13,6 +13,7 @@ import {
   BookingInfoSection,
 } from '../../booking-info-layout';
 import { ScheduledCourseDayActions } from './scheduled-course-day-actions';
+import { ScheduledSlotControl } from './scheduled-slot-control';
 
 const MANAGER_ASSIGNMENT_AVAILABILITY_MESSAGE =
   'Approve and schedule this booking before assigning instructors or divemasters.';
@@ -95,10 +96,17 @@ export function ScheduleSection({
                 )}
                 value={formatBookingDate(scheduleItem.date)}
               />
-              <BookingInfoField
-                label="Scheduled slot"
-                value={getScheduleTimeSlotLabel(scheduleItem.timeSlot)}
-              />
+              {canManageAssignments ? (
+                <ScheduledSlotControl
+                  scheduleItemId={scheduleItem.id}
+                  timeSlot={scheduleItem.timeSlot}
+                />
+              ) : (
+                <BookingInfoField
+                  label="Scheduled slot"
+                  value={getScheduleTimeSlotLabel(scheduleItem.timeSlot)}
+                />
+              )}
               <BookingInfoField
                 label="Course day"
                 value={
@@ -152,18 +160,6 @@ function getScheduleItemActivityLabel(
   }
 
   return formatScheduleActivityLabel(scheduleItem.activityType);
-}
-
-/**
- * Formats the booking's active participant count for each scheduled day.
- *
- * @param count - Active participant count derived from booking/customer rows.
- * @returns Staff-facing active participant summary.
- */
-function formatActiveParticipantSummary(count: number) {
-  const label = count === 1 ? 'participant' : 'participants';
-
-  return `${count} active ${label}`;
 }
 
 /**

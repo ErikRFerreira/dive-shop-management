@@ -9,6 +9,7 @@ import {
   CancelBookingForm,
   MarkNeedsMoreInfoForm,
 } from '@/components/bookings/booking-workflow-forms';
+import type { ApprovalScheduleActivitySlot } from '@/components/bookings/workflow/approve-booking-form';
 import { BookingStatus } from '@/generated/prisma/enums';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ type BookingReviewDecisionPanelProps = {
   canRequestMoreInfo: boolean;
   canCancel: boolean;
   adminNotes: string | null;
+  scheduleActivities?: ApprovalScheduleActivitySlot[];
   status: BookingStatus;
 };
 
@@ -112,6 +114,7 @@ export function BookingReviewDecisionPanel({
   canRequestMoreInfo,
   canCancel,
   adminNotes,
+  scheduleActivities = [],
   status,
 }: BookingReviewDecisionPanelProps) {
   const availableModes = useMemo(
@@ -178,6 +181,7 @@ export function BookingReviewDecisionPanel({
             bookingId={bookingId}
             defaultAdminNotes={adminNotes}
             onPendingChange={setIsAnyFormPending}
+            scheduleActivities={scheduleActivities}
           />
         </section>
       ) : null}
