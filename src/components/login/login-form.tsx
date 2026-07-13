@@ -1,54 +1,67 @@
 'use client';
 
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useActionState, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { PendingButton } from '@/components/common/pending-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  loginWithCredentials,
+  type LoginActionState,
+} from '@/features/auth/actions';
+
+const initialLoginActionState: LoginActionState = {};
 
 /**
- * Prevents the presentation-only login form from navigating or reloading.
+ * Renders the login form connected to the credentials authentication action.
  *
- * @param event - The browser form submission event.
- */
-function handleSubmit(event: FormEvent<HTMLFormElement>) {
-  event.preventDefault();
-}
-
-/**
- * Renders the presentation-only login form with password visibility controls.
- *
- * @returns The login form markup without authentication or validation behavior.
+ * @returns The existing login UI with validation, pending, and error states.
  */
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    loginWithCredentials,
+    initialLoginActionState,
+  );
+  const emailError = state.fieldErrors?.email?.[0];
+  const passwordError = state.fieldErrors?.password?.[0];
 
   return (
-    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form action={formAction} className="flex flex-col gap-5">
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
         <Input
+          aria-describedby={emailError ? 'email-error' : undefined}
+          aria-invalid={Boolean(emailError)}
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           placeholder="you@bluerevival.dive"
+          required
           className="h-10"
         />
+        {emailError ? (
+          <p className="text-sm text-destructive" id="email-error">
+            {emailError}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-2">
         <Label htmlFor="password">Password</Label>
         <div className="relative">
           <Input
+            aria-describedby={passwordError ? 'password-error' : undefined}
+            aria-invalid={Boolean(passwordError)}
             id="password"
             name="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder="Enter your password"
+            required
             className="h-10 pr-10"
           />
           <button
@@ -65,41 +78,37 @@ export default function LoginForm() {
             )}
           </button>
         </div>
+        {passwordError ? (
+          <p className="text-sm text-destructive" id="password-error">
+            {passwordError}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Checkbox id="remember" name="remember" />
-          <Label
-            htmlFor="remember"
-            className="cursor-pointer font-normal text-muted-foreground"
-          >
-            Remember me
-          </Label>
-        </div>
-        <Link
-          href="/forgot-password"
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+      {state.formError ? (
+        <p
+          aria-live="polite"
+          className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
         >
-          Forgot password?
-        </Link>
-      </div>
+          {state.formError}
+        </p>
+      ) : null}
 
-      <Button
+      <PendingButton
+        pending={pending}
+        pendingLabel={
+          <>
+            <Spinner aria-hidden />
+            Signing in...
+          </>
+        }
         type="submit"
         className="mt-1 h-10 w-full shadow-sm shadow-primary/20"
       >
         <LogIn className="size-4" aria-hidden />
         Sign in
-      </Button>
-
-      <Button
-        asChild
-        className="mt-0 h-10 w-full shadow-sm shadow-primary/20"
-        variant="outline"
-      >
-        <Link href="/dashboard">Try Dashboard</Link>
-      </Button>
+      </PendingButton>
     </form>
   );
 }

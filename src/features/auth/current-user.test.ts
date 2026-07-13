@@ -19,12 +19,19 @@ vi.mock('@/lib/db', () => ({
 
 import { getCurrentUser } from './current-user';
 
-const currentUser = {
+const persistedUser = {
   id: 'user-1',
   name: 'Admin User',
   email: 'admin@example.test',
   role: 'ADMIN',
   isActive: true,
+};
+
+const currentUser = {
+  id: 'user-1',
+  name: 'Admin User',
+  email: 'admin@example.test',
+  role: 'ADMIN',
 };
 
 beforeEach(() => {
@@ -33,7 +40,7 @@ beforeEach(() => {
     user: { id: 'user-1' },
     expires: '2099-01-01T00:00:00.000Z',
   });
-  mocks.findUnique.mockResolvedValue(currentUser);
+  mocks.findUnique.mockResolvedValue(persistedUser);
 });
 
 test('returns null without an authenticated user ID', async () => {
@@ -60,7 +67,7 @@ test('loads the latest safe active user fields from Prisma', async () => {
 
 test.each([
   ['missing user', null],
-  ['inactive user', { ...currentUser, isActive: false }],
+  ['inactive user', { ...persistedUser, isActive: false }],
 ])('returns null for a %s', async (_label, user) => {
   mocks.findUnique.mockResolvedValue(user);
 

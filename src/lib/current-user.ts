@@ -2,35 +2,26 @@ import 'server-only';
 
 import { redirect } from 'next/navigation';
 
-import { db } from '@/lib/db';
+import { getCurrentUser as getAuthenticatedUser } from '@/features/auth/current-user';
 
-const DEFAULT_DEV_USER_EMAIL = 'cs@diveshop.local';
-
+/**
+ * Loads the current active database user through the Auth.js-backed resolver.
+ *
+ * @returns The latest safe user fields, or null when no active session exists.
+ */
 export async function getCurrentUser() {
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-
-  const email = process.env.DEV_USER_EMAIL ?? DEFAULT_DEV_USER_EMAIL;
-
-  return db.user.findFirst({
-    where: {
-      email,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-    },
-  });
+  return getAuthenticatedUser();
 }
 
 export type CurrentUser = NonNullable<
   Awaited<ReturnType<typeof getCurrentUser>>
 >;
 
+/**
+ * Requires an active Auth.js-backed user for existing dashboard call sites.
+ *
+ * @returns The latest active database user with safe operational fields.
+ */
 export async function requireCurrentUser(): Promise<CurrentUser> {
   const currentUser = await getCurrentUser();
 

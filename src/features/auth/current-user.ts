@@ -34,7 +34,12 @@ export async function getCurrentUser() {
     return null;
   }
 
-  return user;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
 }
 
 export type AuthenticatedUser = NonNullable<

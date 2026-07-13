@@ -17,7 +17,7 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-import { authorizeCredentials } from './credentials';
+import { authorizeCredentials, credentialsSchema } from './credentials';
 
 const persistedUser = {
   id: 'user-1',
@@ -61,9 +61,33 @@ test('normalizes email and returns only safe user fields for valid credentials',
   );
 });
 
-test('rejects malformed credentials without querying the database', async () => {
+test('normalizes valid login input with the shared credentials schema', () => {
+  expect(
+    credentialsSchema.parse({
+      email: '  ADMIN@EXAMPLE.TEST ',
+      password: 'submitted-password',
+    }),
+  ).toEqual({
+    email: 'admin@example.test',
+    password: 'submitted-password',
+  });
+});
+
+test('rejects a malformed email without querying the database', async () => {
   await expect(
-    authorizeCredentials({ email: 'not-an-email', password: '' }),
+    authorizeCredentials({
+      email: 'not-an-email',
+      password: 'submitted-password',
+    }),
+  ).resolves.toBeNull();
+
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.verifyPassword).not.toHaveBeenCalled();
+});
+
+test('rejects an empty password without querying the database', async () => {
+  await expect(
+    authorizeCredentials({ email: 'admin@example.test', password: '' }),
   ).resolves.toBeNull();
 
   expect(mocks.findUnique).not.toHaveBeenCalled();

@@ -5,9 +5,17 @@ import { z } from 'zod';
 import { verifyPassword } from '@/features/auth/password';
 import { db } from '@/lib/db';
 
-const credentialsSchema = z.object({
-  email: z.string().trim().email().max(254),
-  password: z.string().min(1).max(1024),
+export const credentialsSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email({ error: 'Enter a valid email address.' })
+    .max(254, { error: 'Enter a valid email address.' })
+    .transform((email) => email.toLowerCase()),
+  password: z
+    .string()
+    .min(1, { error: 'Enter your password.' })
+    .max(1024, { error: 'Password is too long.' }),
 });
 
 /**
@@ -28,9 +36,8 @@ export async function authorizeCredentials(
     return null;
   }
 
-  const email = parsedCredentials.data.email.toLowerCase();
   const user = await db.user.findUnique({
-    where: { email },
+    where: { email: parsedCredentials.data.email },
     select: {
       id: true,
       name: true,
