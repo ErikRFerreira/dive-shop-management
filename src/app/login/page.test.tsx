@@ -51,7 +51,7 @@ test('renders seeded account emails without a password in development', async ()
   expect(screen.getByText('Demo accounts')).toBeTruthy();
   expect(screen.getByText('admin@diveshop.local')).toBeTruthy();
   expect(screen.getByText('cs@diveshop.local')).toBeTruthy();
-  expect(screen.getByText('mark@diveshop.local')).toBeTruthy();
+  expect(screen.getByText('erik@diveshop.local')).toBeTruthy();
   expect(screen.queryByText('password123')).toBeNull();
 });
 
