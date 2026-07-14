@@ -1,4 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hash } from 'bcryptjs';
 import { config } from 'dotenv';
 
 import { PrismaClient } from '../src/generated/prisma/client';
@@ -7,10 +8,18 @@ import { UserRole } from '../src/generated/prisma/enums';
 config({ path: '.env.local' });
 
 const connectionString = process.env.DATABASE_URL;
+const seedUserPassword = process.env.SEED_USER_PASSWORD;
+const PASSWORD_HASH_ROUNDS = 12;
 
 if (!connectionString) {
   throw new Error('DATABASE_URL must be set to seed the database.');
 }
+
+if (!seedUserPassword) {
+  throw new Error('SEED_USER_PASSWORD must be set to seed user credentials.');
+}
+
+const requiredSeedUserPassword = seedUserPassword;
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
@@ -60,9 +69,14 @@ const users = [
 ] as const;
 
 /**
- * Seeds the development database with idempotent internal users for local work.
+ * Seeds the development database with idempotent internal users and hashed local credentials.
  */
 async function main() {
+  const passwordHash = await hash(
+    requiredSeedUserPassword,
+    PASSWORD_HASH_ROUNDS,
+  );
+
   await Promise.all(
     users.map((user) =>
       prisma.user.upsert({
@@ -71,8 +85,12 @@ async function main() {
           name: user.name,
           role: user.role,
           isActive: true,
+          passwordHash,
         },
-        create: user,
+        create: {
+          ...user,
+          passwordHash,
+        },
       }),
     ),
   );

@@ -103,6 +103,7 @@ model User {
   id                  String               @id @default(cuid())
   name                String
   email               String               @unique
+  passwordHash        String?
   role                UserRole
   isActive            Boolean              @default(true)
   createdBookings     BookingRequest[]     @relation("BookingCreatedBy")

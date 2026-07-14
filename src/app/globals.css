@@ -103,6 +103,14 @@
   --sidebar-accent-foreground: oklch(0.97 0.006 240);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.8 0.11 205);
+  --sidebar-gradient-background: radial-gradient(
+    120% 90% at 15% 10%,
+    oklch(0.42 0.07 220) 0%,
+    oklch(0.32 0.045 245) 42%,
+    oklch(0.26 0.03 252) 100%
+  );
+  --sidebar-gradient-glow-primary: oklch(0.7 0.12 205 / 35%);
+  --sidebar-gradient-glow-secondary: oklch(0.62 0.1 190 / 30%);
 
   /* Ocean accent (teal/cyan) */
   --ocean: oklch(0.55 0.1 220);
@@ -168,6 +176,14 @@
   --sidebar-accent-foreground: oklch(0.96 0.006 240);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.78 0.12 205);
+  --sidebar-gradient-background: radial-gradient(
+    120% 90% at 15% 10%,
+    oklch(0.245 0.04 225) 0%,
+    oklch(0.19 0.028 248) 42%,
+    oklch(0.155 0.022 255) 100%
+  );
+  --sidebar-gradient-glow-primary: oklch(0.62 0.1 205 / 18%);
+  --sidebar-gradient-glow-secondary: oklch(0.54 0.08 190 / 12%);
 
   --ocean: oklch(0.75 0.12 205);
   --ocean-foreground: oklch(0.18 0.03 248);
@@ -232,14 +248,6 @@
     grid-area: sidebar;
 
     @apply hidden shrink-0 flex-col text-sidebar-foreground lg:flex;
-
-    /* Subtle ocean-inspired gradient for dive shop theme */
-    background: linear-gradient(
-      to bottom,
-      color-mix(in oklch, var(--sidebar) 100%, oklch(0.35 0.045 220) 12%),
-      var(--sidebar) 45%,
-      color-mix(in oklch, var(--sidebar) 100%, oklch(0.25 0.03 248) 8%)
-    );
   }
 
   .app-sidebar-collapsed {
