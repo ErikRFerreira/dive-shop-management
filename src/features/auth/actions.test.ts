@@ -37,20 +37,27 @@ import { loginWithCredentials, logout } from './actions';
  * @param password - Submitted password value.
  * @returns FormData containing both supported login fields.
  */
-function buildLoginFormData(email: string, password: string) {
+function buildLoginFormData(
+  email: string,
+  password: string,
+  callbackUrl?: string,
+) {
   const formData = new FormData();
   formData.set('email', email);
   formData.set('password', password);
+  if (callbackUrl) {
+    formData.set('callbackUrl', callbackUrl);
+  }
   return formData;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.signIn.mockResolvedValue('/dashboard');
+  mocks.signIn.mockResolvedValue('/');
   mocks.signOut.mockResolvedValue(undefined);
 });
 
-test('normalizes valid input, signs in with Auth.js, and redirects', async () => {
+test('normalizes valid input and uses root for role-aware landing', async () => {
   await loginWithCredentials(
     {},
     buildLoginFormData('  ADMIN@EXAMPLE.TEST ', 'submitted-password'),
@@ -60,9 +67,49 @@ test('normalizes valid input, signs in with Auth.js, and redirects', async () =>
     email: 'admin@example.test',
     password: 'submitted-password',
     redirect: false,
-    redirectTo: '/dashboard',
+    redirectTo: '/',
   });
-  expect(mocks.redirect).toHaveBeenCalledWith('/dashboard');
+  expect(mocks.redirect).toHaveBeenCalledWith('/');
+});
+
+test('returns a successful login to a safe requested route', async () => {
+  await loginWithCredentials(
+    {},
+    buildLoginFormData(
+      'admin@example.test',
+      'submitted-password',
+      '/bookings?status=PENDING_APPROVAL',
+    ),
+  );
+
+  expect(mocks.signIn).toHaveBeenCalledWith('credentials', {
+    email: 'admin@example.test',
+    password: 'submitted-password',
+    redirect: false,
+    redirectTo: '/bookings?status=PENDING_APPROVAL',
+  });
+  expect(mocks.redirect).toHaveBeenCalledWith(
+    '/bookings?status=PENDING_APPROVAL',
+  );
+});
+
+test('rejects an unsafe submitted callback before redirecting', async () => {
+  await loginWithCredentials(
+    {},
+    buildLoginFormData(
+      'admin@example.test',
+      'submitted-password',
+      'https://evil.example/bookings',
+    ),
+  );
+
+  expect(mocks.signIn).toHaveBeenCalledWith('credentials', {
+    email: 'admin@example.test',
+    password: 'submitted-password',
+    redirect: false,
+    redirectTo: '/',
+  });
+  expect(mocks.redirect).toHaveBeenCalledWith('/');
 });
 
 test('returns a field error for a malformed email', async () => {

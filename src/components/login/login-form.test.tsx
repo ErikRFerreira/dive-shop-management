@@ -42,6 +42,17 @@ test('keeps browser validation and removes temporary login controls', () => {
   expect(screen.queryByText('Try Dashboard')).toBeNull();
 });
 
+test('carries a validated callback destination in the login form', () => {
+  render(<LoginForm redirectTo="/bookings?status=PENDING_APPROVAL" />);
+
+  const callbackInput = document.querySelector(
+    'input[name="callbackUrl"]',
+  ) as HTMLInputElement | null;
+
+  expect(callbackInput?.type).toBe('hidden');
+  expect(callbackInput?.value).toBe('/bookings?status=PENDING_APPROVAL');
+});
+
 test('renders accessible field and authentication errors returned by the action', async () => {
   mocks.loginWithCredentials.mockResolvedValue({
     fieldErrors: {

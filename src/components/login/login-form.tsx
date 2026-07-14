@@ -14,12 +14,17 @@ import {
 
 const initialLoginActionState: LoginActionState = {};
 
+type LoginFormProps = {
+  redirectTo?: string | null;
+};
+
 /**
  * Renders the login form connected to the credentials authentication action.
  *
+ * @param props - Optional prevalidated destination to carry through login.
  * @returns The existing login UI with validation, pending, and error states.
  */
-export default function LoginForm() {
+export default function LoginForm({ redirectTo }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(
     loginWithCredentials,
@@ -30,6 +35,10 @@ export default function LoginForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
+      {redirectTo ? (
+        <input name="callbackUrl" type="hidden" value={redirectTo} />
+      ) : null}
+
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
         <Input

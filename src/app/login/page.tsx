@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation';
 import AuthShell from '@/components/login/auth-shell';
 import LoginForm from '@/components/login/login-form';
 import { getCurrentUser } from '@/features/auth/current-user';
+import {
+  getDefaultLandingPath,
+  validateInternalRedirectDestination,
+} from '@/features/auth/redirects';
 
 /** Demo accounts surfaced for an internal tool as muted helper content. */
 const demoAccounts = [
@@ -11,17 +15,32 @@ const demoAccounts = [
   { role: 'Instructor', email: 'erik@diveshop.local' },
 ];
 
+type LoginPageProps = {
+  searchParams: Promise<{
+    callbackUrl?: string | string[];
+  }>;
+};
+
 /**
  * Renders the branded internal login experience for unauthenticated users.
  *
  * Active authenticated users are returned to the dashboard, and development
  * account identifiers are never included in the production response.
+ *
+ * @param props - Login URL search parameters containing an optional callback.
+ * @returns The public login page or an authenticated redirect.
  */
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const redirectDestination = validateInternalRedirectDestination(
+    params.callbackUrl,
+  );
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
-    redirect('/dashboard');
+    return redirect(
+      redirectDestination ?? getDefaultLandingPath(currentUser.role),
+    );
   }
 
   return (
@@ -53,7 +72,7 @@ export default async function LoginPage() {
         ) : undefined
       }
     >
-      <LoginForm />
+      <LoginForm redirectTo={redirectDestination} />
     </AuthShell>
   );
 }
