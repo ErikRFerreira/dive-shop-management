@@ -88,7 +88,7 @@ export default function LoginForm() {
       {state.formError ? (
         <p
           aria-live="polite"
-          className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          className="-mt-2.5 text-sm font-medium text-destructive"
           role="alert"
         >
           {state.formError}

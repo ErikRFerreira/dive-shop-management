@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/features/auth/current-user';
 const demoAccounts = [
   { role: 'Admin', email: 'admin@diveshop.local' },
   { role: 'Customer Service', email: 'cs@diveshop.local' },
-  { role: 'Instructor', email: 'mark@diveshop.local' },
+  { role: 'Instructor', email: 'erik@diveshop.local' },
 ];
 
 /**
