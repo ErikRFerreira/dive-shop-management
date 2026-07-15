@@ -20,10 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  formatEnumLabel,
-  preferredLanguageOptions,
-} from '@/features/bookings/form-options';
+import { preferredLanguageOptions } from '@/features/bookings/form-options';
 import { normalizeEquipmentNeededChoice } from '@/features/bookings/equipment';
 import type { BookingFormValues } from '@/features/bookings/types';
 import { inputClassName } from '@/lib/consts';
@@ -39,7 +36,6 @@ type BaseCustomerFieldsProps = {
 type CustomerFieldsProps = BaseCustomerFieldsProps & {
   getFieldError: (path: FieldPath<BookingFormValues>) => string | undefined;
   contactInputProps: ContactInputProps;
-  isExistingCustomer: boolean;
 };
 
 type RegisteredInputFieldProps = BaseCustomerFieldsProps & {
@@ -157,7 +153,7 @@ function RegisteredTextAreaField({
 /**
  * Renders customer profile and booking contact fields for one row.
  *
- * @param props - Form state, row index, field errors, and readonly flags.
+ * @param props - Form state, row index, field errors, and contact validation props.
  * @returns Core customer identity, contact, hotel, and language fields.
  */
 export function CustomerFields({
@@ -165,17 +161,8 @@ export function CustomerFields({
   index,
   getFieldError,
   contactInputProps,
-  isExistingCustomer,
 }: CustomerFieldsProps) {
-  const readOnlyInputProps = isExistingCustomer
-    ? {
-        readOnly: true,
-        'aria-readonly': true,
-      }
-    : {};
-  const contactProps = { ...readOnlyInputProps, ...contactInputProps };
   const preferredLanguagePath = `customers.${index}.preferredLanguage` as const;
-  const preferredLanguage = form.getValues(preferredLanguagePath);
   const customerNameError = getFieldError(
     customerFieldPath(index, 'customerName'),
   );
@@ -192,14 +179,12 @@ export function CustomerFields({
           name="customerName"
           label="Customer name"
           required
-          inputProps={readOnlyInputProps}
         />
         <RegisteredInputField
           form={form}
           index={index}
           name="chineseName"
           label="Chinese name"
-          inputProps={readOnlyInputProps}
         />
         <BookingFormFieldError
           error={customerNameError}
@@ -210,28 +195,28 @@ export function CustomerFields({
           index={index}
           name="weChatId"
           label="WeChat ID"
-          inputProps={contactProps}
+          inputProps={contactInputProps}
         />
         <RegisteredInputField
           form={form}
           index={index}
           name="whatsAppNumber"
           label="WhatsApp number"
-          inputProps={contactProps}
+          inputProps={contactInputProps}
         />
         <RegisteredInputField
           form={form}
           index={index}
           name="email"
           label="Email"
-          inputProps={{ ...contactProps, type: 'email' }}
+          inputProps={{ ...contactInputProps, type: 'email' }}
         />
         <RegisteredInputField
           form={form}
           index={index}
           name="phone"
           label="Phone"
-          inputProps={{ ...contactProps, type: 'tel' }}
+          inputProps={{ ...contactInputProps, type: 'tel' }}
         />
         <RegisteredInputField
           form={form}
@@ -240,29 +225,20 @@ export function CustomerFields({
           label="Hotel / pickup location"
         />
         <BookingFormField id={preferredLanguagePath} label="Preferred language">
-          {isExistingCustomer ? (
-            <div
-              className="flex h-8 items-center rounded-md border bg-muted/30 px-3 text-sm"
-              id={preferredLanguagePath}
-            >
-              {preferredLanguage ? formatEnumLabel(preferredLanguage) : '-'}
-            </div>
-          ) : (
-            <Controller
-              control={form.control}
-              name={preferredLanguagePath}
-              render={({ field }) => (
-                <EnumSelect
-                  id={field.name}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  values={preferredLanguageOptions}
-                  placeholder="Select language"
-                  className={inputClassName}
-                />
-              )}
-            />
-          )}
+          <Controller
+            control={form.control}
+            name={preferredLanguagePath}
+            render={({ field }) => (
+              <EnumSelect
+                id={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                values={preferredLanguageOptions}
+                placeholder="Select language"
+                className={inputClassName}
+              />
+            )}
+          />
         </BookingFormField>
       </div>
     </div>

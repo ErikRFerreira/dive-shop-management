@@ -36,10 +36,8 @@ import {
   validateBookingIntake,
   type BookingIntakeFieldErrors,
 } from '@/features/bookings/validation';
-import { primaryContactMethodError } from '@/features/bookings/validation-messages';
 import {
   ActivityType,
-  BookingCustomerRole,
   BookingStatus,
   DepositStatus,
 } from '@/generated/prisma/enums';
@@ -120,43 +118,6 @@ export function BookingForm(props: BookingFormProps) {
   }
 
   /**
-   * Converts linked customer rows with blocking submit errors into editable new
-   * customer rows so staff can fix data that the booking form can persist.
-   *
-   * @param fieldErrors - Validation errors keyed by React Hook Form path.
-   */
-  function unlockIncompleteLinkedCustomers(
-    fieldErrors: BookingIntakeFieldErrors,
-  ) {
-    const currentCustomers = form.getValues('customers');
-    const hasPrimaryContactMethodError = fieldErrors.customers?.includes(
-      primaryContactMethodError,
-    );
-
-    currentCustomers.forEach((customer, index) => {
-      if (!customer.customerId) {
-        return;
-      }
-
-      const hasCustomerNameError = Boolean(
-        fieldErrors[`customers.${index}.customerName`]?.length,
-      );
-      const hasContactMethodError =
-        hasPrimaryContactMethodError &&
-        customer.role === BookingCustomerRole.PRIMARY_CONTACT;
-
-      if (!hasCustomerNameError && !hasContactMethodError) {
-        return;
-      }
-
-      form.setValue(`customers.${index}.customerId`, undefined, {
-        shouldDirty: true,
-        shouldValidate: false,
-      });
-    });
-  }
-
-  /**
    * Applies validation errors returned by client or server-side booking checks.
    *
    * @param fieldErrors - Field-specific validation messages keyed by form path.
@@ -167,7 +128,6 @@ export function BookingForm(props: BookingFormProps) {
     nextFormErrors: string[],
   ) {
     form.clearErrors();
-    unlockIncompleteLinkedCustomers(fieldErrors);
     Object.entries(fieldErrors).forEach(([field, messages]) => {
       const message = messages[0];
       if (message) {
