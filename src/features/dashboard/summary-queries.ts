@@ -22,6 +22,7 @@ import {
   getUnassignedScheduledItemCount,
 } from '@/features/schedule/dashboard-queries';
 import type { CurrentUser } from '@/lib/current-user';
+import { hasFullOperationalAccess } from '@/features/auth/permissions';
 import type {
   AdminDashboardSummary,
   CustomerServiceDashboardSummary,
@@ -170,7 +171,5 @@ export async function getInstructorDashboardSummary(
  * @returns True for Admin and Manager users.
  */
 function isDashboardOperationsUser(currentUser: Pick<CurrentUser, 'role'>) {
-  return (
-    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
-  );
+  return hasFullOperationalAccess(currentUser);
 }

@@ -274,11 +274,8 @@ function scheduleEvent(
     end: null,
     allDay: true,
     bookingId: 'booking-1',
-    bookingReference: 'BOOK-1',
     scheduleItemId: 'schedule-1',
     date: '2026-07-14T00:00:00.000Z',
-    startTime: null,
-    endTime: null,
     timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
@@ -286,18 +283,6 @@ function scheduleEvent(
     dayNumber: 1,
     totalDays: 1,
     dayLabel: null,
-    activities: [
-      {
-        id: 'activity-1',
-        activityType: ActivityType.FUN_DIVE,
-        activityLabel: 'Fun Dive',
-        specialtyCourse: null,
-        requestedDate: '2026-07-14T00:00:00.000Z',
-        requestedTime: '08:00',
-        requestedTimeSlot: ScheduleTimeSlot.AM,
-        notes: 'Two tanks.',
-      },
-    ],
     primaryCustomerName: 'Maria Santos',
     customers: [
       {
@@ -317,7 +302,7 @@ function scheduleEvent(
     hotel: 'Ocean View',
     source: BookingSource.WECHAT,
     referrerName: 'Lina',
-    notes: 'Bring cash for marine park fees.',
+    scheduleNotes: 'Bring cash for marine park fees.',
     assignments: [],
     isTimeTbd: false,
     ...overrides,
@@ -435,7 +420,6 @@ test('makes no-time schedule events clear in the summary dialog', () => {
         end: null,
         isTimeTbd: true,
         start: '2026-07-14',
-        startTime: null,
         timeSlot: ScheduleTimeSlot.TBD,
         title: DEFAULT_EVENT_TITLE,
       }),
@@ -485,23 +469,12 @@ test('renders multiple assigned staff in the event dialog', () => {
       scheduleEvent({
         assignments: [
           {
-            id: 'assignment-1',
-            userId: 'instructor-1',
+            name: 'Inez Instructor',
             role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
-            notes: null,
-            user: assignableStaff(),
           },
           {
-            id: 'assignment-2',
-            userId: 'divemaster-1',
+            name: 'Dina Divemaster',
             role: ScheduleAssignmentRole.DIVEMASTER,
-            notes: null,
-            user: assignableStaff({
-              id: 'divemaster-1',
-              name: 'Dina Divemaster',
-              email: 'dina@example.test',
-              role: UserRole.DIVEMASTER,
-            }),
           },
         ],
       }),
@@ -616,6 +589,12 @@ test('hides assignment controls behind manage assignments when staff are assigne
       scheduleEvent({
         assignments: [
           {
+            name: 'Inez Instructor',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          },
+        ],
+        managementAssignments: [
+          {
             id: 'assignment-1',
             userId: 'instructor-1',
             role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
@@ -654,6 +633,12 @@ test('renders a helpful empty picker state when all available staff are assigned
     events: [
       scheduleEvent({
         assignments: [
+          {
+            name: 'Inez Instructor',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          },
+        ],
+        managementAssignments: [
           {
             id: 'assignment-1',
             userId: 'instructor-1',
@@ -831,6 +816,12 @@ test('refreshes the schedule after updating an assignment role', async () => {
       scheduleEvent({
         assignments: [
           {
+            name: 'Inez Instructor',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          },
+        ],
+        managementAssignments: [
+          {
             id: 'assignment-1',
             userId: 'instructor-1',
             role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
@@ -866,6 +857,12 @@ test('refreshes the schedule after removing an assignment', async () => {
     events: [
       scheduleEvent({
         assignments: [
+          {
+            name: 'Inez Instructor',
+            role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          },
+        ],
+        managementAssignments: [
           {
             id: 'assignment-1',
             userId: 'instructor-1',

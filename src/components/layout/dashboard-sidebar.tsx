@@ -65,21 +65,32 @@ function DashboardSidebar({
           isMobile
             ? 'fixed inset-y-0 left-0 z-50 flex h-dvh w-[85vw] max-w-sm flex-col text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden'
             : 'app-sidebar',
+          'relative overflow-hidden',
           isMobile && (isOpen ? 'translate-x-0' : '-translate-x-full'),
           isVisuallyCollapsed && 'app-sidebar-collapsed',
         )}
-        style={
-          isMobile
-            ? {
-                background:
-                  'linear-gradient(to bottom, color-mix(in oklch, var(--sidebar) 100%, oklch(0.35 0.045 220) 12%), var(--sidebar) 45%, color-mix(in oklch, var(--sidebar) 100%, oklch(0.25 0.03 248) 8%))',
-              }
-            : undefined
-        }
       >
         <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: 'var(--sidebar-gradient-background)',
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute -left-24 top-1/3 size-96 rounded-full opacity-40 blur-3xl"
+          style={{ background: 'var(--sidebar-gradient-glow-primary)' }}
+        />
+        <div
+          aria-hidden
+          className="absolute bottom-0 right-0 size-80 translate-x-1/4 translate-y-1/4 rounded-full opacity-30 blur-3xl"
+          style={{ background: 'var(--sidebar-gradient-glow-secondary)' }}
+        />
+
+        <div
           className={cn(
-            'flex items-center',
+            'relative z-10 flex items-center',
             isVisuallyCollapsed
               ? 'flex-col gap-3 px-3 py-5'
               : 'gap-3 px-5 py-6',
@@ -137,7 +148,7 @@ function DashboardSidebar({
 
         <nav
           className={cn(
-            'flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2',
+            'relative z-10 flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2',
             isVisuallyCollapsed && 'px-2',
             isMobile && 'py-4',
           )}
@@ -152,7 +163,7 @@ function DashboardSidebar({
 
         <div
           className={cn(
-            'mt-auto px-5 py-5',
+            'relative z-10 mt-auto px-5 py-5',
             isVisuallyCollapsed && 'px-3 py-4',
             isMobile && 'border-t border-sidebar-border py-4',
           )}

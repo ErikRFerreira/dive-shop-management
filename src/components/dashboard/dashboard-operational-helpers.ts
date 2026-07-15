@@ -4,6 +4,10 @@ import type {
   DashboardScheduleItem as DashboardScheduleItemData,
 } from '@/features/dashboard/types';
 import type { CurrentUser } from '@/lib/current-user';
+import {
+  canAccessBookings,
+  hasFullOperationalAccess,
+} from '@/features/auth/permissions';
 
 export type DashboardSectionUser = Pick<CurrentUser, 'id' | 'role'>;
 
@@ -12,7 +16,6 @@ export type DashboardAction = {
   href: string;
 };
 
-const operationsRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.MANAGER];
 const NO_PRIMARY_CUSTOMER_LABEL = 'No primary customer';
 
 /**
@@ -150,11 +153,7 @@ export function formatScheduleCustomers(item: DashboardScheduleItemData) {
  * @returns True for Admin, Manager, and Customer Service users.
  */
 function canAccessBookingDetails(currentUser: DashboardSectionUser) {
-  return (
-    currentUser.role === UserRole.ADMIN ||
-    currentUser.role === UserRole.MANAGER ||
-    currentUser.role === UserRole.CUSTOMER_SERVICE
-  );
+  return canAccessBookings(currentUser);
 }
 
 /**
@@ -164,5 +163,5 @@ function canAccessBookingDetails(currentUser: DashboardSectionUser) {
  * @returns True for Admin and Manager users.
  */
 function isOperationsUser(currentUser: Pick<CurrentUser, 'role'>) {
-  return operationsRoles.includes(currentUser.role);
+  return hasFullOperationalAccess(currentUser);
 }

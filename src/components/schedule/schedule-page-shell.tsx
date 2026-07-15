@@ -6,12 +6,12 @@ import { type ReactNode, useTransition } from 'react';
 import { ScheduleFilters } from '@/components/schedule/schedule-filters';
 import { ScheduleResultsPendingSkeleton } from '@/components/schedule/schedule-results-loading';
 import type {
-  AssignableStaff,
+  ScheduleStaffFilterOption,
   ScheduleFilters as ScheduleFiltersValue,
 } from '@/features/schedule/types';
 
 type SchedulePageShellProps = {
-  assignableStaff: AssignableStaff[];
+  staffFilterOptions: ScheduleStaffFilterOption[];
   children: ReactNode;
   filters: ScheduleFiltersValue;
 };
@@ -23,7 +23,7 @@ type SchedulePageShellProps = {
  * @returns Filter controls plus either current schedule results or a pending skeleton.
  */
 export function SchedulePageShell({
-  assignableStaff,
+  staffFilterOptions,
   children,
   filters,
 }: SchedulePageShellProps) {
@@ -44,7 +44,7 @@ export function SchedulePageShell({
   return (
     <>
       <ScheduleFilters
-        assignableStaff={assignableStaff}
+        staffFilterOptions={staffFilterOptions}
         disabled={isPending}
         filters={filters}
         isPending={isPending}

@@ -1,31 +1,57 @@
-import Link from 'next/link';
+import AuthShell from '@/components/login/auth-shell';
+import LoginExperience from '@/components/login/login-experience';
+import { getCurrentUser } from '@/features/auth/current-user';
+import {
+  getDefaultLandingPath,
+  validateInternalRedirectDestination,
+} from '@/features/auth/redirects';
+import { redirect } from 'next/navigation';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+type LoginPageProps = {
+  searchParams: Promise<{
+    callbackUrl?: string | string[];
+  }>;
+};
 
-export default function LoginPage() {
+/**
+ * Renders the branded internal login experience for unauthenticated users.
+ *
+ * Active authenticated users are returned to the dashboard, and development
+ * account identifiers are never included in the production response.
+ *
+ * @param props - Login URL search parameters containing an optional callback.
+ * @returns The public login page or an authenticated redirect.
+ */
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const redirectDestination = validateInternalRedirectDestination(
+    params.callbackUrl,
+  );
+  const currentUser = await getCurrentUser();
+
+  if (currentUser) {
+    return redirect(
+      redirectDestination ?? getDefaultLandingPath(currentUser.role),
+    );
+  }
+
+  // DEVELOPMENT ONLY: this password is sent to the browser to fill local demo
+  // credentials. The environment guard must remain so it is never exposed in
+  // a production response.
+  const demoPassword =
+    process.env.NODE_ENV === 'development'
+      ? process.env.SEED_USER_PASSWORD
+      : undefined;
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Development Login</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Full authentication is not implemented yet. During Sprint 1, the app
-            uses a seeded development user from <code>DEV_USER_EMAIL</code>.
-          </p>
-
-          <div className="rounded-md bg-muted p-3 text-sm">
-            <p className="font-medium">Default local user:</p>
-            <p className="text-muted-foreground">cs@diveshop.local</p>
-          </div>
-
-          <Button asChild>
-            <Link href="/dashboard">Try Dashboard</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </main>
+    <AuthShell
+      title="Welcome back"
+      description="Sign in to access Blue Revival Dive Ops."
+    >
+      <LoginExperience
+        redirectTo={redirectDestination}
+        demoPassword={demoPassword}
+      />
+    </AuthShell>
   );
 }

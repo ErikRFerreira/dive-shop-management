@@ -19,6 +19,12 @@ import {
   getPrimaryActiveBookingCustomer,
 } from '@/features/bookings/participants';
 import { getActivityShortLabel } from '@/features/bookings/activity-utils';
+import {
+  assertAuthorizedCapability,
+  canAccessBookings,
+  canAccessGlobalSchedule,
+  canManageAssignments,
+} from '@/features/auth/permissions';
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 import { formatDateInputValue, formatEnumLabel } from '@/lib/format';
@@ -31,9 +37,11 @@ import type {
   MyScheduleAssignment,
   MyScheduleAssignmentBriefing,
   ScheduleAssignmentDetail,
+  ScheduleAssignedStaff,
   ScheduleCalendarEvent,
   ScheduleFilters,
   SchedulePageItem,
+  ScheduleStaffFilterOption,
 } from './types';
 import {
   buildScheduleEventTitle,
@@ -144,34 +152,49 @@ type ScheduleItemForSchedulePage = Prisma.ScheduleItemGetPayload<
   typeof schedulePageItemArgs
 >;
 
-const myScheduleAssignmentArgs = {
+const scheduleCalendarCustomerSelect = {
+  role: true,
+  participationStatus: true,
+  hotelAtBooking: true,
+  customer: {
+    select: {
+      fullName: true,
+      chineseName: true,
+      firstName: true,
+      lastName: true,
+      hotel: true,
+    },
+  },
+} satisfies Prisma.BookingCustomerSelect;
+
+const scheduleCalendarActivitySelect = {
+  activityType: true,
+  specialtyCourse: true,
+} satisfies Prisma.BookingActivitySelect;
+
+const instructorScheduleCalendarArgs = {
   select: {
     id: true,
-    bookingRequestId: true,
     date: true,
-    startTime: true,
     timeSlot: true,
     activityType: true,
     dayNumber: true,
     totalDays: true,
     scheduleNotes: true,
-    createdAt: true,
     bookingActivity: {
       select: {
-        id: true,
         activityType: true,
         specialtyCourse: true,
-        requestedDate: true,
-        requestedTime: true,
-        requestedTimeSlot: true,
-        notes: true,
       },
     },
     assignments: {
       select: {
-        id: true,
-        userId: true,
         role: true,
+        user: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'asc',
@@ -179,40 +202,14 @@ const myScheduleAssignmentArgs = {
     },
     bookingRequest: {
       select: {
-        id: true,
-        status: true,
-        endAt: true,
         activities: {
-          select: {
-            id: true,
-            activityType: true,
-            specialtyCourse: true,
-            requestedDate: true,
-            requestedTime: true,
-            requestedTimeSlot: true,
-            notes: true,
-            sortOrder: true,
-          },
+          select: scheduleCalendarActivitySelect,
           orderBy: {
             sortOrder: 'asc',
           },
         },
         customers: {
-          select: {
-            role: true,
-            participationStatus: true,
-            hotelAtBooking: true,
-            createdAt: true,
-            customer: {
-              select: {
-                fullName: true,
-                chineseName: true,
-                firstName: true,
-                lastName: true,
-                hotel: true,
-              },
-            },
-          },
+          select: scheduleCalendarCustomerSelect,
           orderBy: {
             createdAt: 'asc',
           },
@@ -222,16 +219,126 @@ const myScheduleAssignmentArgs = {
   },
 } satisfies Prisma.ScheduleItemDefaultArgs;
 
+const scheduleViewerCalendarArgs = {
+  select: {
+    ...instructorScheduleCalendarArgs.select,
+    bookingRequest: {
+      select: {
+        id: true,
+        source: true,
+        referrerName: true,
+        internalNotes: true,
+        activities: {
+          select: scheduleCalendarActivitySelect,
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+        customers: {
+          select: scheduleCalendarCustomerSelect,
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.ScheduleItemDefaultArgs;
+
+const scheduleManagementCalendarArgs = {
+  select: {
+    ...scheduleViewerCalendarArgs.select,
+    assignments: schedulePageItemArgs.select.assignments,
+  },
+} satisfies Prisma.ScheduleItemDefaultArgs;
+
+type InstructorScheduleCalendarRecord = Prisma.ScheduleItemGetPayload<
+  typeof instructorScheduleCalendarArgs
+>;
+type ScheduleViewerCalendarRecord = Prisma.ScheduleItemGetPayload<
+  typeof scheduleViewerCalendarArgs
+>;
+type ScheduleManagementCalendarRecord = Prisma.ScheduleItemGetPayload<
+  typeof scheduleManagementCalendarArgs
+>;
+
+/** Builds the personal-assignment projection with only the current assignment role. */
+function buildMyScheduleAssignmentArgs(currentUserId: string) {
+  return {
+    select: {
+      id: true,
+      date: true,
+      timeSlot: true,
+      activityType: true,
+      dayNumber: true,
+      totalDays: true,
+      scheduleNotes: true,
+      bookingActivity: {
+        select: {
+          activityType: true,
+          specialtyCourse: true,
+        },
+      },
+      assignments: {
+        where: {
+          userId: currentUserId,
+        },
+        select: {
+          role: true,
+        },
+        take: 1,
+      },
+      bookingRequest: {
+        select: {
+          activities: {
+            select: {
+              activityType: true,
+              specialtyCourse: true,
+            },
+            orderBy: {
+              sortOrder: 'asc',
+            },
+          },
+          customers: {
+            select: {
+              role: true,
+              participationStatus: true,
+              hotelAtBooking: true,
+              customer: {
+                select: {
+                  fullName: true,
+                  chineseName: true,
+                  firstName: true,
+                  lastName: true,
+                  hotel: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      },
+    },
+  } satisfies Prisma.ScheduleItemDefaultArgs;
+}
+
 type ScheduleItemForMyAssignments = Prisma.ScheduleItemGetPayload<
-  typeof myScheduleAssignmentArgs
+  ReturnType<typeof buildMyScheduleAssignmentArgs>
 >;
 
 /**
  * Returns active staff users who can be assigned to scheduled activities.
  *
+ * @param currentUser - Authenticated operations user requesting management data.
  * @returns Active instructor and divemaster users sorted for picker display.
  */
-export async function getAssignableStaff(): Promise<AssignableStaff[]> {
+export async function getAssignableStaff(
+  currentUser: CurrentUser,
+): Promise<AssignableStaff[]> {
+  assertAuthorizedCapability(canManageAssignments(currentUser));
+
   return db.user.findMany({
     where: {
       isActive: true,
@@ -250,13 +357,39 @@ export async function getAssignableStaff(): Promise<AssignableStaff[]> {
 }
 
 /**
+ * Returns the minimal active staff data used by read-only schedule filters.
+ *
+ * @param currentUser - Authenticated user requesting the global schedule.
+ * @returns Active instructor and divemaster IDs, names, and roles without email.
+ */
+export async function getScheduleStaffFilterOptions(
+  currentUser: CurrentUser,
+): Promise<ScheduleStaffFilterOption[]> {
+  assertAuthorizedCapability(canAccessGlobalSchedule(currentUser));
+
+  return db.user.findMany({
+    where: {
+      isActive: true,
+      role: {
+        in: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      role: true,
+    },
+    orderBy: [{ name: 'asc' }, { email: 'asc' }],
+  });
+}
+
+/**
  * Builds the schedule-page visibility filter for the current user.
  *
  * @param currentUser - The authenticated user whose role scopes visibility.
  * @param filters - Optional schedule filters to apply after visibility rules.
- * @returns A ScheduleItem filter that always requires an official scheduled
- * booking, scopes Customer Service users to bookings they created, and lets
- * instructors view the full internal schedule.
+ * @returns A ScheduleItem filter that requires an official scheduled booking
+ * and returns no rows for roles without global schedule access.
  */
 export function buildSchedulePageWhere(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
@@ -267,13 +400,7 @@ export function buildSchedulePageWhere(
   };
   const where: Prisma.ScheduleItemWhereInput = { bookingRequest };
 
-  if (currentUser.role === UserRole.CUSTOMER_SERVICE) {
-    bookingRequest.createdById = currentUser.id;
-  } else if (
-    currentUser.role !== UserRole.ADMIN &&
-    currentUser.role !== UserRole.MANAGER &&
-    currentUser.role !== UserRole.INSTRUCTOR
-  ) {
+  if (!canAccessGlobalSchedule(currentUser)) {
     where.id = { in: [] };
   }
 
@@ -384,6 +511,7 @@ function buildActivityTypeFilter(
 export async function getScheduledBookingsForSchedulePage(
   currentUser: CurrentUser,
 ): Promise<SchedulePageItem[]> {
+  assertAuthorizedCapability(canAccessBookings(currentUser));
   const scheduleItems = await db.scheduleItem.findMany({
     ...schedulePageItemArgs,
     where: buildSchedulePageWhere(currentUser),
@@ -409,20 +537,48 @@ export async function getScheduleItemsForCalendar(
   currentUser: CurrentUser,
   filters: ScheduleFilters = {},
 ): Promise<ScheduleCalendarEvent[]> {
+  assertAuthorizedCapability(canAccessGlobalSchedule(currentUser));
+  const where = buildSchedulePageWhere(currentUser, filters);
+  const orderBy = [
+    { date: 'asc' as const },
+    { timeSlot: 'asc' as const },
+    { createdAt: 'asc' as const },
+  ];
+
+  if (currentUser.role === UserRole.INSTRUCTOR) {
+    const scheduleItems = await db.scheduleItem.findMany({
+      ...instructorScheduleCalendarArgs,
+      where,
+      orderBy,
+    });
+
+    return scheduleItems.map(mapInstructorScheduleItemToCalendarEvent);
+  }
+
+  if (canManageAssignments(currentUser)) {
+    const scheduleItems = await db.scheduleItem.findMany({
+      ...scheduleManagementCalendarArgs,
+      where,
+      orderBy,
+    });
+
+    return scheduleItems.map(mapManagementScheduleItemToCalendarEvent);
+  }
+
   const scheduleItems = await db.scheduleItem.findMany({
-    ...schedulePageItemArgs,
-    where: buildSchedulePageWhere(currentUser, filters),
-    orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
+    ...scheduleViewerCalendarArgs,
+    where,
+    orderBy,
   });
 
-  return mapScheduleItemsToCalendarEvents(scheduleItems);
+  return scheduleItems.map(mapViewerScheduleItemToCalendarEvent);
 }
 
 /**
  * Returns official scheduled items assigned to the current staff user.
  *
  * The current user's id is always used as the assignment predicate, so callers
- * cannot request another instructor or divemaster's personal assignment list.
+ * cannot request another instructor's personal assignment list.
  * Only `SCHEDULED` booking requests are included.
  *
  * @param currentUser - The authenticated user whose assignments are requested.
@@ -431,21 +587,17 @@ export async function getScheduleItemsForCalendar(
 export async function getMyScheduleAssignments(
   currentUser: CurrentUser,
 ): Promise<MyScheduleAssignment[]> {
-  if (!canViewMyScheduleAssignments(currentUser)) {
-    return [];
-  }
+  assertAuthorizedCapability(canViewMyScheduleAssignments(currentUser));
 
   const scheduleItems = await db.scheduleItem.findMany({
-    ...myScheduleAssignmentArgs,
+    ...buildMyScheduleAssignmentArgs(currentUser.id),
     where: buildMyScheduleAssignmentsWhere(currentUser, {
       gte: getShopDateOnlyRange(new Date()).start,
     }),
     orderBy: scheduleAssignmentOrderBy,
   });
 
-  return scheduleItems.map((scheduleItem) =>
-    mapScheduleItemToMyScheduleAssignment(scheduleItem, currentUser.id),
-  );
+  return scheduleItems.map(mapScheduleItemToMyScheduleAssignment);
 }
 
 /**
@@ -455,23 +607,20 @@ export async function getMyScheduleAssignments(
  * assignments, and caps the upcoming table so the page remains scalable for
  * instructors with many future scheduled activities.
  *
- * @param currentUser - The authenticated instructor or divemaster.
+ * @param currentUser - The authenticated instructor.
  * @returns Date-bucketed assignments plus summary counts for the briefing UI.
  */
 export async function getMyScheduleAssignmentBriefing(
   currentUser: CurrentUser,
 ): Promise<MyScheduleAssignmentBriefing> {
-  const emptyBriefing = createEmptyMyScheduleAssignmentBriefing();
-
-  if (!canViewMyScheduleAssignments(currentUser)) {
-    return emptyBriefing;
-  }
+  assertAuthorizedCapability(canViewMyScheduleAssignments(currentUser));
 
   const todayRange = getShopDateOnlyRange(new Date());
   const tomorrowRange = getShopDateOnlyRange(new Date(), 1);
   const upcomingDateFilter: Prisma.DateTimeFilter<'ScheduleItem'> = {
     gte: tomorrowRange.end,
   };
+  const assignmentArgs = buildMyScheduleAssignmentArgs(currentUser.id);
 
   const [
     todayScheduleItems,
@@ -480,7 +629,7 @@ export async function getMyScheduleAssignmentBriefing(
     upcomingCount,
   ] = await Promise.all([
     db.scheduleItem.findMany({
-      ...myScheduleAssignmentArgs,
+      ...assignmentArgs,
       where: buildMyScheduleAssignmentsWhere(currentUser, {
         gte: todayRange.start,
         lt: todayRange.end,
@@ -488,7 +637,7 @@ export async function getMyScheduleAssignmentBriefing(
       orderBy: scheduleAssignmentOrderBy,
     }),
     db.scheduleItem.findMany({
-      ...myScheduleAssignmentArgs,
+      ...assignmentArgs,
       where: buildMyScheduleAssignmentsWhere(currentUser, {
         gte: tomorrowRange.start,
         lt: tomorrowRange.end,
@@ -496,7 +645,7 @@ export async function getMyScheduleAssignmentBriefing(
       orderBy: scheduleAssignmentOrderBy,
     }),
     db.scheduleItem.findMany({
-      ...myScheduleAssignmentArgs,
+      ...assignmentArgs,
       where: buildMyScheduleAssignmentsWhere(currentUser, upcomingDateFilter),
       orderBy: scheduleAssignmentOrderBy,
       take: MY_ASSIGNMENTS_UPCOMING_LIMIT,
@@ -506,18 +655,11 @@ export async function getMyScheduleAssignmentBriefing(
     }),
   ]);
 
-  const todayAssignments = mapScheduleItemsToMyScheduleAssignments(
-    todayScheduleItems,
-    currentUser.id,
-  );
-  const tomorrowAssignments = mapScheduleItemsToMyScheduleAssignments(
-    tomorrowScheduleItems,
-    currentUser.id,
-  );
-  const upcomingAssignments = mapScheduleItemsToMyScheduleAssignments(
-    upcomingScheduleItems,
-    currentUser.id,
-  );
+  const todayAssignments = mapScheduleItemsToMyScheduleAssignments(todayScheduleItems);
+  const tomorrowAssignments =
+    mapScheduleItemsToMyScheduleAssignments(tomorrowScheduleItems);
+  const upcomingAssignments =
+    mapScheduleItemsToMyScheduleAssignments(upcomingScheduleItems);
   const nextAssignment =
     todayAssignments[0] ?? tomorrowAssignments[0] ?? upcomingAssignments[0] ?? null;
 
@@ -594,18 +736,99 @@ export function mapScheduleItemForSchedulePage(
 export function mapScheduleItemsToCalendarEvents(
   scheduleItems: ScheduleItemForSchedulePage[],
 ): ScheduleCalendarEvent[] {
-  return scheduleItems.map(mapScheduleItemToCalendarEvent);
+  return scheduleItems.map((scheduleItem) =>
+    mapScheduleCalendarRecord(scheduleItem, {
+      bookingId: scheduleItem.bookingRequest.id,
+      source: scheduleItem.bookingRequest.source,
+      referrerName: scheduleItem.bookingRequest.referrerName,
+      scheduleNotes:
+        scheduleItem.scheduleNotes ?? scheduleItem.bookingRequest.internalNotes,
+      managementAssignments: mapScheduleAssignments(
+        scheduleItem.assignments,
+      ),
+    }),
+  );
 }
 
 /**
- * Maps one schedule row into a calendar event object.
+ * Maps an instructor schedule row without booking or assignment-management data.
  *
- * @param scheduleItem - The schedule item and selected booking relations.
- * @returns A feature-specific event with FullCalendar-compatible start/end
- * fields plus schedule booking metadata.
+ * @param scheduleItem - Minimal instructor-safe schedule query record.
+ * @returns Instructor calendar event containing only rendered operational data.
  */
-function mapScheduleItemToCalendarEvent(
-  scheduleItem: ScheduleItemForSchedulePage,
+function mapInstructorScheduleItemToCalendarEvent(
+  scheduleItem: InstructorScheduleCalendarRecord,
+) {
+  return mapScheduleCalendarRecord(scheduleItem, {
+    scheduleNotes: scheduleItem.scheduleNotes,
+  });
+}
+
+/**
+ * Maps a Customer Service schedule row with operational booking context.
+ *
+ * @param scheduleItem - Operational viewer schedule query record.
+ * @returns Calendar event without assignment-management-only metadata.
+ */
+function mapViewerScheduleItemToCalendarEvent(
+  scheduleItem: ScheduleViewerCalendarRecord,
+) {
+  return mapScheduleCalendarRecord(scheduleItem, {
+    bookingId: scheduleItem.bookingRequest.id,
+    source: scheduleItem.bookingRequest.source,
+    referrerName: scheduleItem.bookingRequest.referrerName,
+    scheduleNotes:
+      scheduleItem.scheduleNotes ?? scheduleItem.bookingRequest.internalNotes,
+  });
+}
+
+/**
+ * Maps an Admin or Manager schedule row with assignment-management metadata.
+ *
+ * @param scheduleItem - Management schedule query record.
+ * @returns Calendar event containing the current management controls' data.
+ */
+function mapManagementScheduleItemToCalendarEvent(
+  scheduleItem: ScheduleManagementCalendarRecord,
+) {
+  return mapScheduleCalendarRecord(scheduleItem, {
+    bookingId: scheduleItem.bookingRequest.id,
+    source: scheduleItem.bookingRequest.source,
+    referrerName: scheduleItem.bookingRequest.referrerName,
+    scheduleNotes:
+      scheduleItem.scheduleNotes ?? scheduleItem.bookingRequest.internalNotes,
+    managementAssignments: mapScheduleAssignments(scheduleItem.assignments),
+  });
+}
+
+type ScheduleCalendarRecord =
+  | InstructorScheduleCalendarRecord
+  | ScheduleViewerCalendarRecord
+  | ScheduleManagementCalendarRecord
+  | ScheduleItemForSchedulePage;
+
+/** Optional operational metadata omitted entirely from instructor events. */
+type ScheduleCalendarMappingOptions = Pick<
+  ScheduleCalendarEvent,
+  'scheduleNotes'
+> &
+  Partial<
+    Pick<
+      ScheduleCalendarEvent,
+      'bookingId' | 'source' | 'referrerName' | 'managementAssignments'
+    >
+  >;
+
+/**
+ * Maps the fields common to every role-specific calendar projection.
+ *
+ * @param scheduleItem - Role-minimized schedule query record.
+ * @param options - Optional operational fields authorized for the viewer.
+ * @returns FullCalendar event with only the supplied role-specific metadata.
+ */
+function mapScheduleCalendarRecord(
+  scheduleItem: ScheduleCalendarRecord,
+  options: ScheduleCalendarMappingOptions,
 ): ScheduleCalendarEvent {
   const booking = scheduleItem.bookingRequest;
   const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlot.TBD;
@@ -622,7 +845,7 @@ function mapScheduleItemToCalendarEvent(
     scheduleItem.dayNumber,
     scheduleItem.totalDays,
   );
-  const assignments = mapScheduleAssignments(scheduleItem.assignments);
+  const assignments = mapScheduleAssignedStaff(scheduleItem.assignments);
   const slotTitlePrefix =
     timeSlot === ScheduleTimeSlot.TBD
       ? null
@@ -645,31 +868,16 @@ function mapScheduleItemToCalendarEvent(
     start: dateKey,
     end: null,
     allDay: true,
-    bookingId: booking.id,
-    bookingReference: booking.id,
+    ...(options.bookingId ? { bookingId: options.bookingId } : {}),
     scheduleItemId: scheduleItem.id,
     date: scheduleItem.date,
     timeSlot,
-    startTime: null,
-    endTime: null,
     activityType: scheduleItem.activityType,
     activityLabel,
     activitySummary,
     dayNumber: scheduleItem.dayNumber,
     totalDays: scheduleItem.totalDays,
     dayLabel,
-    activities: booking.activities.map((activity) => ({
-      id: activity.id,
-      activityType: activity.activityType,
-      activityLabel: activity.activityType
-        ? getActivityShortLabel(activity)
-        : null,
-      specialtyCourse: activity.specialtyCourse,
-      requestedDate: activity.requestedDate,
-      requestedTime: activity.requestedTime,
-      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
-      notes: activity.notes,
-    })),
     primaryCustomerName,
     customers: mapBookingCustomersForDisplay(booking.customers),
     numberOfPeople: getActiveParticipantCount(booking.customers),
@@ -677,10 +885,15 @@ function mapScheduleItemToCalendarEvent(
       displayBookingCustomer?.hotelAtBooking?.trim() ||
       displayBookingCustomer?.customer.hotel?.trim() ||
       null,
-    source: booking.source,
-    referrerName: booking.referrerName,
-    notes: scheduleItem.scheduleNotes ?? booking.internalNotes,
+    ...(options.source !== undefined ? { source: options.source } : {}),
+    ...(options.referrerName !== undefined
+      ? { referrerName: options.referrerName }
+      : {}),
+    scheduleNotes: options.scheduleNotes,
     assignments,
+    ...(options.managementAssignments
+      ? { managementAssignments: options.managementAssignments }
+      : {}),
     isTimeTbd: timeSlot === ScheduleTimeSlot.TBD,
   };
 }
@@ -709,51 +922,25 @@ function buildMyScheduleAssignmentsWhere(
 }
 
 /**
- * Creates an empty briefing payload for roles without personal assignment access.
- *
- * @returns Empty assignment buckets and zeroed summary counts.
- */
-function createEmptyMyScheduleAssignmentBriefing(): MyScheduleAssignmentBriefing {
-  return {
-    todayAssignments: [],
-    tomorrowAssignments: [],
-    upcomingAssignments: [],
-    upcomingLimit: MY_ASSIGNMENTS_UPCOMING_LIMIT,
-    summary: {
-      todayCount: 0,
-      tomorrowCount: 0,
-      upcomingCount: 0,
-      nextAssignment: null,
-    },
-  };
-}
-
-/**
  * Maps selected schedule items into personal assignment rows for one user.
  *
  * @param scheduleItems - Schedule items fetched with My Assignments relations.
- * @param currentUserId - Authenticated user id used to resolve assignment role.
  * @returns Display-ready personal assignment rows in query order.
  */
 function mapScheduleItemsToMyScheduleAssignments(
   scheduleItems: ScheduleItemForMyAssignments[],
-  currentUserId: string,
 ) {
-  return scheduleItems.map((scheduleItem) =>
-    mapScheduleItemToMyScheduleAssignment(scheduleItem, currentUserId),
-  );
+  return scheduleItems.map(mapScheduleItemToMyScheduleAssignment);
 }
 
 /**
  * Maps one assigned schedule item into the My Assignments read model.
  *
  * @param scheduleItem - The selected schedule row and booking relations.
- * @param currentUserId - The authenticated user id used to find assignment role.
  * @returns Display-ready personal assignment details without booking internal notes.
  */
 function mapScheduleItemToMyScheduleAssignment(
   scheduleItem: ScheduleItemForMyAssignments,
-  currentUserId: string,
 ): MyScheduleAssignment {
   const booking = scheduleItem.bookingRequest;
   const timeSlot = scheduleItem.timeSlot ?? ScheduleTimeSlot.TBD;
@@ -763,9 +950,7 @@ function mapScheduleItemToMyScheduleAssignment(
   const primaryCustomerName = formatCustomerName(
     displayBookingCustomer?.customer ?? null,
   );
-  const currentUserAssignment = scheduleItem.assignments.find(
-    (assignment) => assignment.userId === currentUserId,
-  );
+  const currentUserAssignment = scheduleItem.assignments[0];
 
   if (!currentUserAssignment) {
     throw new Error('Assigned schedule item is missing current user assignment.');
@@ -773,11 +958,8 @@ function mapScheduleItemToMyScheduleAssignment(
 
   return {
     scheduleItemId: scheduleItem.id,
-    bookingId: booking.id,
     date: scheduleItem.date,
     timeSlot,
-    startTime: null,
-    endTime: null,
     isTimeTbd: timeSlot === ScheduleTimeSlot.TBD,
     activityType: scheduleItem.activityType,
     activityLabel: formatScheduleActivityLabel(scheduleItem.activityType),
@@ -789,16 +971,11 @@ function mapScheduleItemToMyScheduleAssignment(
       scheduleItem.totalDays,
     ),
     activities: booking.activities.map((activity) => ({
-      id: activity.id,
       activityType: activity.activityType,
       activityLabel: activity.activityType
         ? getActivityShortLabel(activity)
         : null,
       specialtyCourse: activity.specialtyCourse,
-      requestedDate: activity.requestedDate,
-      requestedTime: activity.requestedTime,
-      requestedTimeSlot: activity.requestedTimeSlot ?? ScheduleTimeSlot.TBD,
-      notes: activity.notes,
     })),
     primaryCustomerName,
     customers: mapBookingCustomersForDisplay(booking.customers),
@@ -819,7 +996,9 @@ function mapScheduleItemToMyScheduleAssignment(
  * @returns Staff assignment details safe for schedule views and future controls.
  */
 function mapScheduleAssignments(
-  assignments: ScheduleItemForSchedulePage['assignments'],
+  assignments:
+    | ScheduleItemForSchedulePage['assignments']
+    | ScheduleManagementCalendarRecord['assignments'],
 ): ScheduleAssignmentDetail[] {
   return assignments.map((assignment) => ({
     id: assignment.id,
@@ -836,6 +1015,21 @@ function mapScheduleAssignments(
 }
 
 /**
+ * Maps assignments into the minimal name and operational-role schedule shape.
+ *
+ * @param assignments - Role-specific schedule assignments containing names and roles.
+ * @returns Assigned staff display rows without account or management metadata.
+ */
+function mapScheduleAssignedStaff(
+  assignments: ScheduleCalendarRecord['assignments'],
+): ScheduleAssignedStaff[] {
+  return assignments.map((assignment) => ({
+    name: assignment.user.name,
+    role: assignment.role,
+  }));
+}
+
+/**
  * Maps active booking customer links into compact schedule customer display rows.
  *
  * @param customers - Booking customer rows selected with each schedule item.
@@ -844,7 +1038,10 @@ function mapScheduleAssignments(
 function mapBookingCustomersForDisplay(
   customers:
     | ScheduleItemForSchedulePage['bookingRequest']['customers']
-    | ScheduleItemForMyAssignments['bookingRequest']['customers'],
+    | ScheduleItemForMyAssignments['bookingRequest']['customers']
+    | InstructorScheduleCalendarRecord['bookingRequest']['customers']
+    | ScheduleViewerCalendarRecord['bookingRequest']['customers']
+    | ScheduleManagementCalendarRecord['bookingRequest']['customers'],
 ) {
   return getActiveBookingParticipants(customers).map((bookingCustomer) => {
     const chineseName = bookingCustomer.customer.chineseName?.trim() || null;
@@ -936,7 +1133,7 @@ function formatCustomerEnglishName(
  */
 function buildScheduleCalendarEventTitle(input: {
   activityLabel: string;
-  assignments: ScheduleAssignmentDetail[];
+  assignments: ScheduleAssignedStaff[];
   customerName: string | null;
   dayLabel: string | null;
   numberOfPeople: number | null;
@@ -956,7 +1153,7 @@ function buildScheduleCalendarEventTitle(input: {
  * @param assignments - Staff assignments already mapped for schedule display.
  * @returns `[Unassigned]` or compact staff names in assignment order.
  */
-function buildScheduleStaffPrefix(assignments: ScheduleAssignmentDetail[]) {
+function buildScheduleStaffPrefix(assignments: ScheduleAssignedStaff[]) {
   if (assignments.length === 0) {
     return '[Unassigned]';
   }
@@ -972,8 +1169,8 @@ function buildScheduleStaffPrefix(assignments: ScheduleAssignmentDetail[]) {
  * @param assignment - Staff assignment used to derive a safe display name.
  * @returns The staff first name, role label, or generic fallback.
  */
-function formatScheduleStaffName(assignment: ScheduleAssignmentDetail) {
-  const displayName = assignment.user.name.trim();
+function formatScheduleStaffName(assignment: ScheduleAssignedStaff) {
+  const displayName = assignment.name.trim();
   const firstName = displayName.split(/\s+/)[0]?.trim();
 
   return firstName || formatEnumLabel(assignment.role) || 'Staff';
@@ -988,7 +1185,7 @@ function formatScheduleStaffName(assignment: ScheduleAssignmentDetail) {
  * @returns A compact activity summary for calendar titles and event metadata.
  */
 function summarizeScheduleActivities(
-  activities: ScheduleItemForSchedulePage['bookingRequest']['activities'],
+  activities: ScheduleCalendarRecord['bookingRequest']['activities'],
   fallbackActivityType: ScheduleItemForSchedulePage['activityType'],
 ) {
   const labels = activities
@@ -1017,7 +1214,7 @@ function summarizeScheduleActivities(
  * @returns A compact activity label for row-specific schedule displays.
  */
 function summarizeScheduleItemActivity(
-  scheduleItem: ScheduleItemForSchedulePage | ScheduleItemForMyAssignments,
+  scheduleItem: ScheduleCalendarRecord | ScheduleItemForMyAssignments,
 ) {
   if (scheduleItem.bookingActivity?.activityType) {
     return getActivityShortLabel(scheduleItem.bookingActivity);

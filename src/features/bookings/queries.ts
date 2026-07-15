@@ -20,6 +20,10 @@ import {
 } from './types';
 import { getActiveParticipantCount } from './participants';
 import { buildBookingRequestWhere, resolveDisplayCustomer } from './utils';
+import {
+  assertAuthorizedCapability,
+  canAccessBookings,
+} from '@/features/auth/permissions';
 
 /**
  * Server-only booking list queries.
@@ -389,6 +393,7 @@ export async function getBookingRequests(
   },
   sort: BookingSort = bookingDefaultSort,
 ): Promise<PaginatedBookingList> {
+  assertAuthorizedCapability(canAccessBookings(currentUser));
   const where = buildBookingRequestWhere(currentUser, status, queue);
   const totalCount = await db.bookingRequest.count({ where });
   const totalPages = Math.ceil(totalCount / paginationInput.pageSize);
@@ -480,6 +485,7 @@ export async function getBookingRequestById(
   currentUser: CurrentUser,
   id: string,
 ): Promise<BookingDetailsItem | null> {
+  assertAuthorizedCapability(canAccessBookings(currentUser));
   const bookingRequest = await db.bookingRequest.findFirst({
     ...bookingRequestDetailArgs,
     where: {

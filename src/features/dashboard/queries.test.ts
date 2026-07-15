@@ -678,6 +678,17 @@ test('overview query returns summary plus operational sections', async () => {
   });
 });
 
+test('rejects divemaster dashboard overview queries before Prisma access', async () => {
+  await expect(
+    getDashboardOverviewForCurrentUser(divemasterUser),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
+
+  expect(mocks.bookingRequestCount).not.toHaveBeenCalled();
+  expect(mocks.bookingRequestFindMany).not.toHaveBeenCalled();
+  expect(mocks.scheduleItemCount).not.toHaveBeenCalled();
+  expect(mocks.scheduleItemFindMany).not.toHaveBeenCalled();
+});
+
 test('does not query protected sections for unsupported roles', async () => {
   await expect(getAdminDashboardSummary(instructorUser)).resolves.toEqual({
     kind: 'empty',

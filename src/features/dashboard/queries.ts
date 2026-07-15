@@ -19,6 +19,10 @@ import {
   getInstructorDashboardSummary,
 } from './summary-queries';
 import type { DashboardOverview } from './types';
+import {
+  assertAuthorizedCapability,
+  canAccessPlatform,
+} from '@/features/auth/permissions';
 
 export {
   getAdminDashboardSummary,
@@ -39,6 +43,7 @@ export {
 export async function getDashboardOverviewForCurrentUser(
   currentUser: CurrentUser,
 ): Promise<DashboardOverview> {
+  assertAuthorizedCapability(canAccessPlatform(currentUser));
   const [summary, needsAttention, todaysSchedule, recentActivity] =
     await Promise.all([
       getDashboardSummaryForCurrentUser(currentUser),

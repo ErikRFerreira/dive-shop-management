@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
 
-import type { AssignableStaff } from '@/features/schedule/types';
+import type { ScheduleStaffFilterOption } from '@/features/schedule/types';
 import { ActivityType, UserRole } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
@@ -161,13 +161,12 @@ import { ScheduleFilters, buildScheduleFilterHref } from './schedule-filters';
  * @param overrides - Staff fields to override for a specific scenario.
  * @returns Assignable staff record.
  */
-function assignableStaff(
-  overrides: Partial<AssignableStaff> = {},
-): AssignableStaff {
+function staffFilterOption(
+  overrides: Partial<ScheduleStaffFilterOption> = {},
+): ScheduleStaffFilterOption {
   return {
     id: 'instructor-1',
     name: 'Inez Instructor',
-    email: 'inez@example.test',
     role: UserRole.INSTRUCTOR,
     ...overrides,
   };
@@ -184,7 +183,7 @@ function renderScheduleFilters(
 ) {
   return render(
     <ScheduleFilters
-      assignableStaff={[assignableStaff()]}
+      staffFilterOptions={[staffFilterOption()]}
       filters={{}}
       onFilterChange={mocks.push}
       {...props}

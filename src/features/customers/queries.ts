@@ -10,6 +10,11 @@ import 'server-only';
 import { Prisma } from '@/generated/prisma/client';
 import { BookingCustomerRole, ScheduleTimeSlot } from '@/generated/prisma/enums';
 import { db } from '@/lib/db';
+import type { CurrentUser } from '@/lib/current-user';
+import {
+  assertAuthorizedCapability,
+  canAccessCustomers,
+} from '@/features/auth/permissions';
 import type {
   CustomerBookingHistoryItem,
   CustomerDetail,
@@ -438,12 +443,15 @@ export function mapCustomerSearchResult(
 /**
  * Returns the newest customer records for the default lookup page state.
  *
+ * @param currentUser - Authenticated user authorized to access customers.
  * @param limit - Maximum number of customers to return for the initial list.
  * @returns Recent customer records ordered by newest update first.
  */
 export async function getRecentCustomers(
+  currentUser: CurrentUser,
   limit = 20,
 ): Promise<CustomerSearchResult[]> {
+  assertAuthorizedCapability(canAccessCustomers(currentUser));
   const customers = await db.customer.findMany({
     ...customerSearchArgs,
     orderBy: {
@@ -483,17 +491,20 @@ function buildCustomerLookupWhere(query: string) {
 /**
  * Returns one paginated customers-page result set for default or searched lookup.
  *
+ * @param currentUser - Authenticated user authorized to access customers.
  * @param query - Raw search text from the `/customers?q=` URL parameter.
  * @param paginationInput - Requested page and fixed page size parsed from the URL.
  * @returns Customer rows plus total-count metadata for list pagination.
  */
 export async function getCustomerLookupPage(
+  currentUser: CurrentUser,
   query: string,
   paginationInput: CustomerListPaginationInput = {
     page: 1,
     pageSize: customerDefaultPageSize,
   },
 ): Promise<PaginatedCustomerList> {
+  assertAuthorizedCapability(canAccessCustomers(currentUser));
   const normalizedQuery = query.trim();
   const where = buildCustomerLookupWhere(normalizedQuery);
   const totalCount = await db.customer.count({ where });
@@ -536,12 +547,15 @@ export async function getCustomerLookupPage(
 /**
  * Searches customers by the identifying fields staff use to avoid duplicates.
  *
+ * @param currentUser - Authenticated user authorized to access customers.
  * @param query - Raw search text from the `/customers?q=` URL parameter.
  * @returns Matching customer records, newest updated first, or an empty array for blank input.
  */
 export async function searchCustomers(
+  currentUser: CurrentUser,
   query: string,
 ): Promise<CustomerSearchResult[]> {
+  assertAuthorizedCapability(canAccessCustomers(currentUser));
   const normalizedQuery = query.trim();
 
   if (!normalizedQuery) {
@@ -574,12 +588,15 @@ export async function searchCustomers(
 /**
  * Returns a read-only customer detail payload with booking history.
  *
+ * @param currentUser - Authenticated user authorized to access customers.
  * @param id - Customer ID from the `/customers/[id]` route.
  * @returns Customer detail data, or null when the customer does not exist.
  */
 export async function getCustomerDetail(
+  currentUser: CurrentUser,
   id: string,
 ): Promise<CustomerDetail | null> {
+  assertAuthorizedCapability(canAccessCustomers(currentUser));
   const customer = await db.customer.findUnique({
     ...customerDetailArgs,
     where: { id },

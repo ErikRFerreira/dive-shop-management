@@ -97,11 +97,13 @@ export function ScheduleEventDialogContent({
               label="Hotel"
               value={event.hotel ?? 'No hotel / pickup location recorded'}
             />
-            <SummaryField
-              icon={FileText}
-              label="Source"
-              value={formatSourceSummary(event)}
-            />
+            {event.source !== undefined ? (
+              <SummaryField
+                icon={FileText}
+                label="Source"
+                value={formatSourceSummary(event)}
+              />
+            ) : null}
             <SummaryField
               icon={Users}
               label="Active participants"
@@ -112,12 +114,14 @@ export function ScheduleEventDialogContent({
               label="Assigned staff"
               value={<AssignedStaffSummary event={event} />}
             />
-            {event.notes ? (
+            {event.scheduleNotes ? (
               <SummaryField
                 className="sm:col-span-2"
                 icon={FileText}
                 label="Schedule notes"
-                value={<p className="whitespace-pre-wrap">{event.notes}</p>}
+                value={
+                  <p className="whitespace-pre-wrap">{event.scheduleNotes}</p>
+                }
               />
             ) : null}
           </div>
@@ -125,7 +129,7 @@ export function ScheduleEventDialogContent({
           {canManageAssignments && isManagingAssignments ? (
             <ScheduleAssignmentsList
               assignableStaff={assignableStaff}
-              assignments={event.assignments}
+              assignments={event.managementAssignments ?? []}
               canAssignToAllCourseDays={event.totalDays > 1}
               canManageAssignments={canManageAssignments}
               isManagingAssignments={isManagingAssignments}
@@ -147,7 +151,7 @@ export function ScheduleEventDialogContent({
             {isManagingAssignments ? 'Done managing' : 'Manage assignments'}
           </Button>
         ) : null}
-        {canViewBookingDetails ? (
+        {canViewBookingDetails && event.bookingId ? (
           <Button asChild>
             <Link href={`/bookings/${event.bookingId}`}>
               <ExternalLink className="h-4 w-4" />
@@ -250,9 +254,9 @@ function AssignedStaffSummary({
   return (
     <ul className="space-y-1">
       {event.assignments.map((assignment) => (
-        <li key={assignment.id}>
+        <li key={`${assignment.name}-${assignment.role}`}>
           <p>
-            {assignment.user.name} <span aria-hidden="true">{'\u2014'}</span>{' '}
+            {assignment.name} <span aria-hidden="true">{'\u2014'}</span>{' '}
             {formatEnumLabel(assignment.role)}
           </p>
         </li>

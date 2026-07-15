@@ -7,6 +7,7 @@ import {
   type DashboardRouteKey,
 } from '@/lib/dashboard-navigation';
 import type { CurrentUser } from '@/lib/current-user';
+import { getDefaultLandingPath } from '@/features/auth/redirects';
 
 /** Redirects authenticated users away from dashboard routes their role cannot access. */
 export function requireDashboardRouteAccess(
@@ -14,6 +15,6 @@ export function requireDashboardRouteAccess(
   routeKey: DashboardRouteKey,
 ) {
   if (!canAccessDashboardRoute(currentUser, routeKey)) {
-    redirect('/dashboard');
+    redirect(getDefaultLandingPath(currentUser.role));
   }
 }

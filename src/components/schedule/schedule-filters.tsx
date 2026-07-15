@@ -20,7 +20,7 @@ import {
   normalizeScheduleFilters,
 } from '@/features/schedule/filters';
 import type {
-  AssignableStaff,
+  ScheduleStaffFilterOption,
   ScheduleFilters as ScheduleFiltersValue,
 } from '@/features/schedule/types';
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
@@ -33,7 +33,7 @@ const allScheduleTypesValue = 'all-schedule-types';
 const allActivitiesValue = 'all-activities';
 
 type ScheduleFiltersProps = {
-  assignableStaff: AssignableStaff[];
+  staffFilterOptions: ScheduleStaffFilterOption[];
   disabled?: boolean;
   filters: ScheduleFiltersValue;
   isPending?: boolean;
@@ -50,7 +50,7 @@ const selectClass =
  * @returns A compact schedule filter bar.
  */
 export function ScheduleFilters({
-  assignableStaff,
+  staffFilterOptions,
   disabled = false,
   filters,
   isPending = false,
@@ -129,7 +129,7 @@ export function ScheduleFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={allStaffValue}>All staff</SelectItem>
-              {assignableStaff.map((staff) => (
+              {staffFilterOptions.map((staff) => (
                 <SelectItem key={staff.id} value={staff.id}>
                   {formatStaffFilterOption(staff)}
                 </SelectItem>
@@ -314,6 +314,6 @@ function hasActiveScheduleFilters(filters: ScheduleFiltersValue) {
  * @param staff - Assignable staff user shown in the filter dropdown.
  * @returns A compact dropdown label.
  */
-function formatStaffFilterOption(staff: AssignableStaff) {
+function formatStaffFilterOption(staff: ScheduleStaffFilterOption) {
   return `${staff.name} (${formatEnumLabel(staff.role)})`;
 }

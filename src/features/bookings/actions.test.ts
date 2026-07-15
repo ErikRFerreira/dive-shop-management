@@ -745,10 +745,12 @@ test('rejects an empty Needs More Info reason before loading a booking', async (
   expect(mocks.findUnique).not.toHaveBeenCalled();
 });
 
-test('does not allow a Customer Service user to mark a booking as Needs More Info', async () => {
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
+  'does not allow %s to mark a booking as Needs More Info',
+  async (role) => {
   mocks.requireCurrentUser.mockResolvedValue({
-    id: 'customer-service-1',
-    role: UserRole.CUSTOMER_SERVICE,
+    id: `${role.toLowerCase()}-1`,
+    role,
   });
 
   await expect(
@@ -760,7 +762,8 @@ test('does not allow a Customer Service user to mark a booking as Needs More Inf
     formError: 'You do not have permission to request more information.',
   });
   expect(mocks.findUnique).not.toHaveBeenCalled();
-});
+  },
+);
 
 test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
   'allows %s to approve a pending booking and create a schedule item',
@@ -1043,10 +1046,12 @@ test('approves a persisted three-day activity into consecutive schedule items', 
   );
 });
 
-test('does not allow a Customer Service user to approve a booking', async () => {
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
+  'does not allow %s to approve a booking',
+  async (role) => {
   mocks.requireCurrentUser.mockResolvedValue({
-    id: 'customer-service-1',
-    role: UserRole.CUSTOMER_SERVICE,
+    id: `${role.toLowerCase()}-1`,
+    role,
   });
 
   await expect(
@@ -1059,7 +1064,8 @@ test('does not allow a Customer Service user to approve a booking', async () => 
   });
   expect(mocks.findUnique).not.toHaveBeenCalled();
   expect(mocks.transactionRunner).not.toHaveBeenCalled();
-});
+  },
+);
 
 test('uses existing internal notes for schedule notes when admin notes are blank', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
@@ -1355,10 +1361,12 @@ test('preserves existing admin notes when cancelling a scheduled booking without
   );
 });
 
-test('does not allow a Customer Service user to cancel a booking', async () => {
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.INSTRUCTOR] as const)(
+  'does not allow %s to cancel a booking',
+  async (role) => {
   mocks.requireCurrentUser.mockResolvedValue({
-    id: 'customer-service-1',
-    role: UserRole.CUSTOMER_SERVICE,
+    id: `${role.toLowerCase()}-1`,
+    role,
   });
 
   await expect(
@@ -1371,7 +1379,8 @@ test('does not allow a Customer Service user to cancel a booking', async () => {
   });
   expect(mocks.findUnique).not.toHaveBeenCalled();
   expect(mocks.updateMany).not.toHaveBeenCalled();
-});
+  },
+);
 
 test.each([
   BookingStatus.DRAFT,
@@ -1874,10 +1883,12 @@ test('creates a draft with a selected existing customer without duplicating the 
   });
 });
 
-test('creates a raw-text draft without persisting the default empty customer row', async () => {
+test.each([UserRole.CUSTOMER_SERVICE, UserRole.MANAGER] as const)(
+  'allows %s to create a raw-text draft without an empty customer row',
+  async (role) => {
   mocks.requireCurrentUser.mockResolvedValue({
-    id: 'customer-service-1',
-    role: UserRole.CUSTOMER_SERVICE,
+    id: `${role.toLowerCase()}-1`,
+    role,
   });
 
   await expect(
@@ -1898,7 +1909,8 @@ test('creates a raw-text draft without persisting the default empty customer row
       numberOfPeople: 0,
     }),
   });
-});
+  },
+);
 
 test('removes existing booking customer links when edit form only has an empty row', async () => {
   mocks.requireCurrentUser.mockResolvedValue({

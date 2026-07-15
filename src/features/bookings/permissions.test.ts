@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import {
   canApproveBookingRequest,
   canCancelBooking,
+  canCreateBookingRequest,
   canEditBooking,
   canManageScheduledBookingParticipants,
   canReviewBooking,
@@ -12,6 +13,16 @@ import {
   getAvailableBookingRowActions,
 } from '@/features/bookings/permissions';
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
+
+test('allows admin, manager, and customer service to create bookings', () => {
+  expect(canCreateBookingRequest({ role: UserRole.ADMIN })).toBe(true);
+  expect(canCreateBookingRequest({ role: UserRole.MANAGER })).toBe(true);
+  expect(canCreateBookingRequest({ role: UserRole.CUSTOMER_SERVICE })).toBe(
+    true,
+  );
+  expect(canCreateBookingRequest({ role: UserRole.INSTRUCTOR })).toBe(false);
+  expect(canCreateBookingRequest({ role: UserRole.DIVEMASTER })).toBe(false);
+});
 
 test('allows only admin and manager users to access booking review', () => {
   expect(canReviewBookingRequest({ role: UserRole.ADMIN })).toBe(true);

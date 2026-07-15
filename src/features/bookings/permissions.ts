@@ -8,6 +8,9 @@
 
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
 import type { CurrentUser } from '@/lib/current-user';
+import {
+  hasFullOperationalAccess,
+} from '@/features/auth/permissions';
 
 import { canTransitionBookingStatus } from './status';
 
@@ -21,43 +24,30 @@ type BookingRowPermissionSubject = {
 /**
  * Determines whether the current user is allowed to create a booking request.
  *
- * In the Sprint 1 workflow, Customer Service owns booking intake. Only users
- * with the `CUSTOMER_SERVICE` role may create booking requests; every other
- * role receives `false`.
+ * Admin, Manager, and Customer Service users may create booking requests.
+ * Instructor and Divemaster roles receive `false`.
  *
  * @param currentUser - The authenticated user's role.
- * @returns `true` only for Customer Service users.
+ * @returns `true` for operational booking-intake roles.
  * @remarks Server Actions must call this before creating a booking request. UI
  * checks may use it to hide or disable controls, but they are not
  * authorization. The helper accepts only `role` because that is the only user
  * data needed for this decision.
- * In the future, if the workflow changes to allow other roles to create booking
- * requests, this function should be updated to reflect the new rules.
  */
-export function canCreateBookingRequest(
-  currentUser: Pick<CurrentUser, 'role'>,
-) {
-  return (
-    currentUser.role === UserRole.CUSTOMER_SERVICE ||
-    currentUser.role === UserRole.ADMIN
-  );
-}
+export { canCreateBookingRequest } from '@/features/auth/permissions';
 
 /**
  * Determines whether the current user is allowed to review a booking request.
- * Admin and Manager users may review any booking request. Customer Service
- * users may review only booking requests they originally created.
+ * Admin and Manager users may review any booking request. Customer Service,
+ * Instructor, and Divemaster users cannot enter the admin review workflow.
  *
  * @param currentUser - The authenticated user's role.
- * @returns `true` for Admin and Manager users, and for Customer Service users
- * who created the booking request.
+ * @returns `true` for Admin and Manager users.
  */
 export function canReviewBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return (
-    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
-  );
+  return hasFullOperationalAccess(currentUser);
 }
 
 /**
@@ -76,8 +66,7 @@ export function canViewBooking(
   createdById: string,
 ) {
   return (
-    currentUser.role === UserRole.ADMIN ||
-    currentUser.role === UserRole.MANAGER ||
+    hasFullOperationalAccess(currentUser) ||
     (currentUser.role === UserRole.CUSTOMER_SERVICE &&
       currentUser.id === createdById)
   );
@@ -114,9 +103,7 @@ export function canReviewBooking(
 export function canApproveBookingRequest(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return (
-    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
-  );
+  return hasFullOperationalAccess(currentUser);
 }
 
 /**
@@ -136,8 +123,7 @@ export function canCancelBooking(
   status: BookingStatus,
 ) {
   return (
-    (currentUser.role === UserRole.ADMIN ||
-      currentUser.role === UserRole.MANAGER) &&
+    hasFullOperationalAccess(currentUser) &&
     canTransitionBookingStatus(status, BookingStatus.CANCELLED)
   );
 }
@@ -158,8 +144,7 @@ export function canManageScheduledBookingParticipants(
   status: BookingStatus,
 ) {
   return (
-    (currentUser.role === UserRole.ADMIN ||
-      currentUser.role === UserRole.MANAGER) &&
+    hasFullOperationalAccess(currentUser) &&
     status === BookingStatus.SCHEDULED
   );
 }
@@ -183,10 +168,7 @@ export function canPerformBookingStatusTransition(
     return false;
   }
 
-  if (
-    currentUser.role === UserRole.ADMIN ||
-    currentUser.role === UserRole.MANAGER
-  ) {
+  if (hasFullOperationalAccess(currentUser)) {
     return true;
   }
 
@@ -212,8 +194,7 @@ export function canResubmitBookingForApproval(
   createdById: string,
 ) {
   return (
-    currentUser.role === UserRole.ADMIN ||
-    currentUser.role === UserRole.MANAGER ||
+    hasFullOperationalAccess(currentUser) ||
     (currentUser.role === UserRole.CUSTOMER_SERVICE &&
       currentUser.id === createdById)
   );
@@ -235,10 +216,7 @@ export function canEditBooking(
   createdById: string,
   status: BookingStatus,
 ) {
-  if (
-    currentUser.role === UserRole.ADMIN ||
-    currentUser.role === UserRole.MANAGER
-  ) {
+  if (hasFullOperationalAccess(currentUser)) {
     return (
       status === BookingStatus.DRAFT ||
       status === BookingStatus.PENDING_APPROVAL ||

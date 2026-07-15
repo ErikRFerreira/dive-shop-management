@@ -21,9 +21,9 @@ test('allows only admins and managers to manage schedule assignments', () => {
   );
 });
 
-test('allows assignable staff roles to view their own schedule assignments', () => {
+test('allows only instructors to view personal schedule assignments', () => {
   expect(canViewMyScheduleAssignments({ role: UserRole.INSTRUCTOR })).toBe(true);
-  expect(canViewMyScheduleAssignments({ role: UserRole.DIVEMASTER })).toBe(true);
+  expect(canViewMyScheduleAssignments({ role: UserRole.DIVEMASTER })).toBe(false);
   expect(canViewMyScheduleAssignments({ role: UserRole.ADMIN })).toBe(false);
   expect(canViewMyScheduleAssignments({ role: UserRole.MANAGER })).toBe(false);
   expect(

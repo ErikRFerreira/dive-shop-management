@@ -31,6 +31,7 @@ function formDate(value: Date | null) {
 async function requireBookingCustomerLookupAccess() {
   const currentUser = await requireCurrentUser();
   requireDashboardRouteAccess(currentUser, 'bookings');
+  return currentUser;
 }
 
 /**
@@ -58,9 +59,9 @@ function mapBookingCustomerPickerResult(
 export async function searchBookingCustomers(
   query: string,
 ): Promise<BookingCustomerPickerResult[]> {
-  await requireBookingCustomerLookupAccess();
+  const currentUser = await requireBookingCustomerLookupAccess();
 
-  const customers = await searchCustomers(query);
+  const customers = await searchCustomers(currentUser, query);
   return customers.map(mapBookingCustomerPickerResult);
 }
 
