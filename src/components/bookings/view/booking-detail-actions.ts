@@ -48,6 +48,14 @@ export function getBookingDetailActions(
     actions.push({ href: editHref, label: 'Fix details' });
   }
 
+  if (booking.status === BookingStatus.NEEDS_MORE_INFO && canReview) {
+    actions.push({
+      href: `/bookings/${booking.id}/review`,
+      label: 'Review booking',
+      variant: canEdit ? 'outline' : 'default',
+    });
+  }
+
   if (
     (booking.status === BookingStatus.SCHEDULED ||
       booking.status === BookingStatus.APPROVED) &&

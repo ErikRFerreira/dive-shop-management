@@ -22,6 +22,8 @@ import { EMPTY_VALUE } from './booking-review-display';
 type BookingReviewSidebarProps = {
   bookingId: string;
   canApprove: boolean;
+  canCancel: boolean;
+  canRequestMoreInfo: boolean;
   adminNotes: string | null;
   missingInformation: string[];
   reviewReadiness: ReviewReadinessItem[];
@@ -136,21 +138,16 @@ function ReviewReadinessRow({ item }: { item: ReviewReadinessItem }) {
 export function BookingReviewSidebar({
   bookingId,
   canApprove,
+  canCancel,
+  canRequestMoreInfo,
   adminNotes,
   missingInformation,
   reviewReadiness,
   scheduleActivities = [],
   status,
 }: BookingReviewSidebarProps) {
-  const canApprovePendingBooking =
-    canApprove && status === BookingStatus.PENDING_APPROVAL;
-  const canRequestMoreInfo = status === BookingStatus.PENDING_APPROVAL;
-  const canCancel =
-    status === BookingStatus.PENDING_APPROVAL ||
-    status === BookingStatus.NEEDS_MORE_INFO ||
-    status === BookingStatus.SCHEDULED;
   const hasDecisionActions =
-    canApprovePendingBooking || canRequestMoreInfo || canCancel;
+    canApprove || canRequestMoreInfo || canCancel;
   const { completedRequiredCount, missingRequiredCount, totalRequiredCount } =
     getRequiredReadinessSummary(reviewReadiness);
   const hasMissingRequiredInformation = missingRequiredCount > 0;
@@ -228,7 +225,7 @@ export function BookingReviewSidebar({
           <CardContent>
             <BookingReviewDecisionPanel
               bookingId={bookingId}
-              canApprovePendingBooking={canApprovePendingBooking}
+              canApprovePendingBooking={canApprove}
               canRequestMoreInfo={canRequestMoreInfo}
               canCancel={canCancel}
               adminNotes={adminNotes}

@@ -26,6 +26,7 @@ import {
 } from '@/features/bookings/actions';
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
 import { normalizeBookingFormValues } from '@/features/bookings/form-mappers';
+import type { BookingActionAvailability } from '@/features/bookings/permissions';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   getBookingEditFormAutosaveKey,
@@ -51,6 +52,7 @@ type CreateBookingFormProps = {
 type EditBookingFormProps = {
   mode: 'edit';
   bookingId: string;
+  availableActions: BookingActionAvailability;
   initialValues: BookingFormValues;
   initialStatus: BookingStatus;
 };
@@ -304,9 +306,10 @@ export function BookingForm(props: BookingFormProps) {
                   layout="rail"
                   errorMessages={errorMessages}
                   isSubmitting={isActionPending}
-                  initialStatus={editProps!.initialStatus}
+                  availableActions={editProps!.availableActions}
                   submitIntent={activeSubmitIntent}
                   cancelHref={`/bookings/${editProps!.bookingId}`}
+                  reviewHref={`/bookings/${editProps!.bookingId}/review`}
                   onSaveChanges={() => submitCurrentForm('edit')}
                   onSubmitForApproval={() => submitCurrentForm('submit')}
                   onResubmitForApproval={() => submitCurrentForm('resubmit')}

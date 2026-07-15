@@ -41,6 +41,8 @@ export function ScheduleSection({
   const scheduleItems =
     booking.scheduleItems ??
     (booking.scheduleItem ? [booking.scheduleItem] : []);
+  const scheduleActivityDayCounts =
+    getScheduleActivityDayCounts(scheduleItems);
 
   if (scheduleItems.length === 0) {
     return (
@@ -98,6 +100,13 @@ export function ScheduleSection({
               />
               {canManageAssignments ? (
                 <ScheduledSlotControl
+                  canApplyToAllDays={
+                    scheduleItem.bookingActivityId !== null &&
+                    (scheduleActivityDayCounts.get(
+                      scheduleItem.bookingActivityId,
+                    ) ?? 0) > 1
+                  }
+                  key={`${scheduleItem.id}-${scheduleItem.timeSlot}`}
                   scheduleItemId={scheduleItem.id}
                   timeSlot={scheduleItem.timeSlot}
                 />
@@ -139,6 +148,31 @@ export function ScheduleSection({
       </div>
     </BookingInfoSection>
   );
+}
+
+/**
+ * Counts actual scheduled rows for each linked booking activity.
+ *
+ * @param scheduleItems - Schedule rows visible in the current booking detail.
+ * @returns Day counts keyed by non-null booking activity ID.
+ */
+function getScheduleActivityDayCounts(
+  scheduleItems: BookingDetailsItem['scheduleItems'],
+) {
+  const counts = new Map<string, number>();
+
+  scheduleItems.forEach((scheduleItem) => {
+    if (!scheduleItem.bookingActivityId) {
+      return;
+    }
+
+    counts.set(
+      scheduleItem.bookingActivityId,
+      (counts.get(scheduleItem.bookingActivityId) ?? 0) + 1,
+    );
+  });
+
+  return counts;
 }
 
 /**

@@ -264,6 +264,82 @@ test('renders staff state for unassigned and unscheduled bookings', () => {
   expect(screen.getAllByText('\u2014').length).toBeGreaterThan(0);
 });
 
+test('shows the latest Needs More Info request as compact activity metadata', () => {
+  renderBookingList([
+    booking({
+      status: BookingStatus.NEEDS_MORE_INFO,
+      needsMoreInfoReason: ' Add phone number or WhatsApp before resubmitting. ',
+    }),
+  ]);
+
+  const request = screen.getByText(
+    'Add phone number or WhatsApp before resubmitting.',
+  );
+
+  expect(screen.getByText('Needs more info:')).not.toBeNull();
+  expect(request.className).toContain('line-clamp-2');
+  expect(request.getAttribute('title')).toBe(
+    'Add phone number or WhatsApp before resubmitting.',
+  );
+});
+
+test('prefers the dedicated Needs More Info reason over legacy admin notes', () => {
+  renderBookingList([
+    booking({
+      status: BookingStatus.NEEDS_MORE_INFO,
+      needsMoreInfoReason: 'Confirm the primary contact phone number.',
+      adminNotes: 'Legacy review note.',
+    }),
+  ]);
+
+  expect(
+    screen.getByText('Confirm the primary contact phone number.'),
+  ).not.toBeNull();
+  expect(screen.queryByText('Legacy review note.')).toBeNull();
+});
+
+test('falls back to legacy admin notes for Needs More Info bookings', () => {
+  renderBookingList([
+    booking({
+      status: BookingStatus.NEEDS_MORE_INFO,
+      needsMoreInfoReason: '   ',
+      adminNotes: ' Add the missing certification details. ',
+    }),
+  ]);
+
+  expect(
+    screen.getByText('Add the missing certification details.'),
+  ).not.toBeNull();
+});
+
+test('shows an explicit fallback when a Needs More Info booking has no note', () => {
+  renderBookingList([
+    booking({
+      status: BookingStatus.NEEDS_MORE_INFO,
+      needsMoreInfoReason: null,
+      adminNotes: '   ',
+    }),
+  ]);
+
+  expect(screen.getByText('No admin note provided.')).not.toBeNull();
+});
+
+test('hides Needs More Info metadata for every other booking status', () => {
+  renderBookingList([
+    booking({
+      status: BookingStatus.PENDING_APPROVAL,
+      needsMoreInfoReason: 'This request belongs to an earlier review.',
+      adminNotes: 'Legacy review note.',
+    }),
+  ]);
+
+  expect(screen.queryByText('Needs more info:')).toBeNull();
+  expect(
+    screen.queryByText('This request belongs to an earlier review.'),
+  ).toBeNull();
+  expect(screen.queryByText('Legacy review note.')).toBeNull();
+});
+
 test('renders every customer, activity, safe fallback, schedule, hotel, and row actions', () => {
   const createdAt = new Date('2026-07-01T08:00:00.000Z');
   const participantCustomer = {

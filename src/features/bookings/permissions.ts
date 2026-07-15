@@ -16,7 +16,17 @@ import { canTransitionBookingStatus } from './status';
 
 export type BookingRowAction = 'view' | 'edit' | 'review' | 'cancel';
 
-type BookingRowPermissionSubject = {
+export type BookingActionAvailability = {
+  canApproveAndSchedule: boolean;
+  canCancel: boolean;
+  canOpenReview: boolean;
+  canRequestMoreInfo: boolean;
+  canResubmitForApproval: boolean;
+  canSaveChanges: boolean;
+  canSubmitForApproval: boolean;
+};
+
+type BookingPermissionSubject = {
   createdById: string;
   status: BookingStatus;
 };
@@ -77,7 +87,8 @@ export function canViewBooking(
  *
  * @param currentUser - The authenticated user's role.
  * @param status - The current status of the booking request.
- * @returns `true` only for Admin and Manager users reviewing pending bookings.
+ * @returns `true` only for Admin and Manager users with an active reviewer
+ * workflow available for the booking.
  */
 export function canReviewBooking(
   currentUser: Pick<CurrentUser, 'role'>,
@@ -85,7 +96,8 @@ export function canReviewBooking(
 ) {
   return (
     canReviewBookingRequest(currentUser) &&
-    status === BookingStatus.PENDING_APPROVAL
+    (status === BookingStatus.PENDING_APPROVAL ||
+      status === BookingStatus.NEEDS_MORE_INFO)
   );
 }
 
@@ -182,22 +194,75 @@ export function canPerformBookingStatusTransition(
 /**
  * Determines whether a user may resubmit a booking that needs more details.
  *
- * Admin and Manager users may resubmit any visible booking. Customer Service
- * users may resubmit only booking requests they originally created.
+ * Resubmission belongs to Customer Service after a reviewer returns a booking.
+ * Only the original Customer Service owner may resubmit while the booking is
+ * still in Needs More Info.
  *
  * @param currentUser - The authenticated user's ID and role.
  * @param createdById - The ID of the user who created the booking request.
+ * @param status - The current booking workflow status.
  * @returns `true` if the user may resubmit the booking for approval.
  */
 export function canResubmitBookingForApproval(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
   createdById: string,
+  status: BookingStatus,
 ) {
   return (
-    hasFullOperationalAccess(currentUser) ||
-    (currentUser.role === UserRole.CUSTOMER_SERVICE &&
-      currentUser.id === createdById)
+    currentUser.role === UserRole.CUSTOMER_SERVICE &&
+    currentUser.id === createdById &&
+    status === BookingStatus.NEEDS_MORE_INFO
   );
+}
+
+/**
+ * Resolves every booking mutation and reviewer-navigation capability needed by
+ * booking detail, edit, and review surfaces.
+ *
+ * This helper centralizes UI availability, while the corresponding Server
+ * Actions remain responsible for authorizing each submitted mutation.
+ *
+ * @param currentUser - The authenticated user's ID and role.
+ * @param booking - Booking ownership and workflow status.
+ * @returns Serializable role-, owner-, and status-aware action capabilities.
+ */
+export function getAvailableBookingActions(
+  currentUser: Pick<CurrentUser, 'id' | 'role'>,
+  booking: BookingPermissionSubject,
+): BookingActionAvailability {
+  const canSaveChanges = canEditBooking(
+    currentUser,
+    booking.createdById,
+    booking.status,
+  );
+  const canOpenReview = canReviewBooking(currentUser, booking.status);
+
+  return {
+    canApproveAndSchedule:
+      canApproveBookingRequest(currentUser) &&
+      booking.status === BookingStatus.PENDING_APPROVAL &&
+      canTransitionBookingStatus(
+        booking.status,
+        BookingStatus.SCHEDULED,
+      ),
+    canCancel: canCancelBooking(currentUser, booking.status),
+    canOpenReview,
+    canRequestMoreInfo:
+      canOpenReview &&
+      booking.status === BookingStatus.PENDING_APPROVAL &&
+      canTransitionBookingStatus(
+        booking.status,
+        BookingStatus.NEEDS_MORE_INFO,
+      ),
+    canResubmitForApproval: canResubmitBookingForApproval(
+      currentUser,
+      booking.createdById,
+      booking.status,
+    ),
+    canSaveChanges,
+    canSubmitForApproval:
+      canSaveChanges && booking.status === BookingStatus.DRAFT,
+  };
 }
 
 /**
@@ -240,7 +305,7 @@ export function canEditBooking(
  */
 export function getAvailableBookingRowActions(
   currentUser: Pick<CurrentUser, 'id' | 'role'>,
-  booking: BookingRowPermissionSubject,
+  booking: BookingPermissionSubject,
 ): BookingRowAction[] {
   const actions: BookingRowAction[] = [];
 

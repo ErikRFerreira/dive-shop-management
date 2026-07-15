@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { BookingReview } from '@/components/bookings/booking-review';
 import {
-  canApproveBookingRequest,
+  getAvailableBookingActions,
   canReviewBookingRequest,
 } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
@@ -30,10 +30,16 @@ async function ReviewBooking({ params }: Props) {
     notFound();
   }
 
+  const availableActions = getAvailableBookingActions(currentUser, booking);
+
+  if (!availableActions.canOpenReview) {
+    redirect(`/bookings/${booking.id}`);
+  }
+
   return (
     <BookingReview
       booking={booking}
-      canApprove={canApproveBookingRequest(currentUser)}
+      availableActions={availableActions}
     />
   );
 }

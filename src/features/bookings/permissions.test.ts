@@ -10,6 +10,7 @@ import {
   canViewBooking,
   canResubmitBookingForApproval,
   canReviewBookingRequest,
+  getAvailableBookingActions,
   getAvailableBookingRowActions,
 } from '@/features/bookings/permissions';
 import { BookingStatus, UserRole } from '@/generated/prisma/enums';
@@ -67,6 +68,9 @@ test('shows review navigation only to admin and manager users for pending bookin
   expect(canReviewBooking({ role: UserRole.ADMIN }, BookingStatus.DRAFT)).toBe(
     false,
   );
+  expect(
+    canReviewBooking({ role: UserRole.ADMIN }, BookingStatus.NEEDS_MORE_INFO),
+  ).toBe(true);
 });
 
 test('allows only admin and manager users to approve bookings', () => {
@@ -117,17 +121,126 @@ test('allows only the owner in Customer Service to resubmit a booking', () => {
     role: UserRole.CUSTOMER_SERVICE,
   };
 
-  expect(canResubmitBookingForApproval(owner, 'owner')).toBe(true);
-  expect(canResubmitBookingForApproval(otherCustomerServiceUser, 'owner')).toBe(
-    false,
-  );
   expect(
-    canResubmitBookingForApproval({ id: 'admin', role: UserRole.ADMIN }, 'owner'),
+    canResubmitBookingForApproval(
+      owner,
+      'owner',
+      BookingStatus.NEEDS_MORE_INFO,
+    ),
   ).toBe(true);
   expect(
-    canResubmitBookingForApproval({ id: 'manager', role: UserRole.MANAGER }, 'owner'),
-  ).toBe(true);
+    canResubmitBookingForApproval(
+      otherCustomerServiceUser,
+      'owner',
+      BookingStatus.NEEDS_MORE_INFO,
+    ),
+  ).toBe(false);
+  expect(
+    canResubmitBookingForApproval(
+      { id: 'admin', role: UserRole.ADMIN },
+      'owner',
+      BookingStatus.NEEDS_MORE_INFO,
+    ),
+  ).toBe(false);
+  expect(
+    canResubmitBookingForApproval(
+      { id: 'manager', role: UserRole.MANAGER },
+      'owner',
+      BookingStatus.NEEDS_MORE_INFO,
+    ),
+  ).toBe(false);
+  expect(
+    canResubmitBookingForApproval(owner, 'owner', BookingStatus.DRAFT),
+  ).toBe(false);
 });
+
+test.each([
+  [
+    { id: 'admin', role: UserRole.ADMIN },
+    { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    {
+      canApproveAndSchedule: true,
+      canCancel: true,
+      canOpenReview: true,
+      canRequestMoreInfo: true,
+      canResubmitForApproval: false,
+      canSaveChanges: true,
+      canSubmitForApproval: false,
+    },
+  ],
+  [
+    { id: 'manager', role: UserRole.MANAGER },
+    { createdById: 'owner', status: BookingStatus.NEEDS_MORE_INFO },
+    {
+      canApproveAndSchedule: false,
+      canCancel: true,
+      canOpenReview: true,
+      canRequestMoreInfo: false,
+      canResubmitForApproval: false,
+      canSaveChanges: true,
+      canSubmitForApproval: false,
+    },
+  ],
+  [
+    { id: 'owner', role: UserRole.CUSTOMER_SERVICE },
+    { createdById: 'owner', status: BookingStatus.NEEDS_MORE_INFO },
+    {
+      canApproveAndSchedule: false,
+      canCancel: false,
+      canOpenReview: false,
+      canRequestMoreInfo: false,
+      canResubmitForApproval: true,
+      canSaveChanges: true,
+      canSubmitForApproval: false,
+    },
+  ],
+  [
+    { id: 'other', role: UserRole.CUSTOMER_SERVICE },
+    { createdById: 'owner', status: BookingStatus.NEEDS_MORE_INFO },
+    {
+      canApproveAndSchedule: false,
+      canCancel: false,
+      canOpenReview: false,
+      canRequestMoreInfo: false,
+      canResubmitForApproval: false,
+      canSaveChanges: false,
+      canSubmitForApproval: false,
+    },
+  ],
+  [
+    { id: 'admin', role: UserRole.ADMIN },
+    { createdById: 'owner', status: BookingStatus.DRAFT },
+    {
+      canApproveAndSchedule: false,
+      canCancel: false,
+      canOpenReview: false,
+      canRequestMoreInfo: false,
+      canResubmitForApproval: false,
+      canSaveChanges: true,
+      canSubmitForApproval: true,
+    },
+  ],
+  [
+    { id: 'instructor', role: UserRole.INSTRUCTOR },
+    { createdById: 'owner', status: BookingStatus.PENDING_APPROVAL },
+    {
+      canApproveAndSchedule: false,
+      canCancel: false,
+      canOpenReview: false,
+      canRequestMoreInfo: false,
+      canResubmitForApproval: false,
+      canSaveChanges: false,
+      canSubmitForApproval: false,
+    },
+  ],
+] as const)(
+  'returns booking action availability for %s on %s',
+  (currentUser, booking, expectedActions) => {
+    expect(getAvailableBookingActions(currentUser, booking)).toEqual(
+      expectedActions,
+    );
+  },
+);
 
 test.each([
   [UserRole.CUSTOMER_SERVICE, 'owner', BookingStatus.DRAFT, true],
@@ -159,7 +272,7 @@ test.each([
   [
     { id: 'manager', role: UserRole.MANAGER },
     { createdById: 'owner', status: BookingStatus.NEEDS_MORE_INFO },
-    ['view', 'edit'],
+    ['view', 'edit', 'review'],
   ],
   [
     { id: 'owner', role: UserRole.CUSTOMER_SERVICE },

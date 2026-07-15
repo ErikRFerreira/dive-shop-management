@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 import { PendingButton } from '@/components/common/pending-button';
 import { Button } from '@/components/ui/button';
-import { BookingStatus } from '@/generated/prisma/enums';
+import type { BookingActionAvailability } from '@/features/bookings/permissions';
 import { cn } from '@/lib/utils';
-import { Send } from 'lucide-react';
+import { ClipboardCheck, Send } from 'lucide-react';
 
 type SubmitIntent = 'draft' | 'submit' | 'edit' | 'resubmit';
 
@@ -24,13 +24,14 @@ type CreateBookingFormActionsProps = SharedBookingFormActionsProps & {
 
 type EditBookingFormActionsProps = SharedBookingFormActionsProps & {
   mode: 'edit';
-  initialStatus: BookingStatus;
+  availableActions: BookingActionAvailability;
   submitIntent: SubmitIntent;
   onSaveChanges: () => void;
   onSubmitForApproval: () => void;
   onResubmitForApproval: () => void;
   clearAutosave: () => void;
   cancelHref: string;
+  reviewHref?: string;
 };
 
 type BookingFormActionsProps =
@@ -106,15 +107,17 @@ export function BookingFormActions({
                 </Link>
               </Button>
             )}
-            <PendingButton
-              onClick={props.onSaveChanges}
-              pending={isSubmitting && props.submitIntent === 'edit'}
-              pendingLabel="Saving..."
-              type="button"
-            >
-              Save Changes
-            </PendingButton>
-            {props.initialStatus === BookingStatus.DRAFT ? (
+            {props.availableActions.canSaveChanges ? (
+              <PendingButton
+                onClick={props.onSaveChanges}
+                pending={isSubmitting && props.submitIntent === 'edit'}
+                pendingLabel="Saving..."
+                type="button"
+              >
+                Save Changes
+              </PendingButton>
+            ) : null}
+            {props.availableActions.canSubmitForApproval ? (
               <PendingButton
                 disabled={isSubmitting}
                 onClick={props.onSubmitForApproval}
@@ -126,7 +129,7 @@ export function BookingFormActions({
                 Submit for Approval
               </PendingButton>
             ) : null}
-            {props.initialStatus === BookingStatus.NEEDS_MORE_INFO ? (
+            {props.availableActions.canResubmitForApproval ? (
               <PendingButton
                 disabled={isSubmitting}
                 onClick={props.onResubmitForApproval}
@@ -137,6 +140,14 @@ export function BookingFormActions({
                 <Send />
                 Resubmit for Approval
               </PendingButton>
+            ) : null}
+            {props.availableActions.canOpenReview && props.reviewHref ? (
+              <Button asChild type="button" variant="outline">
+                <Link href={props.reviewHref}>
+                  <ClipboardCheck />
+                  Review Booking
+                </Link>
+              </Button>
             ) : null}
           </>
         ) : (

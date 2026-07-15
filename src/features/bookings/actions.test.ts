@@ -1565,6 +1565,31 @@ test('does not allow a non-owner Customer Service user to resubmit', async () =>
   expect(mocks.updateMany).not.toHaveBeenCalled();
 });
 
+test.each([UserRole.ADMIN, UserRole.MANAGER] as const)(
+  'does not allow %s to use the Customer Service resubmit action',
+  async (role) => {
+    mocks.requireCurrentUser.mockResolvedValue({
+      id: `${role.toLowerCase()}-1`,
+      role,
+    });
+    mocks.findUnique.mockResolvedValue({
+      id: 'booking-1',
+      status: BookingStatus.NEEDS_MORE_INFO,
+      createdById: 'customer-service-1',
+    });
+
+    await expect(
+      resubmitBookingForApproval(
+        initialBookingWorkflowActionState,
+        formData({ bookingId: 'booking-1' }),
+      ),
+    ).resolves.toEqual({
+      formError: 'You do not have permission to resubmit this booking.',
+    });
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+  },
+);
+
 test('returns a recoverable error when a workflow update is stale', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
     id: 'admin-1',
@@ -1819,6 +1844,33 @@ test('resubmits Needs More Info edits with full submit validation', async () => 
   expect(updateData.numberOfPeople).toBe(1);
   expect(updateData).not.toHaveProperty('needsMoreInfoReason');
 });
+
+test.each([
+  [UserRole.ADMIN, 'admin-1'],
+  [UserRole.MANAGER, 'manager-1'],
+  [UserRole.CUSTOMER_SERVICE, 'customer-service-2'],
+] as const)(
+  'does not allow %s to edit and resubmit a booking owned by Customer Service',
+  async (role, id) => {
+    mocks.requireCurrentUser.mockResolvedValue({ id, role });
+    mocks.findUnique.mockResolvedValue({
+      id: 'booking-1',
+      status: BookingStatus.NEEDS_MORE_INFO,
+      createdById: 'customer-service-1',
+      customers: [],
+      deposits: [],
+    });
+
+    await expect(
+      resubmitEditedBookingForApproval('booking-1', validSubmitValues()),
+    ).resolves.toEqual({
+      success: false,
+      fieldErrors: {},
+      formError: 'You do not have permission to resubmit this booking.',
+    });
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+  },
+);
 
 test('resubmits Needs More Info after adding a phone to a linked customer profile', async () => {
   mocks.requireCurrentUser.mockResolvedValue({

@@ -7,8 +7,9 @@
  */
 
 import type { BookingDetailsItem } from '@/features/bookings/queries';
-import { getActiveBookingParticipants } from '@/features/bookings/participants';
+import { getDepositReadiness } from '@/features/bookings/deposit-readiness';
 import { isEquipmentNeeded } from '@/features/bookings/equipment';
+import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import {
   ActivityType,
   BookingCustomerRole,
@@ -35,18 +36,6 @@ export type ReviewReadinessItem = {
  */
 function hasText(value: string | null | undefined) {
   return Boolean(value?.trim());
-}
-
-/**
- * Checks whether a decimal-like value is present and greater than zero.
- *
- * @param value - Nullable Prisma decimal value from a booking deposit.
- * @returns True when the value supports comparison and is greater than zero.
- */
-function hasPositiveDecimal(
-  value: BookingDetailsItem['deposits'][number]['amount'],
-) {
-  return value !== null && value.gt(0);
 }
 
 /**
@@ -139,27 +128,6 @@ function hasCompleteDivingExperience(booking: BookingDetailsItem) {
 }
 
 /**
- * Checks whether all paid deposit records include required payment details.
- *
- * @param booking - Booking detail payload with deposit rows.
- * @returns True when every paid or partially paid deposit has amount, currency, and paid-to details.
- */
-function hasCompletePaidDepositInfo(booking: BookingDetailsItem) {
-  return booking.deposits
-    .filter(
-      (deposit) =>
-        deposit.status === DepositStatus.PAID ||
-        deposit.status === DepositStatus.PARTIALLY_PAID,
-    )
-    .every(
-      (deposit) =>
-        hasPositiveDecimal(deposit.amount) &&
-        hasText(deposit.currency) &&
-        hasText(deposit.paidTo),
-    );
-}
-
-/**
  * Checks whether equipment sizing is complete for active customers who clearly need equipment.
  *
  * @param booking - Booking detail payload with customer equipment fields.
@@ -195,11 +163,7 @@ export function getBookingReviewReadiness(
   const primaryContact = getPrimaryContact(booking);
   const activeCustomers = getActiveBookingParticipants(booking.customers);
   const includesFunDive = bookingIncludesFunDive(booking);
-  const paidDeposits = booking.deposits.filter(
-    (deposit) =>
-      deposit.status === DepositStatus.PAID ||
-      deposit.status === DepositStatus.PARTIALLY_PAID,
-  );
+  const depositReadiness = getDepositReadiness(booking.deposits);
   const hasEquipmentNeeded = activeCustomers.some((bookingCustomer) =>
     isEquipmentNeeded(bookingCustomer.equipmentNeeded),
   );
@@ -238,17 +202,7 @@ export function getBookingReviewReadiness(
           : 'Primary contact needs WeChat, WhatsApp, email, or phone.',
     },
     {
-      label: 'Deposit info',
-      status:
-        paidDeposits.length === 0
-          ? 'not required'
-          : hasCompletePaidDepositInfo(booking)
-            ? 'complete'
-            : 'missing',
-      description:
-        paidDeposits.length === 0
-          ? 'No paid deposit details are required.'
-          : 'Paid deposits need amount, currency, and paid-to details.',
+      ...depositReadiness,
     },
     {
       label: 'Equipment sizing',

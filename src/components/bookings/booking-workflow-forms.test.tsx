@@ -271,6 +271,8 @@ test('shows approval in the review sidebar only for approvers on pending booking
   const baseProps = {
     bookingId: 'booking-1',
     adminNotes: null,
+    canCancel: true,
+    canRequestMoreInfo: true,
     missingInformation: [],
     reviewReadiness,
   };
@@ -300,7 +302,8 @@ test('shows approval in the review sidebar only for approvers on pending booking
   rerender(
     <BookingReviewSidebar
       {...baseProps}
-      canApprove
+      canApprove={false}
+      canRequestMoreInfo={false}
       status={BookingStatus.SCHEDULED}
     />,
   );
@@ -314,6 +317,8 @@ test('shows compact review readiness in the review sidebar', () => {
       bookingId="booking-1"
       adminNotes={null}
       canApprove
+      canCancel
+      canRequestMoreInfo
       missingInformation={[]}
       reviewReadiness={reviewReadiness}
       status={BookingStatus.PENDING_APPROVAL}
@@ -336,6 +341,8 @@ test('shows complete required readiness copy without counting optional rows', ()
       bookingId="booking-1"
       adminNotes={null}
       canApprove
+      canCancel
+      canRequestMoreInfo
       missingInformation={[]}
       reviewReadiness={[
         {
@@ -379,6 +386,8 @@ test('shows approval as the default progressive admin decision', () => {
       bookingId="booking-1"
       adminNotes={null}
       canApprove
+      canCancel
+      canRequestMoreInfo
       missingInformation={[]}
       reviewReadiness={reviewReadiness}
       status={BookingStatus.PENDING_APPROVAL}
@@ -402,12 +411,35 @@ test('shows approval as the default progressive admin decision', () => {
   expect(screen.queryByRole('button', { name: 'Cancel / Reject' })).toBeNull();
 });
 
+test('shows only cancellation decisions for needs-more-info review', () => {
+  render(
+    <BookingReviewSidebar
+      bookingId="booking-1"
+      adminNotes={null}
+      canApprove={false}
+      canCancel
+      canRequestMoreInfo={false}
+      missingInformation={[]}
+      reviewReadiness={reviewReadiness}
+      status={BookingStatus.NEEDS_MORE_INFO}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'Cancel / Reject' })).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Approve & Schedule' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Mark as Needs More Info' }),
+  ).toBeNull();
+});
+
 test('switches the admin decision panel to needs-more-info only', () => {
   render(
     <BookingReviewSidebar
       bookingId="booking-1"
       adminNotes={null}
       canApprove
+      canCancel
+      canRequestMoreInfo
       missingInformation={[]}
       reviewReadiness={reviewReadiness}
       status={BookingStatus.PENDING_APPROVAL}
@@ -468,6 +500,8 @@ test('switches the admin decision panel to cancellation only', () => {
       bookingId="booking-1"
       adminNotes={null}
       canApprove
+      canCancel
+      canRequestMoreInfo
       missingInformation={[]}
       reviewReadiness={reviewReadiness}
       status={BookingStatus.PENDING_APPROVAL}
@@ -494,7 +528,9 @@ test('shows cancellation in the review sidebar for scheduled bookings', () => {
     <BookingReviewSidebar
       bookingId="booking-1"
       adminNotes="Approved for morning schedule."
-      canApprove
+      canApprove={false}
+      canCancel
+      canRequestMoreInfo={false}
       missingInformation={[]}
       reviewReadiness={reviewReadiness}
       status={BookingStatus.SCHEDULED}

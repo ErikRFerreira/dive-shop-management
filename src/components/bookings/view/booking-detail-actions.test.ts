@@ -67,6 +67,16 @@ test('builds status-aware actions for needs-more-info bookings', () => {
       canEdit: true,
       canReview: true,
     }),
+  ).toEqual([
+    'Fix details',
+    'Review booking',
+    'Back to booking requests',
+  ]);
+  expect(
+    labelsFor(BookingStatus.NEEDS_MORE_INFO, {
+      canEdit: true,
+      canReview: false,
+    }),
   ).toEqual(['Fix details', 'Back to booking requests']);
 });
 
