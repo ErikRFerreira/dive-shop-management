@@ -35,7 +35,8 @@ const statusCopy: Record<BookingStatus, BookingEditStatusCopy> = {
   },
   [BookingStatus.SCHEDULED]: {
     title: 'Scheduled',
-    description: 'This booking is approved and included on the internal schedule.',
+    description:
+      'This booking is approved and included on the internal schedule.',
   },
   [BookingStatus.CANCELLED]: {
     title: 'Cancelled',
@@ -78,7 +79,6 @@ export function BookingEditStatusContext({
     <Card className="gap-0 rounded-2xl border-border py-0 shadow-sm">
       <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
-          <h2 className="font-heading text-base font-semibold">{copy.title}</h2>
           <p className="text-sm text-muted-foreground">{copy.description}</p>
           {status === BookingStatus.NEEDS_MORE_INFO ? (
             <div className="pt-2">
