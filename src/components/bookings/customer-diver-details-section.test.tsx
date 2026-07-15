@@ -213,6 +213,58 @@ test('links an existing customer selected from search results', async () => {
     });
   });
   expect(screen.getByText('Linked existing customer')).not.toBeNull();
+  expect(
+    screen.getByText(
+      'Updates to contact details will update this customer profile.',
+    ),
+  ).not.toBeNull();
+
+  const customerNameInput = screen.getByLabelText(
+    /Customer name/,
+  ) as HTMLInputElement;
+  const phoneInput = screen.getByLabelText('Phone') as HTMLInputElement;
+  const preferredLanguageInput = screen.getByLabelText('Preferred language');
+
+  expect(customerNameInput.readOnly).toBe(false);
+  expect(phoneInput.readOnly).toBe(false);
+  expect(preferredLanguageInput.getAttribute('aria-disabled')).not.toBe('true');
+
+  fireEvent.change(phoneInput, { target: { value: '+639188888888' } });
+
+  await waitFor(() => {
+    expect(currentCustomers()[0]).toMatchObject({
+      customerId: 'customer-1',
+      phone: '+639188888888',
+    });
+  });
+});
+
+test('creates a new customer only after staff explicitly unlinks the existing profile', async () => {
+  render(
+    <CustomerDetailsHarness
+      defaultValues={bookingValues({
+        customers: [
+          {
+            ...bookingCustomerDefaultValues,
+            customerId: 'customer-1',
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            customerName: 'Maria Santos',
+            phone: '+639171234567',
+          },
+        ],
+      })}
+    />,
+  );
+
+  expect(currentCustomers()[0]?.customerId).toBe('customer-1');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create new instead' }));
+
+  await waitFor(() => {
+    expect(currentCustomers()[0]?.customerId).toBeUndefined();
+  });
+  expect(screen.queryByText('Linked existing customer')).toBeNull();
+  expect(screen.getByLabelText('Search existing customers')).not.toBeNull();
 });
 
 test('shows a clear empty state when existing customer search has no results', async () => {

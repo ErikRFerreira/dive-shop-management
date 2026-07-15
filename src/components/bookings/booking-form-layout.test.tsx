@@ -12,7 +12,9 @@ import { BookingForm } from '@/components/bookings/booking-form';
 
 const mocks = vi.hoisted(() => ({
   createBookingDraft: vi.fn(),
+  findBookingCustomerDuplicates: vi.fn().mockResolvedValue([]),
   resubmitEditedBookingForApproval: vi.fn(),
+  searchBookingCustomers: vi.fn().mockResolvedValue([]),
   submitEditedBookingForApproval: vi.fn(),
   submitBookingForApproval: vi.fn(),
   updateBooking: vi.fn(),
@@ -28,6 +30,11 @@ vi.mock('@/features/bookings/actions', () => ({
   submitEditedBookingForApproval: mocks.submitEditedBookingForApproval,
   submitBookingForApproval: mocks.submitBookingForApproval,
   updateBooking: mocks.updateBooking,
+}));
+
+vi.mock('@/features/customers/booking-actions', () => ({
+  findBookingCustomerDuplicates: mocks.findBookingCustomerDuplicates,
+  searchBookingCustomers: mocks.searchBookingCustomers,
 }));
 
 afterEach(() => {

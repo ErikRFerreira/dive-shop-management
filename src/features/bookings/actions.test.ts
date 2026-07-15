@@ -91,6 +91,12 @@ function formData(values: Record<string, string>) {
   return data;
 }
 
+/**
+ * Builds a complete submit-ready booking payload with a stable future date.
+ *
+ * @param overrides - Booking form values to replace for the current scenario.
+ * @returns Browser-safe values that satisfy the standard submission rules.
+ */
 function validSubmitValues(overrides = {}) {
   return {
     ...bookingFormDefaultValues,
@@ -99,7 +105,7 @@ function validSubmitValues(overrides = {}) {
       {
         ...bookingFormDefaultValues.activities[0],
         activityType: ActivityType.OPEN_WATER_COURSE,
-        requestedDate: '2026-07-14',
+        requestedDate: '2099-07-14',
       },
     ],
     source: BookingSource.EMAIL,
@@ -115,6 +121,12 @@ function validSubmitValues(overrides = {}) {
   };
 }
 
+/**
+ * Builds a persisted Needs More Info booking that remains valid over time.
+ *
+ * @param overrides - Persisted booking fields to replace for the scenario.
+ * @returns A stored booking fixture that satisfies resubmission requirements.
+ */
 function persistedSubmittableBooking(overrides = {}) {
   return {
     id: 'booking-1',
@@ -135,7 +147,7 @@ function persistedSubmittableBooking(overrides = {}) {
       {
         activityType: ActivityType.OPEN_WATER_COURSE,
         specialtyCourse: null,
-        requestedDate: new Date('2026-07-14T00:00:00.000Z'),
+        requestedDate: new Date('2099-07-14T00:00:00.000Z'),
         requestedTime: null,
         requestedTimeSlot: ScheduleTimeSlot.TBD,
         notes: null,
@@ -1594,7 +1606,50 @@ test('enforces edit permissions on the server for terminal bookings', async () =
     fieldErrors: {},
     formError: 'You do not have permission to edit this booking.',
   });
+  expect(mocks.transactionRunner).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
 });
+
+test.each([
+  [UserRole.CUSTOMER_SERVICE, 'customer-service-2'],
+  [UserRole.INSTRUCTOR, 'instructor-1'],
+] as const)(
+  'prevents %s from updating linked customer profiles without booking edit permission',
+  async (role, userId) => {
+    mocks.requireCurrentUser.mockResolvedValue({ id: userId, role });
+    mocks.findUnique.mockResolvedValue({
+      id: 'booking-1',
+      status: BookingStatus.DRAFT,
+      createdById: 'customer-service-1',
+      customers: [{ customerId: 'customer-1' }],
+      deposits: [],
+    });
+
+    await expect(
+      updateBooking('booking-1', {
+        ...bookingFormDefaultValues,
+        rawBookingText: 'Unauthorized profile edit.',
+        customers: [
+          {
+            ...bookingFormDefaultValues.customers[0],
+            customerId: 'customer-1',
+            customerName: 'Maria Santos',
+            phone: '+639171234567',
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      success: false,
+      fieldErrors: {},
+      formError: 'You do not have permission to edit this booking.',
+    });
+
+    expect(mocks.transactionRunner).not.toHaveBeenCalled();
+    expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+    expect(mocks.transaction.bookingCustomer.createMany).not.toHaveBeenCalled();
+  },
+);
 
 test('validates draft edits on the server before opening a transaction', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
@@ -1765,6 +1820,60 @@ test('resubmits Needs More Info edits with full submit validation', async () => 
   expect(updateData).not.toHaveProperty('needsMoreInfoReason');
 });
 
+test('resubmits Needs More Info after adding a phone to a linked customer profile', async () => {
+  mocks.requireCurrentUser.mockResolvedValue({
+    id: 'customer-service-1',
+    role: UserRole.CUSTOMER_SERVICE,
+  });
+  mocks.findUnique.mockResolvedValue({
+    id: 'booking-1',
+    status: BookingStatus.NEEDS_MORE_INFO,
+    createdById: 'customer-service-1',
+    customers: [{ customerId: 'customer-1' }],
+    deposits: [],
+  });
+
+  const values = validSubmitValues({
+    customers: [
+      {
+        ...bookingFormDefaultValues.customers[0],
+        customerId: 'customer-1',
+        role: BookingCustomerRole.PRIMARY_CONTACT,
+        customerName: 'Maria Santos',
+        phone: '+639171234567',
+        hotelAtBooking: 'Ocean View Resort',
+        customerNotes: 'Pickup at the east lobby.',
+      },
+    ],
+  });
+
+  await expect(
+    resubmitEditedBookingForApproval('booking-1', values),
+  ).resolves.toEqual({
+    success: true,
+    redirectTo: '/bookings/booking-1',
+  });
+
+  expect(mocks.transaction.customer.update).toHaveBeenCalledWith({
+    where: { id: 'customer-1' },
+    data: expect.objectContaining({
+      fullName: 'Maria Santos',
+      phone: '+639171234567',
+    }),
+  });
+  expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
+  expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
+    data: [
+      expect.objectContaining({
+        bookingRequestId: 'booking-1',
+        customerId: 'customer-1',
+        hotelAtBooking: 'Ocean View Resort',
+        notes: 'Pickup at the east lobby.',
+      }),
+    ],
+  });
+});
+
 test('updates related booking records in one transaction without changing status', async () => {
   mocks.requireCurrentUser.mockResolvedValue({
     id: 'admin-1',
@@ -1795,7 +1904,18 @@ test('updates related booking records in one transaction without changing status
         customerId: 'customer-1',
         role: BookingCustomerRole.PRIMARY_CONTACT,
         customerName: 'Maria Santos',
+        chineseName: '玛丽亚',
+        weChatId: 'maria-wx',
+        whatsAppNumber: '+639170000000',
         email: 'maria@example.com',
+        phone: '+639171234567',
+        hotelAtBooking: 'Ocean View Resort',
+        equipmentNeeded: 'YES',
+        customerNotes: 'Pickup at the east lobby.',
+        certificationLevel: 'Advanced Open Water',
+        certificationAgency: 'PADI',
+        lastDiveDate: '2026-06-01',
+        divesLogged: '42',
       },
     ],
   };
@@ -1813,7 +1933,18 @@ test('updates related booking records in one transaction without changing status
     where: { id: { in: ['customer-1'] } },
     select: { id: true },
   });
-  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).toHaveBeenCalledWith({
+    where: { id: 'customer-1' },
+    data: {
+      fullName: 'Maria Santos',
+      chineseName: '玛丽亚',
+      weChatId: 'maria-wx',
+      whatsAppNumber: '+639170000000',
+      email: 'maria@example.com',
+      phone: '+639171234567',
+      preferredLanguage: null,
+    },
+  });
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -1821,6 +1952,13 @@ test('updates related booking records in one transaction without changing status
         expect.objectContaining({
           customerId: 'customer-1',
           participationStatus: BookingParticipantStatus.ACTIVE,
+          hotelAtBooking: 'Ocean View Resort',
+          equipmentNeeded: 'YES',
+          notes: 'Pickup at the east lobby.',
+          certificationLevel: 'Advanced Open Water',
+          certificationAgency: 'PADI',
+          lastDiveAt: new Date('2026-06-01T00:00:00.000Z'),
+          divesLogged: 42,
         }),
       ],
     }),
@@ -1867,7 +2005,13 @@ test('creates a draft with a selected existing customer without duplicating the 
     select: { id: true },
   });
   expect(mocks.transaction.customer.create).not.toHaveBeenCalled();
-  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).toHaveBeenCalledWith({
+    where: { id: 'customer-1' },
+    data: expect.objectContaining({
+      fullName: 'Maria Santos',
+      email: 'maria@example.com',
+    }),
+  });
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
     data: [
       expect.objectContaining({
@@ -1980,7 +2124,14 @@ test('creates mixed existing and new booking customers in one transaction', asyn
   });
 
   expect(mocks.transaction.customer.create).toHaveBeenCalledTimes(1);
-  expect(mocks.transaction.customer.update).not.toHaveBeenCalled();
+  expect(mocks.transaction.customer.update).toHaveBeenCalledTimes(1);
+  expect(mocks.transaction.customer.update).toHaveBeenCalledWith({
+    where: { id: 'customer-1' },
+    data: expect.objectContaining({
+      fullName: 'Maria Santos',
+      email: 'maria@example.com',
+    }),
+  });
   expect(mocks.transaction.bookingCustomer.createMany).toHaveBeenCalledWith({
     data: [
       expect.objectContaining({
