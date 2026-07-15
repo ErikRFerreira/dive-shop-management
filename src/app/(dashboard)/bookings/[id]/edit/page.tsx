@@ -1,4 +1,5 @@
 import { BookingForm } from '@/components/bookings/booking-form';
+import { BookingEditStatusContext } from '@/components/bookings/edit/booking-edit-status-context';
 import PageHeader from '@/components/common/page-header';
 import { mapBookingToFormValues } from '@/features/bookings/form-mappers';
 import { getAvailableBookingActions } from '@/features/bookings/permissions';
@@ -39,6 +40,11 @@ async function EditBookingPage({ params }: Props) {
       <PageHeader
         title="Edit Booking"
         description="Update the booking details or return it for approval when it is ready."
+      />
+      <BookingEditStatusContext
+        status={booking.status}
+        needsMoreInfoReason={booking.needsMoreInfoReason}
+        adminNotes={booking.adminNotes}
       />
       <BookingForm
         mode="edit"
