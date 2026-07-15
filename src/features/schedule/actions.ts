@@ -58,7 +58,7 @@ type ScheduleItemAssignmentGuard = {
   };
 };
 
-type ScheduleItemCourseAssignmentGuard = ScheduleItemAssignmentGuard & {
+type ScheduleItemCourseGroupGuard = ScheduleItemAssignmentGuard & {
   bookingRequestId: string;
   bookingActivityId: string | null;
   bookingActivity: {
@@ -183,14 +183,14 @@ async function loadScheduleItemAssignmentGuard(scheduleItemId: string) {
 }
 
 /**
- * Loads a schedule item with the activity group fields needed for bulk assignment.
+ * Loads a schedule item with the fields needed for course-group mutations.
  *
- * @param scheduleItemId - Schedule item whose course day group is being assigned.
+ * @param scheduleItemId - Schedule item identifying the target course day group.
  * @returns The schedule item, booking status, and linked booking activity, or null.
  */
-async function loadScheduleItemCourseAssignmentGuard(
+async function loadScheduleItemCourseGroupGuard(
   scheduleItemId: string,
-): Promise<ScheduleItemCourseAssignmentGuard | null> {
+): Promise<ScheduleItemCourseGroupGuard | null> {
   return db.scheduleItem.findUnique({
     where: { id: scheduleItemId },
     select: {
@@ -330,7 +330,7 @@ async function getAssignableStaffSelectionError(
  * @param scheduleItem - Schedule item and booking status loaded for the action.
  * @returns A failure result for non-scheduled bookings, otherwise null.
  */
-function getScheduleDayStatusError(scheduleItem: ScheduleDayGuard) {
+function getScheduleDayStatusError(scheduleItem: ScheduleItemAssignmentGuard) {
   return scheduleItem.bookingRequest.status === BookingStatus.SCHEDULED
     ? null
     : ({
@@ -358,8 +358,8 @@ function buildScheduleDaySiblingWhere(scheduleItem: ScheduleDayGuard) {
  * @param scheduleItem - Schedule item whose course/activity group is targeted.
  * @returns Prisma where input for all days in that booking activity group.
  */
-function buildCourseAssignmentSiblingWhere(
-  scheduleItem: ScheduleItemCourseAssignmentGuard,
+function buildCourseActivitySiblingWhere(
+  scheduleItem: ScheduleItemCourseGroupGuard,
 ) {
   return {
     bookingRequestId: scheduleItem.bookingRequestId,
@@ -375,11 +375,11 @@ function buildCourseAssignmentSiblingWhere(
  * @returns Course days and matching assignments for duplicate-safe creation.
  */
 async function loadCourseAssignmentDays(
-  scheduleItem: ScheduleItemCourseAssignmentGuard,
+  scheduleItem: ScheduleItemCourseGroupGuard,
   userId: string,
 ): Promise<ScheduleAssignmentCourseDay[]> {
   return db.scheduleItem.findMany({
-    where: buildCourseAssignmentSiblingWhere(scheduleItem),
+    where: buildCourseActivitySiblingWhere(scheduleItem),
     select: {
       id: true,
       assignments: {
@@ -618,7 +618,7 @@ export async function assignStaffToAllCourseDays(
     return permissionError;
   }
 
-  const scheduleItem = await loadScheduleItemCourseAssignmentGuard(
+  const scheduleItem = await loadScheduleItemCourseGroupGuard(
     validation.data.scheduleItemId,
   );
 
@@ -779,6 +779,78 @@ export async function updateScheduleItemTimeSlot(
     where: {
       id: validation.data.scheduleItemId,
     },
+    data: {
+      timeSlot: validation.data.timeSlot,
+    },
+  });
+
+  revalidateScheduleDayPaths(scheduleItem.bookingRequest.id);
+  return { success: true };
+}
+
+/**
+ * Applies one operational slot to every scheduled day in the same course/activity.
+ *
+ * @param scheduleItemId - Current schedule item identifying the activity group.
+ * @param timeSlot - AM, PM, Night, or TBD slot to write to every related day.
+ * @returns Success or validation/authorization/business-rule errors.
+ */
+export async function applyScheduleSlotToCourseDays(
+  scheduleItemId: string,
+  timeSlot: unknown,
+): Promise<ScheduleDayActionResult> {
+  const validation = updateScheduleItemTimeSlotSchema.safeParse({
+    scheduleItemId,
+    timeSlot,
+  });
+
+  if (!validation.success) {
+    return getScheduleValidationErrors(validation.error);
+  }
+
+  const permissionError = await getScheduleDayPermissionError();
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const scheduleItem = await loadScheduleItemCourseGroupGuard(
+    validation.data.scheduleItemId,
+  );
+
+  if (!scheduleItem) {
+    return {
+      success: false,
+      formError: 'Scheduled day not found. Refresh and try again.',
+    };
+  }
+
+  const statusError = getScheduleDayStatusError(scheduleItem);
+  if (statusError) {
+    return statusError;
+  }
+
+  if (!scheduleItem.bookingActivityId || !scheduleItem.bookingActivity) {
+    return {
+      success: false,
+      formError:
+        'This scheduled day is not linked to a course/activity group.',
+    };
+  }
+
+  const siblingWhere = buildCourseActivitySiblingWhere(scheduleItem);
+  const courseDayCount = await db.scheduleItem.count({
+    where: siblingWhere,
+  });
+
+  if (courseDayCount <= 1) {
+    return {
+      success: false,
+      formError: 'Apply to all days is only available for multi-day courses.',
+    };
+  }
+
+  await db.scheduleItem.updateMany({
+    where: siblingWhere,
     data: {
       timeSlot: validation.data.timeSlot,
     },

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   addCustomerToScheduledBooking: vi.fn(),
   addScheduledCourseDay: vi.fn(),
   addScheduleAssignment: vi.fn(),
+  applyScheduleSlotToCourseDays: vi.fn(),
   assignStaffToAllCourseDays: vi.fn(),
   cancelBooking: vi.fn(),
   refresh: vi.fn(),
@@ -33,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   searchBookingCustomers: vi.fn(),
   updateScheduleAssignmentRole: vi.fn(),
   updateBookingParticipantStatus: vi.fn(),
+  updateScheduleItemTimeSlot: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -44,10 +46,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/features/schedule/actions', () => ({
   addScheduledCourseDay: mocks.addScheduledCourseDay,
   addScheduleAssignment: mocks.addScheduleAssignment,
+  applyScheduleSlotToCourseDays: mocks.applyScheduleSlotToCourseDays,
   assignStaffToAllCourseDays: mocks.assignStaffToAllCourseDays,
   removeScheduledCourseDay: mocks.removeScheduledCourseDay,
   removeScheduleAssignment: mocks.removeScheduleAssignment,
   updateScheduleAssignmentRole: mocks.updateScheduleAssignmentRole,
+  updateScheduleItemTimeSlot: mocks.updateScheduleItemTimeSlot,
 }));
 
 vi.mock('@/features/bookings/actions', () => ({
@@ -197,11 +201,13 @@ vi.mock('@/components/ui/select', () => {
 beforeEach(() => {
   mocks.addCustomerToScheduledBooking.mockResolvedValue({ success: true });
   mocks.addScheduledCourseDay.mockResolvedValue({ success: true });
+  mocks.applyScheduleSlotToCourseDays.mockResolvedValue({ success: true });
   mocks.assignStaffToAllCourseDays.mockResolvedValue({ success: true });
   mocks.cancelBooking.mockResolvedValue({});
   mocks.removeScheduledCourseDay.mockResolvedValue({ success: true });
   mocks.searchBookingCustomers.mockResolvedValue([]);
   mocks.updateBookingParticipantStatus.mockResolvedValue({ success: true });
+  mocks.updateScheduleItemTimeSlot.mockResolvedValue({ success: true });
 });
 
 afterEach(() => {
@@ -209,6 +215,7 @@ afterEach(() => {
   mocks.addCustomerToScheduledBooking.mockReset();
   mocks.addScheduledCourseDay.mockReset();
   mocks.addScheduleAssignment.mockReset();
+  mocks.applyScheduleSlotToCourseDays.mockReset();
   mocks.assignStaffToAllCourseDays.mockReset();
   mocks.cancelBooking.mockReset();
   mocks.refresh.mockReset();
@@ -217,6 +224,7 @@ afterEach(() => {
   mocks.searchBookingCustomers.mockReset();
   mocks.updateScheduleAssignmentRole.mockReset();
   mocks.updateBookingParticipantStatus.mockReset();
+  mocks.updateScheduleItemTimeSlot.mockReset();
 });
 
 import BookingDetails from './booking-details';
@@ -410,6 +418,22 @@ function deposit(
     updatedAt: timestamp,
     ...overrides,
   };
+}
+
+/**
+ * Builds two scheduled rows linked to the same booking activity.
+ *
+ * @returns Multi-day schedule data used by bulk slot component tests.
+ */
+function scheduledCourseDays() {
+  return [
+    scheduledDay(),
+    scheduledDay({
+      id: 'schedule-2',
+      date: new Date('2026-07-15T00:00:00.000Z'),
+      dayNumber: 2,
+    }),
+  ];
 }
 
 /**
@@ -934,6 +958,154 @@ test('shows incomplete readiness with missing paid deposit fields', () => {
   expect(
     screen.getByText('Missing payment details: amount, currency, and paid to.'),
   ).not.toBeNull();
+});
+
+test('renders bulk slot actions for actual multi-day activity rows', () => {
+  const courseDays = scheduledCourseDays();
+  renderBookingDetails({
+    booking: booking({
+      scheduleItems: [
+        ...courseDays.map((scheduleItem) => ({
+          ...scheduleItem,
+          totalDays: 1,
+        })),
+        scheduledDay({
+          id: 'schedule-3',
+          bookingActivityId: 'activity-2',
+          dayNumber: null,
+          totalDays: 1,
+        }),
+      ],
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(
+    screen.getAllByRole('button', { name: 'Apply to all days' }),
+  ).toHaveLength(2);
+});
+
+test('hides bulk slot actions when an activity has only one actual schedule row', () => {
+  renderBookingDetails({
+    booking: booking({
+      scheduleItems: [scheduledDay({ totalDays: 3 })],
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(
+    screen.queryByRole('button', { name: 'Apply to all days' }),
+  ).toBeNull();
+});
+
+test('does not group unlinked schedule rows for bulk slot actions', () => {
+  renderBookingDetails({
+    booking: booking({
+      scheduleItems: scheduledCourseDays().map((scheduleItem) => ({
+        ...scheduleItem,
+        bookingActivityId: null,
+      })),
+    }),
+    canManageAssignments: true,
+  });
+
+  expect(
+    screen.queryByRole('button', { name: 'Apply to all days' }),
+  ).toBeNull();
+});
+
+test('hides bulk slot actions from read-only schedule viewers', () => {
+  renderBookingDetails({
+    booking: booking({ scheduleItems: scheduledCourseDays() }),
+    canManageAssignments: false,
+  });
+
+  expect(
+    screen.queryByRole('button', { name: 'Apply to all days' }),
+  ).toBeNull();
+});
+
+test('applies the selected slot to every course day from booking details', async () => {
+  const [firstDay, secondDay] = scheduledCourseDays();
+  renderBookingDetails({
+    booking: booking({
+      scheduleItems: [
+        { ...firstDay, timeSlot: ScheduleTimeSlot.NIGHT },
+        secondDay,
+      ],
+    }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Apply to all days' })[0],
+  );
+
+  await waitFor(() => {
+    expect(mocks.applyScheduleSlotToCourseDays).toHaveBeenCalledWith(
+      'schedule-1',
+      ScheduleTimeSlot.NIGHT,
+    );
+  });
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+
+test('shows inline bulk slot errors returned by the server action', async () => {
+  mocks.applyScheduleSlotToCourseDays.mockResolvedValue({
+    success: false,
+    formError: 'Unable to update all course days.',
+  });
+  renderBookingDetails({
+    booking: booking({ scheduleItems: scheduledCourseDays() }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Apply to all days' })[0],
+  );
+
+  expect(
+    await screen.findByText('Unable to update all course days.'),
+  ).not.toBeNull();
+});
+
+test('prevents duplicate bulk slot submissions while the action is pending', async () => {
+  mocks.applyScheduleSlotToCourseDays.mockReturnValue(pendingPromise());
+  renderBookingDetails({
+    booking: booking({ scheduleItems: scheduledCourseDays() }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Apply to all days' })[0],
+  );
+
+  const pendingButton = await screen.findByRole('button', {
+    name: 'Applying...',
+  });
+  fireEvent.click(pendingButton);
+
+  expect(pendingButton.hasAttribute('disabled')).toBe(true);
+  expect(mocks.applyScheduleSlotToCourseDays).toHaveBeenCalledTimes(1);
+});
+
+test('prevents bulk slot submission when the selected slot is invalid', () => {
+  renderBookingDetails({
+    booking: booking({ scheduleItems: scheduledCourseDays() }),
+    canManageAssignments: true,
+  });
+
+  fireEvent.change(screen.getAllByLabelText('Scheduled slot')[0], {
+    target: { value: '' },
+  });
+
+  const applyButton = screen.getAllByRole('button', {
+    name: 'Apply to all days',
+  })[0];
+
+  expect(applyButton.hasAttribute('disabled')).toBe(true);
+  expect(mocks.updateScheduleItemTimeSlot).not.toHaveBeenCalled();
+  expect(mocks.applyScheduleSlotToCourseDays).not.toHaveBeenCalled();
 });
 
 test('renders all-days assignment action for multi-day booking detail schedule rows', () => {
