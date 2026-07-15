@@ -2,6 +2,7 @@ import { BookingMainSections } from '@/components/bookings/booking-main-sections
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { StickyRailLayout } from '@/components/common/sticky-rail-layout';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
+import type { BookingActionAvailability } from '@/features/bookings/permissions';
 import { getActivityShortLabel } from '@/features/bookings/activity-utils';
 import {
   getBookingReviewReadiness,
@@ -19,7 +20,7 @@ import type { ReviewActivity } from './booking-review-activities';
 
 type BookingReviewProps = {
   booking: BookingDetailsItem;
-  canApprove: boolean;
+  availableActions: BookingActionAvailability;
 };
 
 /**
@@ -39,10 +40,10 @@ function getApprovalScheduleActivities(activities: ReviewActivity[]) {
 /**
  * Renders the admin review page for one booking request.
  *
- * @param props - Booking detail payload and approval permission flag.
+ * @param props - Booking detail payload and server-derived reviewer capabilities.
  * @returns Admin review UI with a sticky decision rail and ordered review sections.
  */
-export function BookingReview({ booking, canApprove }: BookingReviewProps) {
+export function BookingReview({ booking, availableActions }: BookingReviewProps) {
   const activities = getReviewActivities(booking);
   const includesFunDive = reviewActivitiesIncludeFunDive(activities);
   const missingInformation = getMissingBookingReviewInformation(booking);
@@ -56,7 +57,9 @@ export function BookingReview({ booking, canApprove }: BookingReviewProps) {
       rail={
         <BookingReviewSidebar
           bookingId={booking.id}
-          canApprove={canApprove}
+          canApprove={availableActions.canApproveAndSchedule}
+          canCancel={availableActions.canCancel}
+          canRequestMoreInfo={availableActions.canRequestMoreInfo}
           adminNotes={booking.adminNotes}
           missingInformation={missingInformation}
           reviewReadiness={reviewReadiness}

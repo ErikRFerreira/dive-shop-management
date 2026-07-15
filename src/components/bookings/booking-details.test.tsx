@@ -488,7 +488,7 @@ test('renders status-aware actions for pending approval bookings', () => {
   expect(screen.getByRole('link', { name: 'Edit booking' })).not.toBeNull();
 });
 
-test('renders fix details instead of review for needs-more-info bookings', () => {
+test('renders edit and review actions for reviewer access to needs-more-info bookings', () => {
   renderBookingDetails({
     booking: booking({
       status: BookingStatus.NEEDS_MORE_INFO,
@@ -499,7 +499,7 @@ test('renders fix details instead of review for needs-more-info bookings', () =>
   });
 
   expect(screen.getByRole('link', { name: 'Fix details' })).not.toBeNull();
-  expect(screen.queryByRole('link', { name: 'Review booking' })).toBeNull();
+  expect(screen.getByRole('link', { name: 'Review booking' })).not.toBeNull();
   expect(
     screen.getAllByText('Please confirm diver certification.').length,
   ).toBeGreaterThan(0);

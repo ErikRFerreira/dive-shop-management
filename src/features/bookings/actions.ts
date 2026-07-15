@@ -518,7 +518,11 @@ async function updateEditableBooking(
     (booking.status === BookingStatus.DRAFT && canEdit);
   const canResubmit =
     !options.requireResubmitPermission ||
-    canResubmitBookingForApproval(currentUser, booking.createdById);
+    canResubmitBookingForApproval(
+      currentUser,
+      booking.createdById,
+      booking.status,
+    );
 
   if (!canEdit || !canTransition || !canResubmit) {
     return {
@@ -1424,7 +1428,11 @@ export async function resubmitBookingForApproval(
       booking.status,
       BookingStatus.PENDING_APPROVAL,
     ) ||
-    !canResubmitBookingForApproval(currentUser, booking.createdById)
+    !canResubmitBookingForApproval(
+      currentUser,
+      booking.createdById,
+      booking.status,
+    )
   ) {
     return {
       formError: 'You do not have permission to resubmit this booking.',

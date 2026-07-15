@@ -13,6 +13,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { BookingForm } from '@/components/bookings/booking-form';
 import { submitEditedBookingForApproval } from '@/features/bookings/actions';
 import { bookingFormDefaultValues } from '@/features/bookings/form-values';
+import type { BookingActionAvailability } from '@/features/bookings/permissions';
 import type { BookingFormValues } from '@/features/bookings/types';
 import {
   getBookingEditFormAutosaveKey,
@@ -44,6 +45,47 @@ vi.mock('@/features/customers/booking-actions', () => ({
   findBookingCustomerDuplicates: vi.fn().mockResolvedValue([]),
   searchBookingCustomers: vi.fn().mockResolvedValue([]),
 }));
+
+const draftEditActions: BookingActionAvailability = {
+  canApproveAndSchedule: false,
+  canCancel: false,
+  canOpenReview: false,
+  canRequestMoreInfo: false,
+  canResubmitForApproval: false,
+  canSaveChanges: true,
+  canSubmitForApproval: true,
+};
+
+const customerServiceNeedsMoreInfoActions: BookingActionAvailability = {
+  ...draftEditActions,
+  canResubmitForApproval: true,
+  canSubmitForApproval: false,
+};
+
+const pendingReviewerActions: BookingActionAvailability = {
+  ...draftEditActions,
+  canApproveAndSchedule: true,
+  canCancel: true,
+  canOpenReview: true,
+  canRequestMoreInfo: true,
+  canSubmitForApproval: false,
+};
+
+const needsMoreInfoReviewerActions: BookingActionAvailability = {
+  ...pendingReviewerActions,
+  canApproveAndSchedule: false,
+  canRequestMoreInfo: false,
+};
+
+const noBookingActions: BookingActionAvailability = {
+  canApproveAndSchedule: false,
+  canCancel: false,
+  canOpenReview: false,
+  canRequestMoreInfo: false,
+  canResubmitForApproval: false,
+  canSaveChanges: false,
+  canSubmitForApproval: false,
+};
 
 afterEach(() => {
   cleanup();
@@ -144,6 +186,7 @@ test('uses edit-specific autosave in edit mode without restoring new-booking aut
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={draftEditActions}
       initialStatus={BookingStatus.DRAFT}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -192,6 +235,7 @@ test('persists edit mode changes to the booking-specific autosave key', async ()
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={draftEditActions}
       initialStatus={BookingStatus.DRAFT}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -225,6 +269,7 @@ test('retries draft edit submission after fixing the primary contact method', as
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={draftEditActions}
       initialStatus={BookingStatus.DRAFT}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -276,6 +321,7 @@ test('keeps incomplete linked customers attached while staff fixes validation er
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={draftEditActions}
       initialStatus={BookingStatus.DRAFT}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -344,6 +390,7 @@ test('shows resubmit action only for editable Needs More Info bookings', () => {
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={customerServiceNeedsMoreInfoActions}
       initialStatus={BookingStatus.NEEDS_MORE_INFO}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -359,11 +406,30 @@ test('shows resubmit action only for editable Needs More Info bookings', () => {
   expect(screen.queryByRole('button', { name: 'Submit for Approval' })).toBeNull();
 });
 
-test('shows only save changes for pending approval edit mode', () => {
+test('shows review instead of resubmit for a Needs More Info reviewer', () => {
   render(
     <BookingForm
       mode="edit"
       bookingId="booking-1"
+      availableActions={needsMoreInfoReviewerActions}
+      initialStatus={BookingStatus.NEEDS_MORE_INFO}
+      initialValues={bookingFormDefaultValues}
+    />,
+  );
+
+  expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
+  expect(screen.getByRole('link', { name: 'Review Booking' })).not.toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Resubmit for Approval' }),
+  ).toBeNull();
+});
+
+test('shows save and review actions for a pending approval reviewer', () => {
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      availableActions={pendingReviewerActions}
       initialStatus={BookingStatus.PENDING_APPROVAL}
       initialValues={{
         ...bookingFormDefaultValues,
@@ -373,8 +439,28 @@ test('shows only save changes for pending approval edit mode', () => {
   );
 
   expect(screen.getByRole('button', { name: 'Save Changes' })).not.toBeNull();
+  expect(screen.getByRole('link', { name: 'Review Booking' })).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Submit for Approval' })).toBeNull();
   expect(
     screen.queryByRole('button', { name: 'Resubmit for Approval' }),
   ).toBeNull();
+});
+
+test('renders no mutation actions when edit capabilities are empty', () => {
+  render(
+    <BookingForm
+      mode="edit"
+      bookingId="booking-1"
+      availableActions={noBookingActions}
+      initialStatus={BookingStatus.PENDING_APPROVAL}
+      initialValues={bookingFormDefaultValues}
+    />,
+  );
+
+  expect(screen.queryByRole('button', { name: 'Save Changes' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Submit for Approval' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'Resubmit for Approval' }),
+  ).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Review Booking' })).toBeNull();
 });

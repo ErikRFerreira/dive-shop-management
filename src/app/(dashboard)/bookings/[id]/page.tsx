@@ -1,11 +1,8 @@
 import BookingDetails from '@/components/bookings/booking-details';
 import {
   canApproveBookingRequest,
-  canCancelBooking,
-  canReviewBooking,
-  canEditBooking,
+  getAvailableBookingActions,
   canManageScheduledBookingParticipants,
-  canResubmitBookingForApproval,
 } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
 import { canManageScheduleAssignments } from '@/features/schedule/permissions';
@@ -42,6 +39,7 @@ async function BookingDetailsPage({ params }: Props) {
   const assignableStaff = canManageAssignments
     ? await getAssignableStaff(currentUser)
     : [];
+  const availableActions = getAvailableBookingActions(currentUser, booking);
 
   return (
     <BookingDetails
@@ -49,7 +47,7 @@ async function BookingDetailsPage({ params }: Props) {
       booking={booking}
       canCancel={
         booking.status === BookingStatus.SCHEDULED &&
-        canCancelBooking(currentUser, booking.status)
+        availableActions.canCancel
       }
       canManageAssignments={canManageAssignments}
       canManageParticipantStatus={canManageScheduledBookingParticipants(
@@ -59,16 +57,9 @@ async function BookingDetailsPage({ params }: Props) {
       canShowManagerAssignmentAvailabilityCopy={canApproveBookingRequest(
         currentUser,
       )}
-      canReview={canReviewBooking(currentUser, booking.status)}
-      canEdit={canEditBooking(
-        currentUser,
-        booking.createdById,
-        booking.status,
-      )}
-      canResubmit={
-        booking.status === BookingStatus.NEEDS_MORE_INFO &&
-        canResubmitBookingForApproval(currentUser, booking.createdById)
-      }
+      canReview={availableActions.canOpenReview}
+      canEdit={availableActions.canSaveChanges}
+      canResubmit={availableActions.canResubmitForApproval}
     />
   );
 }
