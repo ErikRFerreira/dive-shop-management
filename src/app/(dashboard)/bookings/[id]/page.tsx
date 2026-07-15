@@ -39,7 +39,9 @@ async function BookingDetailsPage({ params }: Props) {
     booking.scheduleItems.length > 0 &&
     booking.status === BookingStatus.SCHEDULED &&
     canManageScheduleAssignments(currentUser);
-  const assignableStaff = canManageAssignments ? await getAssignableStaff() : [];
+  const assignableStaff = canManageAssignments
+    ? await getAssignableStaff(currentUser)
+    : [];
 
   return (
     <BookingDetails

@@ -42,10 +42,14 @@ async function Customers({ searchParams }: CustomersPageProps) {
   const hasSearch = query.length > 0;
   const page = parseCustomerPageParam(params.page);
   const pageSize = parseCustomerPageSizeParam(params.pageSize);
-  const { customers, pagination } = await getCustomerLookupPage(query, {
-    page,
-    pageSize,
-  });
+  const { customers, pagination } = await getCustomerLookupPage(
+    currentUser,
+    query,
+    {
+      page,
+      pageSize,
+    },
+  );
   const resultSummary = hasSearch
     ? `${pagination.totalCount} ${
         pagination.totalCount === 1 ? 'result' : 'results'

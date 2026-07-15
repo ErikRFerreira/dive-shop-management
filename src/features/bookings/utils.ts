@@ -13,6 +13,7 @@ import {
   UserRole,
 } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import { canAccessBookings } from '@/features/auth/permissions';
 import { getActivityDisplayLabel } from './activity-utils';
 import { getPrimaryActiveBookingCustomer } from './participants';
 import {
@@ -160,10 +161,7 @@ export function buildBookingRequestWhere(
 
   if (currentUser.role === UserRole.CUSTOMER_SERVICE) {
     where.createdById = currentUser.id;
-  } else if (
-    currentUser.role !== UserRole.ADMIN &&
-    currentUser.role !== UserRole.MANAGER
-  ) {
+  } else if (!canAccessBookings(currentUser)) {
     where.id = { in: [] };
   }
 

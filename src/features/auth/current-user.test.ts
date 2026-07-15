@@ -18,12 +18,13 @@ vi.mock('@/lib/db', () => ({
 }));
 
 import { getCurrentUser } from './current-user';
+import { UserRole } from '@/generated/prisma/enums';
 
 const persistedUser = {
   id: 'user-1',
   name: 'Admin User',
   email: 'admin@example.test',
-  role: 'ADMIN',
+  role: UserRole.ADMIN,
   isActive: true,
 };
 
@@ -31,7 +32,7 @@ const currentUser = {
   id: 'user-1',
   name: 'Admin User',
   email: 'admin@example.test',
-  role: 'ADMIN',
+  role: UserRole.ADMIN,
 };
 
 beforeEach(() => {
@@ -72,4 +73,25 @@ test.each([
   mocks.findUnique.mockResolvedValue(user);
 
   await expect(getCurrentUser()).resolves.toBeNull();
+});
+
+test('rejects an active divemaster resolved from an existing session', async () => {
+  mocks.findUnique.mockResolvedValue({
+    ...persistedUser,
+    role: UserRole.DIVEMASTER,
+  });
+
+  await expect(getCurrentUser()).resolves.toBeNull();
+});
+
+test('continues to resolve an active instructor', async () => {
+  mocks.findUnique.mockResolvedValue({
+    ...persistedUser,
+    role: UserRole.INSTRUCTOR,
+  });
+
+  await expect(getCurrentUser()).resolves.toEqual({
+    ...currentUser,
+    role: UserRole.INSTRUCTOR,
+  });
 });

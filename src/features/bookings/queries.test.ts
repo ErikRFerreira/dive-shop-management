@@ -36,6 +36,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+test('rejects instructor booking queries before Prisma access', async () => {
+  await expect(
+    getBookingRequests(
+      { ...adminUser, id: 'instructor-1', role: UserRole.INSTRUCTOR },
+      undefined,
+      undefined,
+      { page: 1, pageSize: 10 },
+    ),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
+
+  expect(mocks.bookingRequestCount).not.toHaveBeenCalled();
+  expect(mocks.bookingRequestFindMany).not.toHaveBeenCalled();
+});
+
 /**
  * Verifies that the unassigned operational queue uses schedule assignments,
  * not a BookingStatus value.

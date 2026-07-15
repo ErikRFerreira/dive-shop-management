@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 
 import { PrismaClient } from '../src/generated/prisma/client';
 import { UserRole } from '../src/generated/prisma/enums';
+import { canAccessPlatform } from '../src/features/auth/permissions';
 
 config({ path: '.env.local' });
 
@@ -72,14 +73,18 @@ const users = [
  * Seeds the development database with idempotent internal users and hashed local credentials.
  */
 async function main() {
-  const passwordHash = await hash(
+  const platformPasswordHash = await hash(
     requiredSeedUserPassword,
     PASSWORD_HASH_ROUNDS,
   );
 
   await Promise.all(
-    users.map((user) =>
-      prisma.user.upsert({
+    users.map((user) => {
+      const passwordHash = canAccessPlatform(user)
+        ? platformPasswordHash
+        : null;
+
+      return prisma.user.upsert({
         where: { email: user.email },
         update: {
           name: user.name,
@@ -89,10 +94,11 @@ async function main() {
         },
         create: {
           ...user,
+          isActive: true,
           passwordHash,
         },
-      }),
-    ),
+      });
+    }),
   );
 
   console.info(`Seeded ${users.length} development users.`);

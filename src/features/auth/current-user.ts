@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { auth } from '@/auth';
+import { canAccessPlatform } from '@/features/auth/permissions';
 import { db } from '@/lib/db';
 
 /**
@@ -9,7 +10,8 @@ import { db } from '@/lib/db';
  * The session supplies only the database user ID. Role and active status are
  * always resolved from Prisma so authorization never trusts stale JWT data.
  *
- * @returns The current safe user record, or null when unauthenticated or inactive.
+ * @returns The current safe user record, or null when unauthenticated, inactive,
+ * or assigned a non-platform role.
  */
 export async function getCurrentUser() {
   const session = await auth();
@@ -30,7 +32,7 @@ export async function getCurrentUser() {
     },
   });
 
-  if (!user?.isActive) {
+  if (!user?.isActive || !canAccessPlatform(user)) {
     return null;
   }
 

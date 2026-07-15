@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { signIn, signOut } from '@/auth';
 import { credentialsSchema } from '@/features/auth/credentials';
+import { validateInternalRedirectDestination } from '@/features/auth/redirects';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
 const UNEXPECTED_SIGN_IN_MESSAGE =
@@ -44,7 +45,7 @@ function readSubmittedCredentials(formData: FormData) {
  * reveals whether an account exists, is inactive, or lacks a password hash.
  *
  * @param _previousState - Previous React action state supplied by useActionState.
- * @param formData - Untrusted login form data from the browser.
+ * @param formData - Untrusted credentials and callback data from the browser.
  * @returns Field or form errors when sign-in cannot be completed.
  */
 export async function loginWithCredentials(
@@ -53,6 +54,9 @@ export async function loginWithCredentials(
 ): Promise<LoginActionState> {
   const parsedCredentials = credentialsSchema.safeParse(
     readSubmittedCredentials(formData),
+  );
+  const redirectDestination = validateInternalRedirectDestination(
+    formData.get('callbackUrl'),
   );
 
   if (!parsedCredentials.success) {
@@ -70,7 +74,7 @@ export async function loginWithCredentials(
     await signIn('credentials', {
       ...parsedCredentials.data,
       redirect: false,
-      redirectTo: '/dashboard',
+      redirectTo: redirectDestination ?? '/',
     });
   } catch (error) {
     if (error instanceof AuthError && error.type === 'CredentialsSignin') {
@@ -80,7 +84,7 @@ export async function loginWithCredentials(
     return { formError: UNEXPECTED_SIGN_IN_MESSAGE };
   }
 
-  redirect('/dashboard');
+  redirect(redirectDestination ?? '/');
 }
 
 /**

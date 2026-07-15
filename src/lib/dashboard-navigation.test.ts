@@ -21,7 +21,7 @@ test.each([
   [UserRole.MANAGER, ['dashboard', 'bookings', 'schedule', 'customers']],
   [UserRole.CUSTOMER_SERVICE, ['dashboard', 'bookings', 'schedule', 'customers']],
   [UserRole.INSTRUCTOR, ['dashboard', 'schedule', 'assignments']],
-  [UserRole.DIVEMASTER, ['dashboard', 'assignments']],
+  [UserRole.DIVEMASTER, []],
 ] as const)('returns the correct navigation for %s', (role, routeKeys) => {
   expect(getDashboardNavigation({ role }).map((route) => route.key)).toEqual(
     routeKeys,
@@ -49,13 +49,13 @@ test('authorizes customer service and instructors to view the schedule', () => {
   );
 });
 
-test('authorizes instructors and divemasters only to view assignments', () => {
+test('authorizes only instructors to view personal assignments', () => {
   expect(
     canAccessDashboardRoute({ role: UserRole.INSTRUCTOR }, 'assignments'),
   ).toBe(true);
   expect(
     canAccessDashboardRoute({ role: UserRole.DIVEMASTER }, 'assignments'),
-  ).toBe(true);
+  ).toBe(false);
   expect(canAccessDashboardRoute({ role: UserRole.ADMIN }, 'assignments')).toBe(
     false,
   );

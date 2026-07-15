@@ -190,8 +190,10 @@ function AssignmentActivitySummary({
       <p className="font-medium">{title}</p>
       {assignment.activities.length > 1 ? (
         <ul className="space-y-1 text-xs text-muted-foreground">
-          {assignment.activities.map((activity) => (
-            <li key={activity.id}>
+          {assignment.activities.map((activity, index) => (
+            <li
+              key={`${activity.activityType ?? 'unknown'}-${activity.specialtyCourse ?? 'general'}-${index}`}
+            >
               {formatAssignmentActivityLine(assignment, activity)}
             </li>
           ))}

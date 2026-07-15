@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { verifyPassword } from '@/features/auth/password';
+import { canAccessPlatform } from '@/features/auth/permissions';
 import { db } from '@/lib/db';
 
 export const credentialsSchema = z.object({
@@ -44,10 +45,16 @@ export async function authorizeCredentials(
       email: true,
       passwordHash: true,
       isActive: true,
+      role: true,
     },
   });
 
-  if (!user || !user.isActive || !user.passwordHash) {
+  if (
+    !user ||
+    !user.isActive ||
+    !user.passwordHash ||
+    !canAccessPlatform(user)
+  ) {
     return null;
   }
 

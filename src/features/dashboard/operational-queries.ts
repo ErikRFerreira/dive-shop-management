@@ -20,6 +20,7 @@ import {
   getUnassignedDashboardScheduleItemsFromDate,
 } from '@/features/schedule/dashboard-queries';
 import type { CurrentUser } from '@/lib/current-user';
+import { hasFullOperationalAccess } from '@/features/auth/permissions';
 import {
   mapBookingToNeedsAttentionItem,
   mapBookingToRecentActivityItem,
@@ -161,7 +162,5 @@ export async function getRecentDashboardActivity(
  * @returns True for Admin and Manager users.
  */
 function isDashboardOperationsUser(currentUser: Pick<CurrentUser, 'role'>) {
-  return (
-    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
-  );
+  return hasFullOperationalAccess(currentUser);
 }

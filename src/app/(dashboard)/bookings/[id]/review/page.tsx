@@ -6,17 +6,21 @@ import {
   canReviewBookingRequest,
 } from '@/features/bookings/permissions';
 import { getBookingRequestById } from '@/features/bookings/queries';
+import { getDefaultLandingPath } from '@/features/auth/redirects';
 import { requireCurrentUser } from '@/lib/current-user';
+import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
+/** Renders the protected booking review screen for authorized operations users. */
 async function ReviewBooking({ params }: Props) {
   const currentUser = await requireCurrentUser();
+  requireDashboardRouteAccess(currentUser, 'bookings');
 
   if (!canReviewBookingRequest(currentUser)) {
-    redirect('/dashboard');
+    redirect(getDefaultLandingPath(currentUser.role));
   }
 
   const { id } = await params;
