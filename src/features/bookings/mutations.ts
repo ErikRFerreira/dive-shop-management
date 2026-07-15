@@ -67,7 +67,11 @@ export type EditableBooking = NonNullable<
 >;
 
 /**
- * Resolves the Customer IDs that should be linked to the booking.
+ * Synchronizes submitted customer profiles and resolves their booking links.
+ *
+ * Existing customer IDs are updated in place so booking edits never duplicate
+ * a linked profile. Rows explicitly unlinked through "Create new instead" have
+ * no ID and therefore create a new Customer record.
  *
  * @param transaction - The database transaction object.
  * @param bookingValues - The normalized booking form values.
@@ -81,6 +85,10 @@ async function resolveBookingCustomerIds(
 
   for (const bookingCustomer of bookingValues.customers) {
     if (bookingCustomer.customerId) {
+      await transaction.customer.update({
+        where: { id: bookingCustomer.customerId },
+        data: mapCustomerData(bookingCustomer),
+      });
       customerIds.push(bookingCustomer.customerId);
       continue;
     }

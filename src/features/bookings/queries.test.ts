@@ -103,6 +103,7 @@ test('queries scheduled bookings with schedule items that have no assignments', 
             assignments: {
               select: {
                 id: true,
+                userId: true,
                 user: {
                   select: {
                     name: true,

@@ -125,7 +125,6 @@ export function CustomerDiverRow({
           index={index}
           getFieldError={getFieldError}
           contactInputProps={contactInputProps}
-          isExistingCustomer={isExistingCustomer}
         />
         <PotentialDuplicateCustomerWarning
           form={form}

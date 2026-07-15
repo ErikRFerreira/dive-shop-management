@@ -202,6 +202,9 @@ export function SelectedBookingCustomer({
         <p className="text-sm text-muted-foreground">
           {customer.customerName || customer.customerId}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Updates to contact details will update this customer profile.
+        </p>
       </div>
       <Button
         type="button"

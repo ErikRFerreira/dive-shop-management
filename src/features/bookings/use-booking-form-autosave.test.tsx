@@ -40,6 +40,11 @@ vi.mock('@/features/bookings/actions', () => ({
   updateBooking: vi.fn(),
 }));
 
+vi.mock('@/features/customers/booking-actions', () => ({
+  findBookingCustomerDuplicates: vi.fn().mockResolvedValue([]),
+  searchBookingCustomers: vi.fn().mockResolvedValue([]),
+}));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -147,7 +152,7 @@ test('uses edit-specific autosave in edit mode without restoring new-booking aut
           {
             ...bookingFormDefaultValues.activities[0],
             activityType: ActivityType.OPEN_WATER_COURSE,
-            requestedDate: '2026-07-14',
+            requestedDate: '2099-07-14',
           },
         ],
         source: BookingSource.EMAIL,
@@ -227,7 +232,7 @@ test('retries draft edit submission after fixing the primary contact method', as
           {
             ...bookingFormDefaultValues.activities[0],
             activityType: ActivityType.OPEN_WATER_COURSE,
-            requestedDate: '2026-07-14',
+            requestedDate: '2099-07-14',
           },
         ],
         source: BookingSource.EMAIL,
@@ -261,7 +266,7 @@ test('retries draft edit submission after fixing the primary contact method', as
   });
 });
 
-test('unlocks incomplete linked customers after submit validation errors', async () => {
+test('keeps incomplete linked customers attached while staff fixes validation errors', async () => {
   vi.mocked(submitEditedBookingForApproval).mockResolvedValue({
     success: true,
     redirectTo: '/bookings/booking-1',
@@ -278,7 +283,7 @@ test('unlocks incomplete linked customers after submit validation errors', async
           {
             ...bookingFormDefaultValues.activities[0],
             activityType: ActivityType.OPEN_WATER_COURSE,
-            requestedDate: '2026-07-14',
+            requestedDate: '2099-07-14',
           },
         ],
         source: BookingSource.EMAIL,
@@ -294,6 +299,11 @@ test('unlocks incomplete linked customers after submit validation errors', async
   );
 
   expect(screen.getByText('Linked existing customer')).not.toBeNull();
+  const customerNameInput = screen.getByLabelText(
+    /Customer name/,
+  ) as HTMLInputElement;
+  expect(customerNameInput.readOnly).toBe(false);
+
   fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
 
   expect(
@@ -301,21 +311,15 @@ test('unlocks incomplete linked customers after submit validation errors', async
       'Customer name is required before submitting for approval.',
     ),
   ).not.toBeNull();
-  await waitFor(() => {
-    expect(screen.queryByText('Linked existing customer')).toBeNull();
-  });
-
-  const customerNameInput = screen.getByLabelText(
-    /Customer name/,
-  ) as HTMLInputElement;
+  expect(screen.getByText('Linked existing customer')).not.toBeNull();
   expect(customerNameInput.readOnly).toBe(false);
   expect(customerNameInput.getAttribute('aria-readonly')).toBeNull();
 
   fireEvent.change(customerNameInput, {
     target: { value: 'Maria Santos' },
   });
-  fireEvent.change(screen.getByLabelText('Email'), {
-    target: { value: 'maria@example.com' },
+  fireEvent.change(screen.getByLabelText('Phone'), {
+    target: { value: '+639171234567' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Submit for Approval' }));
 
@@ -326,8 +330,9 @@ test('unlocks incomplete linked customers after submit validation errors', async
     'booking-1',
     expect.objectContaining({
       customers: [
-        expect.not.objectContaining({
+        expect.objectContaining({
           customerId: 'customer-1',
+          phone: '+639171234567',
         }),
       ],
     }),
