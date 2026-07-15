@@ -9,6 +9,7 @@ import {
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
+  countScheduleItems: vi.fn(),
   createAssignment: vi.fn(),
   createManyAssignments: vi.fn(),
   createScheduleItem: vi.fn(),
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
   transaction: vi.fn(),
   updateAssignment: vi.fn(),
+  updateManyScheduleItems: vi.fn(),
   updateScheduleItem: vi.fn(),
 }));
 
@@ -29,11 +31,13 @@ vi.mock('@/lib/db', () => ({
   db: {
     $transaction: mocks.transaction,
     scheduleItem: {
+      count: mocks.countScheduleItems,
       create: mocks.createScheduleItem,
       delete: mocks.deleteScheduleItem,
       findMany: mocks.findScheduleItems,
       findUnique: mocks.findScheduleItemUnique,
       update: mocks.updateScheduleItem,
+      updateMany: mocks.updateManyScheduleItems,
     },
     scheduleAssignment: {
       create: mocks.createAssignment,
@@ -57,6 +61,7 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 import {
   addScheduledCourseDay,
   addScheduleAssignment,
+  applyScheduleSlotToCourseDays,
   assignStaffToAllCourseDays,
   removeScheduledCourseDay,
   removeScheduleAssignment,
@@ -223,6 +228,7 @@ function assignableUser(overrides = {}) {
 }
 
 beforeEach(() => {
+  mocks.countScheduleItems.mockReset();
   mocks.createAssignment.mockReset();
   mocks.createManyAssignments.mockReset();
   mocks.createScheduleItem.mockReset();
@@ -236,6 +242,7 @@ beforeEach(() => {
   mocks.revalidatePath.mockReset();
   mocks.transaction.mockReset();
   mocks.updateAssignment.mockReset();
+  mocks.updateManyScheduleItems.mockReset();
   mocks.updateScheduleItem.mockReset();
 
   mocks.requireCurrentUser.mockResolvedValue(adminUser);
@@ -248,9 +255,11 @@ beforeEach(() => {
   mocks.findUserUnique.mockResolvedValue(assignableUser());
   mocks.findAssignmentUnique.mockResolvedValue(null);
   mocks.createAssignment.mockResolvedValue({ id: 'assignment-1' });
+  mocks.countScheduleItems.mockResolvedValue(3);
   mocks.createManyAssignments.mockResolvedValue({ count: 3 });
   mocks.createScheduleItem.mockResolvedValue({ id: 'schedule-4' });
   mocks.updateAssignment.mockResolvedValue({ id: 'assignment-1' });
+  mocks.updateManyScheduleItems.mockResolvedValue({ count: 3 });
   mocks.updateScheduleItem.mockResolvedValue({ id: 'schedule-1' });
   mocks.deleteAssignment.mockResolvedValue({ id: 'assignment-1' });
   mocks.deleteScheduleItem.mockResolvedValue({ id: 'schedule-2' });
@@ -844,6 +853,145 @@ test('rejects time slot updates when related booking is not scheduled', async ()
   });
 
   expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
+});
+
+test.each(
+  [adminUser, managerUser].flatMap((currentUser) =>
+    Object.values(ScheduleTimeSlot).map((timeSlot) => ({
+      currentUser,
+      timeSlot,
+    })),
+  ),
+)(
+  'allows $currentUser.role to apply $timeSlot to every course day',
+  async ({ currentUser, timeSlot }) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+    mocks.findScheduleItemUnique.mockResolvedValue(courseAssignmentGuard());
+
+    await expect(
+      applyScheduleSlotToCourseDays('schedule-1', timeSlot),
+    ).resolves.toEqual({ success: true });
+
+    const expectedWhere = {
+      bookingRequestId: 'booking-1',
+      bookingActivityId: 'activity-1',
+    };
+
+    expect(mocks.countScheduleItems).toHaveBeenCalledWith({
+      where: expectedWhere,
+    });
+    expect(mocks.updateManyScheduleItems).toHaveBeenCalledWith({
+      where: expectedWhere,
+      data: { timeSlot },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/schedule');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/assignments');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/bookings/booking-1');
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/review',
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      '/bookings/booking-1/edit',
+    );
+  },
+);
+
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to apply a slot to all course days',
+  async (currentUser) => {
+    mocks.requireCurrentUser.mockResolvedValue(currentUser);
+
+    await expect(
+      applyScheduleSlotToCourseDays('schedule-1', ScheduleTimeSlot.PM),
+    ).resolves.toEqual({
+      success: false,
+      formError: 'You do not have permission to manage scheduled days.',
+    });
+
+    expect(mocks.findScheduleItemUnique).not.toHaveBeenCalled();
+    expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects invalid all-days schedule slots before authorization', async () => {
+  await expect(
+    applyScheduleSlotToCourseDays('schedule-1', 'MORNING'),
+  ).resolves.toMatchObject({
+    success: false,
+    fieldErrors: {
+      timeSlot: expect.any(Array),
+    },
+  });
+
+  expect(mocks.requireCurrentUser).not.toHaveBeenCalled();
+  expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
+});
+
+test('rejects all-days slot updates when the scheduled day is missing', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(null);
+
+  await expect(
+    applyScheduleSlotToCourseDays('missing-schedule', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Scheduled day not found. Refresh and try again.',
+  });
+
+  expect(mocks.countScheduleItems).not.toHaveBeenCalled();
+  expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
+});
+
+test('rejects all-days slot updates when the booking is not scheduled', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    courseAssignmentGuard({
+      bookingRequest: { id: 'booking-1', status: BookingStatus.CANCELLED },
+    }),
+  );
+
+  await expect(
+    applyScheduleSlotToCourseDays('schedule-1', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Only scheduled bookings can have scheduled days changed.',
+  });
+
+  expect(mocks.countScheduleItems).not.toHaveBeenCalled();
+  expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
+});
+
+test.each([
+  { bookingActivityId: null, bookingActivity: null },
+  { bookingActivityId: 'activity-1', bookingActivity: null },
+])('rejects all-days slot updates for an unlinked activity group', async (overrides) => {
+  mocks.findScheduleItemUnique.mockResolvedValue(
+    courseAssignmentGuard(overrides),
+  );
+
+  await expect(
+    applyScheduleSlotToCourseDays('schedule-1', ScheduleTimeSlot.PM),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'This scheduled day is not linked to a course/activity group.',
+  });
+
+  expect(mocks.countScheduleItems).not.toHaveBeenCalled();
+  expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
+});
+
+test('rejects applying a slot to a single-day activity group', async () => {
+  mocks.findScheduleItemUnique.mockResolvedValue(courseAssignmentGuard());
+  mocks.countScheduleItems.mockResolvedValue(1);
+
+  await expect(
+    applyScheduleSlotToCourseDays('schedule-1', ScheduleTimeSlot.TBD),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Apply to all days is only available for multi-day courses.',
+  });
+
+  expect(mocks.updateManyScheduleItems).not.toHaveBeenCalled();
 });
 
 test.each([adminUser, managerUser])(
