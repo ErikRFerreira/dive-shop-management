@@ -182,9 +182,9 @@ test('returns complete and not-required readiness states for a reviewable non-fu
       description: 'Primary contact has at least one contact method.',
     },
     {
-      label: 'Deposit info',
+      label: 'Deposit not required',
       status: 'not required',
-      description: 'No paid deposit details are required.',
+      description: 'No deposit recorded.',
     },
     {
       label: 'Equipment sizing',
@@ -192,6 +192,80 @@ test('returns complete and not-required readiness states for a reviewable non-fu
       description: 'No rental equipment sizing is required.',
     },
   ]);
+});
+
+test('marks paid and partially paid deposit details complete when all required fields are recorded', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      deposits: [
+        {
+          id: 'deposit-1',
+          status: DepositStatus.PAID,
+          amount: makePositiveDecimal(),
+          currency: 'USD',
+          paidTo: 'Front desk',
+        },
+        {
+          id: 'deposit-2',
+          status: DepositStatus.PARTIALLY_PAID,
+          amount: makePositiveDecimal(),
+          currency: 'CNY',
+          paidTo: 'Sales desk',
+        },
+      ],
+    } as Partial<BookingDetailsItem>),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      {
+        label: 'Deposit details complete',
+        status: 'complete',
+        description: 'Payment details are recorded.',
+      },
+    ]),
+  );
+});
+
+test('keeps non-payment deposit statuses non-blocking without calling details complete', () => {
+  const readiness = getBookingReviewReadiness(
+    makeBooking({
+      deposits: [
+        {
+          id: 'deposit-1',
+          status: DepositStatus.PENDING,
+          amount: null,
+          currency: null,
+          paidTo: null,
+        },
+        {
+          id: 'deposit-2',
+          status: DepositStatus.WAIVED,
+          amount: null,
+          currency: null,
+          paidTo: null,
+        },
+        {
+          id: 'deposit-3',
+          status: DepositStatus.REFUNDED,
+          amount: null,
+          currency: null,
+          paidTo: null,
+        },
+      ],
+    } as Partial<BookingDetailsItem>),
+  );
+
+  expect(readiness).toEqual(
+    expect.arrayContaining([
+      {
+        label: 'Deposit details not required',
+        status: 'not required',
+        description:
+          'Recorded deposit statuses: Pending, Waived, and Refunded.',
+      },
+    ]),
+  );
 });
 
 test('omits review diving experience readiness when the booking has no fun dives', () => {
@@ -314,8 +388,9 @@ test('marks fun-dive experience, paid deposit info, and requested equipment sizi
         status: 'missing',
       }),
       expect.objectContaining({
-        label: 'Deposit info',
+        label: 'Deposit details incomplete',
         status: 'missing',
+        description: 'Missing payment details: currency and paid to.',
       }),
       expect.objectContaining({
         label: 'Equipment sizing',

@@ -4,12 +4,13 @@ import { ResubmitBookingForApprovalForm } from '@/components/bookings/booking-wo
 import { BookingStatusBadge } from '@/components/bookings/booking-status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getDepositReadiness } from '@/features/bookings/deposit-readiness';
 import { getActiveBookingParticipants } from '@/features/bookings/participants';
 import type { BookingDetailsItem } from '@/features/bookings/queries';
 import { summarizeBookingActivities } from '@/features/bookings/utils';
 import { formatDisplayDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { BookingStatus, DepositStatus } from '@/generated/prisma/enums';
+import { BookingStatus } from '@/generated/prisma/enums';
 import {
   ArrowLeft,
   CalendarDays,
@@ -88,29 +89,6 @@ function hasDivingExperienceForFunDive(booking: BookingDetailsItem) {
 }
 
 /**
- * Checks whether paid or partially paid deposits include their required payment fields.
- *
- * @param booking - Booking detail payload with deposit rows.
- * @returns True when no paid deposit is incomplete.
- */
-function hasCompletePaidDepositDetails(booking: BookingDetailsItem) {
-  return booking.deposits.every((deposit) => {
-    if (
-      deposit.status !== DepositStatus.PAID &&
-      deposit.status !== DepositStatus.PARTIALLY_PAID
-    ) {
-      return true;
-    }
-
-    return (
-      deposit.amount !== null &&
-      hasText(deposit.currency) &&
-      hasText(deposit.paidTo)
-    );
-  });
-}
-
-/**
  * Builds the display-only review readiness checklist for the sticky detail rail.
  *
  * @param booking - Booking detail payload.
@@ -129,6 +107,7 @@ function buildReviewReadinessItems(
     booking.activityType,
   );
   const includesFunDive = includesFunDiveActivity(activities);
+  const depositReadiness = getDepositReadiness(booking.deposits);
 
   const readinessItems: ReviewReadinessItem[] = [
     {
@@ -154,12 +133,9 @@ function buildReviewReadinessItems(
         : 'Add WeChat, WhatsApp, email, or phone',
     },
     {
-      label: 'Deposit details complete',
-      complete: hasCompletePaidDepositDetails(booking),
-      helperText:
-        booking.deposits.length === 0
-          ? 'No deposit on file.'
-          : 'Paid deposits include amount, currency, and recipient.',
+      label: depositReadiness.label,
+      complete: depositReadiness.status !== 'missing',
+      helperText: depositReadiness.description,
     },
   ];
 

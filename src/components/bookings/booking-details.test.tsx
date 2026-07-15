@@ -15,6 +15,7 @@ import {
   BookingCustomerRole,
   BookingParticipantStatus,
   BookingStatus,
+  DepositStatus,
   ScheduleAssignmentRole,
   ScheduleTimeSlot,
   UserRole,
@@ -369,6 +370,46 @@ function booking(
     activeParticipantCount: 1,
     ...overrides,
   } as BookingDetailsItem;
+}
+
+/**
+ * Creates the decimal-like positive amount needed by booking detail deposit tests.
+ *
+ * @returns A deposit amount supporting comparison and display operations.
+ */
+function positiveDepositAmount(): BookingDetailsItem['deposits'][number]['amount'] {
+  return {
+    gt: (value: number) => value === 0,
+    toString: () => '100',
+  } as unknown as BookingDetailsItem['deposits'][number]['amount'];
+}
+
+/**
+ * Builds a complete deposit record for booking detail component tests.
+ *
+ * @param overrides - Deposit fields to override for a readiness scenario.
+ * @returns Deposit data matching the booking detail component contract.
+ */
+function deposit(
+  overrides: Partial<BookingDetailsItem['deposits'][number]> = {},
+): BookingDetailsItem['deposits'][number] {
+  const timestamp = new Date('2026-07-01T08:00:00.000Z');
+
+  return {
+    id: 'deposit-1',
+    bookingRequestId: 'booking-1',
+    amount: null,
+    status: DepositStatus.PENDING,
+    currency: null,
+    paidTo: null,
+    paymentMethod: null,
+    dueAt: null,
+    paidAt: null,
+    notes: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    ...overrides,
+  };
 }
 
 /**
@@ -847,6 +888,52 @@ test('renders assignment controls for admin and manager users', () => {
   expect(screen.getByLabelText('Staff')).not.toBeNull();
   expect(screen.getByLabelText('Role')).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Add assignment' })).not.toBeNull();
+});
+
+test('shows deposit not required readiness when no deposit is recorded', () => {
+  renderBookingDetails();
+
+  expect(screen.getByText('Deposit not required')).not.toBeNull();
+  expect(screen.getAllByText('No deposit recorded.').length).toBeGreaterThan(0);
+  expect(screen.queryByText('Deposit details complete')).toBeNull();
+});
+
+test('shows complete readiness for a partially paid deposit with required details', () => {
+  renderBookingDetails({
+    booking: booking({
+      deposits: [
+        deposit({
+          status: DepositStatus.PARTIALLY_PAID,
+          amount: positiveDepositAmount(),
+          currency: 'USD',
+          paidTo: 'Front desk',
+        }),
+      ],
+    }),
+  });
+
+  expect(screen.getByText('Deposit details complete')).not.toBeNull();
+  expect(screen.getByText('Payment details are recorded.')).not.toBeNull();
+});
+
+test('shows incomplete readiness with missing paid deposit fields', () => {
+  renderBookingDetails({
+    booking: booking({
+      deposits: [
+        deposit({
+          status: DepositStatus.PAID,
+          amount: null,
+          currency: ' ',
+          paidTo: null,
+        }),
+      ],
+    }),
+  });
+
+  expect(screen.getByText('Deposit details incomplete')).not.toBeNull();
+  expect(
+    screen.getByText('Missing payment details: amount, currency, and paid to.'),
+  ).not.toBeNull();
 });
 
 test('renders all-days assignment action for multi-day booking detail schedule rows', () => {
