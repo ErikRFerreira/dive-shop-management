@@ -1,5 +1,6 @@
 import type { BookingListItem } from '@/features/bookings/queries';
 import { getActiveBookingParticipants } from '@/features/bookings/participants';
+import { BookingStatus } from '@/generated/prisma/enums';
 import {
   formatBookingHotel,
   formatBookingSchedule,
@@ -9,6 +10,50 @@ import {
   getBookingActivityLines,
   getStaffAssignmentLines,
 } from './booking-list-formatters';
+
+const NO_NEEDS_MORE_INFO_NOTE = 'No admin note provided.';
+
+/**
+ * Resolves the compact Admin request shown for a Needs More Info booking.
+ *
+ * @param booking - Booking list item containing workflow and legacy review notes.
+ * @returns The latest request, a legacy admin-note fallback, or null for other statuses.
+ */
+function getNeedsMoreInfoRequest(booking: BookingListItem) {
+  if (booking.status !== BookingStatus.NEEDS_MORE_INFO) {
+    return null;
+  }
+
+  return (
+    booking.needsMoreInfoReason?.trim() ||
+    booking.adminNotes?.trim() ||
+    NO_NEEDS_MORE_INFO_NOTE
+  );
+}
+
+/**
+ * Renders the compact Admin request metadata for a Needs More Info booking.
+ *
+ * @param booking - Booking list item whose current status controls visibility.
+ * @returns A two-line request preview, or null when the booking has another status.
+ */
+function renderNeedsMoreInfoRequest(booking: BookingListItem) {
+  const request = getNeedsMoreInfoRequest(booking);
+
+  if (!request) {
+    return null;
+  }
+
+  return (
+    <p
+      className="line-clamp-2 text-xs leading-relaxed text-muted-foreground"
+      title={request}
+    >
+      <span className="font-medium text-foreground">Needs more info:</span>{' '}
+      {request}
+    </p>
+  );
+}
 
 /**
  * Returns active booking participants with the display customer first.
@@ -81,7 +126,8 @@ export function renderBookingSummary(booking: BookingListItem) {
 }
 
 /**
- * Renders the activity and schedule column with each activity on its own line.
+ * Renders the activity and schedule column with each activity on its own line
+ * and the current Admin request when the booking needs more information.
  *
  * @param booking - Booking list item with activity and schedule data.
  * @returns A compact activity/schedule summary for the table.
@@ -97,6 +143,7 @@ export function renderActivitySchedule(booking: BookingListItem) {
       <div className="text-sm text-muted-foreground">
         {formatBookingSchedule(booking)}
       </div>
+      {renderNeedsMoreInfoRequest(booking)}
     </div>
   );
 }
