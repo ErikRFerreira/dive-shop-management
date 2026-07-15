@@ -16,15 +16,25 @@ const initialLoginActionState: LoginActionState = {};
 
 type LoginFormProps = {
   redirectTo?: string | null;
+  email: string;
+  password: string;
+  onEmailChange: (email: string) => void;
+  onPasswordChange: (password: string) => void;
 };
 
 /**
  * Renders the login form connected to the credentials authentication action.
  *
- * @param props - Optional prevalidated destination to carry through login.
+ * @param props - Controlled credentials and optional prevalidated destination.
  * @returns The existing login UI with validation, pending, and error states.
  */
-export default function LoginForm({ redirectTo }: LoginFormProps) {
+export default function LoginForm({
+  redirectTo,
+  email,
+  password,
+  onEmailChange,
+  onPasswordChange,
+}: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(
     loginWithCredentials,
@@ -47,6 +57,8 @@ export default function LoginForm({ redirectTo }: LoginFormProps) {
           id="email"
           name="email"
           type="email"
+          value={email}
+          onChange={(event) => onEmailChange(event.target.value)}
           autoComplete="email"
           placeholder="you@bluerevival.dive"
           required
@@ -68,6 +80,8 @@ export default function LoginForm({ redirectTo }: LoginFormProps) {
             id="password"
             name="password"
             type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
             autoComplete="current-password"
             placeholder="Enter your password"
             required

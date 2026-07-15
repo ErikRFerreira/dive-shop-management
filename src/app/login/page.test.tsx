@@ -16,9 +16,25 @@ vi.mock('next/navigation', () => ({
   redirect: mocks.redirect,
 }));
 
-vi.mock('@/components/login/login-form', () => ({
-  default: ({ redirectTo }: { redirectTo?: string | null }) => (
-    <div data-redirect-to={redirectTo ?? ''}>Login form</div>
+vi.mock('@/components/login/login-experience', () => ({
+  default: ({
+    redirectTo,
+    demoPassword,
+  }: {
+    redirectTo?: string | null;
+    demoPassword?: string;
+  }) => (
+    <>
+      <div data-redirect-to={redirectTo ?? ''}>Login form</div>
+      {demoPassword ? (
+        <div>
+          <p>Demo accounts</p>
+          <span>admin@diveshop.local</span>
+          <span>cs@diveshop.local</span>
+          <span>erik@diveshop.local</span>
+        </div>
+      ) : null}
+    </>
   ),
 }));
 
@@ -96,6 +112,7 @@ test('passes only a validated destination to the login form', async () => {
 
 test('renders seeded account emails without a password in development', async () => {
   vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('SEED_USER_PASSWORD', 'password123');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 

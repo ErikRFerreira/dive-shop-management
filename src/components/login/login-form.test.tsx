@@ -16,7 +16,7 @@ vi.mock('@/features/auth/actions', () => ({
   loginWithCredentials: mocks.loginWithCredentials,
 }));
 
-import LoginForm from './login-form';
+import LoginExperience from './login-experience';
 
 beforeEach(() => {
   mocks.loginWithCredentials.mockReset();
@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 test('keeps browser validation and removes temporary login controls', () => {
-  render(<LoginForm />);
+  render(<LoginExperience />);
 
   const email = screen.getByLabelText('Email') as HTMLInputElement;
   const password = screen.getByLabelText('Password') as HTMLInputElement;
@@ -43,7 +43,7 @@ test('keeps browser validation and removes temporary login controls', () => {
 });
 
 test('carries a validated callback destination in the login form', () => {
-  render(<LoginForm redirectTo="/bookings?status=PENDING_APPROVAL" />);
+  render(<LoginExperience redirectTo="/bookings?status=PENDING_APPROVAL" />);
 
   const callbackInput = document.querySelector(
     'input[name="callbackUrl"]',
@@ -61,7 +61,7 @@ test('renders accessible field and authentication errors returned by the action'
     },
     formError: 'Invalid email or password.',
   });
-  render(<LoginForm />);
+  render(<LoginExperience />);
 
   fireEvent.submit(screen.getByRole('button', { name: 'Sign in' }).closest('form')!);
 
@@ -83,7 +83,7 @@ test('shows a disabled pending state while preventing duplicate submissions', as
         resolveAction = resolve;
       }),
   );
-  render(<LoginForm />);
+  render(<LoginExperience />);
 
   fireEvent.change(screen.getByLabelText('Email'), {
     target: { value: 'admin@example.test' },
@@ -106,4 +106,27 @@ test('shows a disabled pending state while preventing duplicate submissions', as
   await waitFor(() => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
   });
+});
+
+test.each([
+  ['Admin', 'admin@diveshop.local'],
+  ['Customer Service', 'cs@diveshop.local'],
+  ['Instructor', 'erik@diveshop.local'],
+])('fills the %s development account credentials', (role, expectedEmail) => {
+  render(<LoginExperience demoPassword="local-demo-password" />);
+
+  fireEvent.click(screen.getByRole('button', { name: `Use ${role} demo account` }));
+
+  expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(
+    expectedEmail,
+  );
+  expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe(
+    'local-demo-password',
+  );
+});
+
+test('does not render development account controls without a demo password', () => {
+  render(<LoginExperience />);
+
+  expect(screen.queryByText('Demo accounts')).toBeNull();
 });

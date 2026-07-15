@@ -1,19 +1,11 @@
-import { redirect } from 'next/navigation';
-
 import AuthShell from '@/components/login/auth-shell';
-import LoginForm from '@/components/login/login-form';
+import LoginExperience from '@/components/login/login-experience';
 import { getCurrentUser } from '@/features/auth/current-user';
 import {
   getDefaultLandingPath,
   validateInternalRedirectDestination,
 } from '@/features/auth/redirects';
-
-/** Demo accounts surfaced for an internal tool as muted helper content. */
-const demoAccounts = [
-  { role: 'Admin', email: 'admin@diveshop.local' },
-  { role: 'Customer Service', email: 'cs@diveshop.local' },
-  { role: 'Instructor', email: 'erik@diveshop.local' },
-];
+import { redirect } from 'next/navigation';
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -43,36 +35,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     );
   }
 
+  // DEVELOPMENT ONLY: this password is sent to the browser to fill local demo
+  // credentials. The environment guard must remain so it is never exposed in
+  // a production response.
+  const demoPassword =
+    process.env.NODE_ENV === 'development'
+      ? process.env.SEED_USER_PASSWORD
+      : undefined;
+
   return (
     <AuthShell
       title="Welcome back"
       description="Sign in to access Blue Revival Dive Ops."
-      footer={
-        process.env.NODE_ENV === 'development' ? (
-          <div className="mt-8 rounded-xl border border-border bg-muted/40 p-4">
-            <p className="text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase">
-              Demo accounts
-            </p>
-            <ul className="mt-3 flex flex-col gap-2">
-              {demoAccounts.map((account) => (
-                <li
-                  key={account.role}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <span className="font-medium text-foreground">
-                    {account.role}
-                  </span>
-                  <span className="truncate font-mono text-xs text-muted-foreground">
-                    {account.email}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : undefined
-      }
     >
-      <LoginForm redirectTo={redirectDestination} />
+      <LoginExperience
+        redirectTo={redirectDestination}
+        demoPassword={demoPassword}
+      />
     </AuthShell>
   );
 }
