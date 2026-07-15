@@ -18,6 +18,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 import { authorizeCredentials, credentialsSchema } from './credentials';
+import { UserRole } from '@/generated/prisma/enums';
 
 const persistedUser = {
   id: 'user-1',
@@ -25,6 +26,7 @@ const persistedUser = {
   email: 'admin@example.test',
   passwordHash: 'persisted-password-hash',
   isActive: true,
+  role: UserRole.ADMIN,
 };
 
 beforeEach(() => {
@@ -53,6 +55,7 @@ test('normalizes email and returns only safe user fields for valid credentials',
       email: true,
       passwordHash: true,
       isActive: true,
+      role: true,
     },
   });
   expect(mocks.verifyPassword).toHaveBeenCalledWith(
@@ -120,4 +123,38 @@ test('rejects an invalid password with the generic null result', async () => {
       password: 'incorrect-password',
     }),
   ).resolves.toBeNull();
+});
+
+test('rejects an active divemaster before password verification', async () => {
+  mocks.findUnique.mockResolvedValue({
+    ...persistedUser,
+    role: UserRole.DIVEMASTER,
+  });
+
+  await expect(
+    authorizeCredentials({
+      email: 'divemaster@example.test',
+      password: 'correct-password',
+    }),
+  ).resolves.toBeNull();
+
+  expect(mocks.verifyPassword).not.toHaveBeenCalled();
+});
+
+test('continues to authorize an active instructor', async () => {
+  mocks.findUnique.mockResolvedValue({
+    ...persistedUser,
+    role: UserRole.INSTRUCTOR,
+  });
+
+  await expect(
+    authorizeCredentials({
+      email: 'instructor@example.test',
+      password: 'correct-password',
+    }),
+  ).resolves.toEqual({
+    id: persistedUser.id,
+    name: persistedUser.name,
+    email: persistedUser.email,
+  });
 });

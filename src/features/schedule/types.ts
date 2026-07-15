@@ -30,6 +30,18 @@ export type AssignableStaff = {
   role: UserRole;
 };
 
+/** Minimal active staff metadata used by read-only schedule filters. */
+export type ScheduleStaffFilterOption = Pick<
+  AssignableStaff,
+  'id' | 'name' | 'role'
+>;
+
+/** Assigned staff metadata safe for every global schedule viewer. */
+export type ScheduleAssignedStaff = {
+  name: string;
+  role: ScheduleAssignmentRole;
+};
+
 /** Staff assignment attached to a scheduled activity. */
 export type ScheduleAssignmentDetail = {
   id: string;
@@ -41,14 +53,9 @@ export type ScheduleAssignmentDetail = {
 
 /** Activity detail included with each personal assignment row. */
 export type MyScheduleAssignmentActivity = {
-  id: string;
   activityType: ActivityType | null;
   activityLabel: string | null;
   specialtyCourse: string | null;
-  requestedDate: Date | null;
-  requestedTime: string | null;
-  requestedTimeSlot: ScheduleTimeSlot;
-  notes: string | null;
 };
 
 /** Customer or diver attached to a scheduled booking for compact display. */
@@ -62,11 +69,8 @@ export type ScheduleBookingCustomerDisplay = {
 /** Read-only schedule item assigned to the current staff user. */
 export type MyScheduleAssignment = {
   scheduleItemId: string;
-  bookingId: string;
   date: Date;
   timeSlot: ScheduleTimeSlot;
-  startTime: string | null;
-  endTime: string | null;
   isTimeTbd: boolean;
   activityType: ActivityType;
   activityLabel: string;
@@ -147,26 +151,6 @@ export type ScheduleDateGroup = {
   items: SchedulePageItem[];
 };
 
-/** Activity detail included with each schedule calendar event. */
-export type ScheduleCalendarActivity = {
-  id: string;
-  activityType: ActivityType | null;
-  activityLabel: string | null;
-  specialtyCourse: string | null;
-  requestedDate: Date | null;
-  requestedTime: string | null;
-  requestedTimeSlot: ScheduleTimeSlot;
-  notes: string | null;
-};
-
-/** Serialized activity detail safe to pass into client schedule components. */
-export type SerializedScheduleCalendarActivity = Omit<
-  ScheduleCalendarActivity,
-  'requestedDate'
-> & {
-  requestedDate: string | null;
-};
-
 /** Feature-specific event data prepared for the schedule calendar UI. */
 export type ScheduleCalendarEvent = {
   id: string;
@@ -174,37 +158,30 @@ export type ScheduleCalendarEvent = {
   start: string;
   end: string | null;
   allDay: boolean;
-  bookingId: string;
-  bookingReference: string;
+  bookingId?: string;
   scheduleItemId: string;
   date: Date;
   timeSlot: ScheduleTimeSlot;
-  startTime: string | null;
-  endTime: string | null;
   activityType: ActivityType;
   activityLabel: string;
   activitySummary: string;
   dayNumber: number | null;
   totalDays: number;
   dayLabel: string | null;
-  activities: ScheduleCalendarActivity[];
   primaryCustomerName: string | null;
   customers: ScheduleBookingCustomerDisplay[];
   /** Active operational participant count derived from booking/customer rows. */
   numberOfPeople: number | null;
   hotel: string | null;
-  source: BookingSource | null;
-  referrerName: string | null;
-  notes: string | null;
-  assignments: ScheduleAssignmentDetail[];
+  source?: BookingSource | null;
+  referrerName?: string | null;
+  scheduleNotes: string | null;
+  assignments: ScheduleAssignedStaff[];
+  managementAssignments?: ScheduleAssignmentDetail[];
   isTimeTbd: boolean;
 };
 
 /** Serialized schedule event safe to pass across the Server/Client boundary. */
-export type SerializedScheduleCalendarEvent = Omit<
-  ScheduleCalendarEvent,
-  'activities' | 'date'
-> & {
-  activities: SerializedScheduleCalendarActivity[];
+export type SerializedScheduleCalendarEvent = Omit<ScheduleCalendarEvent, 'date'> & {
   date: string;
 };

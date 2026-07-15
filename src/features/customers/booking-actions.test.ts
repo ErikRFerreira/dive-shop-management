@@ -75,7 +75,10 @@ test('searches booking customers with route access and serializable dates', asyn
     { id: 'user-1', role: 'CUSTOMER_SERVICE' },
     'bookings',
   );
-  expect(mocks.searchCustomers).toHaveBeenCalledWith(' maria ');
+  expect(mocks.searchCustomers).toHaveBeenCalledWith(
+    { id: 'user-1', role: 'CUSTOMER_SERVICE' },
+    ' maria ',
+  );
 });
 
 test('forwards duplicate input and serializes duplicate match dates', async () => {

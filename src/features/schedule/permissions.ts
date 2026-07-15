@@ -6,6 +6,10 @@
 
 import { UserRole } from '@/generated/prisma/enums';
 import type { CurrentUser } from '@/lib/current-user';
+import {
+  canAccessInstructorAssignments,
+  canManageAssignments,
+} from '@/features/auth/permissions';
 
 /**
  * Determines whether the current user can manage scheduled activity assignments.
@@ -16,21 +20,19 @@ import type { CurrentUser } from '@/lib/current-user';
 export function canManageScheduleAssignments(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return (
-    currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER
-  );
+  return canManageAssignments(currentUser);
 }
 
 /**
  * Determines whether the current user can view their own assigned schedule work.
  *
  * @param currentUser - The authenticated user's role.
- * @returns True for operational instructor and divemaster users.
+ * @returns True only for instructors with platform access.
  */
 export function canViewMyScheduleAssignments(
   currentUser: Pick<CurrentUser, 'role'>,
 ) {
-  return isAssignableStaffRole(currentUser.role);
+  return canAccessInstructorAssignments(currentUser);
 }
 
 /**

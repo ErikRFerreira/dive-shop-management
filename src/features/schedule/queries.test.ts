@@ -37,9 +37,11 @@ import {
   getMyScheduleAssignmentBriefing,
   getMyScheduleAssignments,
   getScheduleItemsForCalendar,
+  getScheduleStaffFilterOptions,
   getScheduledBookingsForSchedulePage,
   mapScheduleItemsToCalendarEvents,
 } from '@/features/schedule/queries';
+import { serializeScheduleCalendarEvents } from '@/features/schedule/utils';
 
 const adminUser = {
   id: 'admin-1',
@@ -183,6 +185,44 @@ test('queries calendar items with the official scheduled booking filter', async 
     mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
       .select.customer.select.chineseName,
   ).toBe(true);
+  expect(mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select).toEqual(
+    expect.objectContaining({
+      id: true,
+      source: true,
+      referrerName: true,
+      internalNotes: true,
+    }),
+  );
+  expect(
+    mocks.findMany.mock.calls[0]?.[0]?.select.assignments.select.user.select,
+  ).toEqual(
+    expect.objectContaining({
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    }),
+  );
+});
+
+test('keeps customer service schedule visibility global without management staff data', async () => {
+  mocks.findMany.mockResolvedValue([]);
+
+  await getScheduleItemsForCalendar(customerServiceUser);
+
+  const query = mocks.findMany.mock.calls[0]?.[0];
+  expect(query.where).toEqual({
+    bookingRequest: { status: BookingStatus.SCHEDULED },
+  });
+  expect(query.select.bookingRequest.select).toEqual(
+    expect.objectContaining({
+      id: true,
+      source: true,
+      referrerName: true,
+      internalNotes: true,
+    }),
+  );
+  expect(query.select.assignments.select.user.select).toEqual({ name: true });
 });
 
 test('keeps cancelled bookings out of active calendar queries', async () => {
@@ -498,7 +538,7 @@ test('queries calendar items with combined schedule filters', async () => {
 test('queries active instructors and divemasters as assignable staff', async () => {
   mocks.findManyUsers.mockResolvedValue([]);
 
-  await getAssignableStaff();
+  await getAssignableStaff(adminUser);
 
   expect(mocks.findManyUsers).toHaveBeenCalledWith({
     where: {
@@ -515,6 +555,150 @@ test('queries active instructors and divemasters as assignable staff', async () 
     },
     orderBy: [{ name: 'asc' }, { email: 'asc' }],
   });
+});
+
+test('selects and serializes only instructor-safe schedule fields', async () => {
+  mocks.findMany.mockResolvedValue([
+    {
+      id: 'schedule-instructor-1',
+      date: new Date('2026-07-14T00:00:00.000Z'),
+      timeSlot: ScheduleTimeSlot.AM,
+      activityType: ActivityType.FUN_DIVE,
+      dayNumber: 1,
+      totalDays: 1,
+      scheduleNotes: 'Meet at the shop.',
+      bookingActivity: {
+        activityType: ActivityType.FUN_DIVE,
+        specialtyCourse: null,
+      },
+      assignments: [
+        {
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+          user: { name: 'Inez Instructor' },
+        },
+      ],
+      bookingRequest: {
+        activities: [
+          {
+            activityType: ActivityType.FUN_DIVE,
+            specialtyCourse: null,
+          },
+        ],
+        customers: [
+          {
+            role: BookingCustomerRole.PRIMARY_CONTACT,
+            participationStatus: BookingParticipantStatus.ACTIVE,
+            hotelAtBooking: 'Ocean View',
+            customer: {
+              fullName: 'Maria Santos',
+              chineseName: null,
+              firstName: null,
+              lastName: null,
+              hotel: null,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const events = await getScheduleItemsForCalendar(instructorUser);
+  const select = mocks.findMany.mock.calls[0]?.[0]?.select;
+  const serialized = serializeScheduleCalendarEvents(events);
+  const selectedFields = JSON.stringify(select);
+  const serializedPayload = JSON.stringify(serialized);
+
+  for (const prohibitedField of [
+    'internalNotes',
+    'source',
+    'referrerName',
+    'email',
+    'notes',
+    'userId',
+    'bookingRequestId',
+    'requestedDate',
+    'requestedTime',
+    'requestedTimeSlot',
+  ]) {
+    expect(selectedFields).not.toContain(`\"${prohibitedField}\"`);
+    expect(serializedPayload).not.toContain(`\"${prohibitedField}\"`);
+  }
+
+  expect(serialized).toEqual([
+    expect.objectContaining({
+      id: 'schedule-instructor-1',
+      scheduleItemId: 'schedule-instructor-1',
+      date: '2026-07-14T00:00:00.000Z',
+      scheduleNotes: 'Meet at the shop.',
+      assignments: [
+        {
+          name: 'Inez Instructor',
+          role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
+        },
+      ],
+    }),
+  ]);
+  expect(serialized[0]).not.toHaveProperty('bookingId');
+  expect(serialized[0]).not.toHaveProperty('managementAssignments');
+  expect(Object.keys(serialized[0] ?? {}).sort()).toEqual(
+    [
+      'activityLabel',
+      'activitySummary',
+      'activityType',
+      'allDay',
+      'assignments',
+      'customers',
+      'date',
+      'dayLabel',
+      'dayNumber',
+      'end',
+      'hotel',
+      'id',
+      'isTimeTbd',
+      'numberOfPeople',
+      'primaryCustomerName',
+      'scheduleItemId',
+      'scheduleNotes',
+      'start',
+      'timeSlot',
+      'title',
+      'totalDays',
+    ].sort(),
+  );
+  expect(Object.keys(serialized[0]?.assignments[0] ?? {}).sort()).toEqual([
+    'name',
+    'role',
+  ]);
+});
+
+test('enforces management authorization for rich assignable staff data', async () => {
+  await expect(getAssignableStaff(customerServiceUser)).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
+  await expect(getAssignableStaff(instructorUser)).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
+
+  expect(mocks.findManyUsers).not.toHaveBeenCalled();
+});
+
+test('returns minimal schedule staff filters to instructors without email', async () => {
+  mocks.findManyUsers.mockResolvedValue([]);
+
+  await getScheduleStaffFilterOptions(instructorUser);
+
+  expect(mocks.findManyUsers).toHaveBeenCalledWith(
+    expect.objectContaining({
+      select: {
+        id: true,
+        name: true,
+        role: true,
+      },
+    }),
+  );
+  expect(mocks.findManyUsers.mock.calls[0]?.[0]?.select).not.toHaveProperty(
+    'email',
+  );
 });
 
 test('queries my assignments with scheduled status and current user assignment filter', async () => {
@@ -546,6 +730,27 @@ test('queries my assignments with scheduled status and current user assignment f
     mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
       .select.customer.select.chineseName,
   ).toBe(true);
+  expect(mocks.findMany.mock.calls[0]?.[0]?.select.assignments).toEqual({
+    where: { userId: instructorUser.id },
+    select: { role: true },
+    take: 1,
+  });
+  const personalSelect = JSON.stringify(mocks.findMany.mock.calls[0]?.[0]?.select);
+  for (const unusedField of [
+    'bookingRequestId',
+    'startTime',
+    'endAt',
+    'requestedDate',
+    'requestedTime',
+    'requestedTimeSlot',
+    'internalNotes',
+    'email',
+  ]) {
+    expect(personalSelect).not.toContain(`\"${unusedField}\"`);
+  }
+  expect(mocks.findMany.mock.calls[0]?.[0]?.select).not.toHaveProperty(
+    'createdAt',
+  );
 });
 
 test('keeps cancelled bookings out of personal assignment queries', async () => {
@@ -574,48 +779,29 @@ test('keeps cancelled bookings out of personal assignment queries', async () => 
   );
 });
 
-test('queries divemaster assignments with the current user assignment filter', async () => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date('2026-07-14T08:00:00.000Z'));
-  mocks.findMany.mockResolvedValue([]);
+test('rejects divemaster personal assignment queries', async () => {
+  await expect(getMyScheduleAssignments(divemasterUser)).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
 
-  await getMyScheduleAssignments(divemasterUser);
-
-  expect(mocks.findMany).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: {
-        bookingRequest: {
-          status: BookingStatus.SCHEDULED,
-        },
-        date: {
-          gte: new Date('2026-07-14T00:00:00.000Z'),
-        },
-        assignments: {
-          some: {
-            userId: divemasterUser.id,
-          },
-        },
-      },
-      orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }, { createdAt: 'asc' }],
-    }),
-  );
-  expect(
-    mocks.findMany.mock.calls[0]?.[0]?.select.bookingRequest.select.customers
-      .select.customer.select.chineseName,
-  ).toBe(true);
+  expect(mocks.findMany).not.toHaveBeenCalled();
 });
 
 test('does not query my assignments for unauthorized customer service users', async () => {
-  await expect(getMyScheduleAssignments(customerServiceUser)).resolves.toEqual([]);
+  await expect(
+    getMyScheduleAssignments(customerServiceUser),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
 
   expect(mocks.findMany).not.toHaveBeenCalled();
 });
 
 test('does not query my assignments for admin or manager users', async () => {
-  await expect(getMyScheduleAssignments(adminUser)).resolves.toEqual([]);
+  await expect(getMyScheduleAssignments(adminUser)).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
   await expect(
     getMyScheduleAssignments({ ...adminUser, role: UserRole.MANAGER }),
-  ).resolves.toEqual([]);
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
 
   expect(mocks.findMany).not.toHaveBeenCalled();
 });
@@ -637,13 +823,6 @@ test('maps my assignments with the current user role from multiple assignments',
       bookingActivity: null,
       assignments: [
         {
-          id: 'assignment-other',
-          userId: 'divemaster-1',
-          role: ScheduleAssignmentRole.DIVEMASTER,
-        },
-        {
-          id: 'assignment-current',
-          userId: instructorUser.id,
           role: ScheduleAssignmentRole.LEAD_INSTRUCTOR,
         },
       ],
@@ -720,11 +899,8 @@ test('maps my assignments with the current user role from multiple assignments',
   await expect(getMyScheduleAssignments(instructorUser)).resolves.toEqual([
     {
       scheduleItemId: 'schedule-1',
-      bookingId: 'booking-1',
       date: scheduleDate,
       timeSlot: ScheduleTimeSlot.TBD,
-      startTime: null,
-      endTime: null,
       isTimeTbd: true,
       activityType: ActivityType.FUN_DIVE,
       activityLabel: 'Fun Dive',
@@ -734,24 +910,14 @@ test('maps my assignments with the current user role from multiple assignments',
       dayLabel: null,
       activities: [
         {
-          id: 'activity-1',
           activityType: ActivityType.FUN_DIVE,
           activityLabel: 'Fun Dive',
           specialtyCourse: null,
-          requestedDate: scheduleDate,
-          requestedTime: '08:00',
-          requestedTimeSlot: ScheduleTimeSlot.TBD,
-          notes: 'Two tanks.',
         },
         {
-          id: 'activity-2',
           activityType: ActivityType.SNORKELING,
           activityLabel: 'Snorkeling',
           specialtyCourse: null,
-          requestedDate: scheduleDate,
-          requestedTime: '10:00',
-          requestedTimeSlot: ScheduleTimeSlot.TBD,
-          notes: null,
         },
       ],
       primaryCustomerName: 'Maria Santos',
@@ -1012,28 +1178,16 @@ test('queries my assignment briefing with date buckets, upcoming cap, and total 
 test('does not query my assignment briefing for unauthorized users', async () => {
   await expect(
     getMyScheduleAssignmentBriefing(customerServiceUser),
-  ).resolves.toEqual({
-    todayAssignments: [],
-    tomorrowAssignments: [],
-    upcomingAssignments: [],
-    upcomingLimit: 20,
-    summary: {
-      todayCount: 0,
-      tomorrowCount: 0,
-      upcomingCount: 0,
-      nextAssignment: null,
-    },
-  });
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
 
   expect(mocks.findMany).not.toHaveBeenCalled();
   expect(mocks.count).not.toHaveBeenCalled();
 });
 
-test('scopes customer service schedule rows to their own bookings', () => {
+test('gives customer service the global scheduled booking scope', () => {
   expect(buildSchedulePageWhere(customerServiceUser)).toEqual({
     bookingRequest: {
       status: BookingStatus.SCHEDULED,
-      createdById: customerServiceUser.id,
     },
   });
 });
@@ -1367,30 +1521,15 @@ test('maps timed schedule rows into calendar events', () => {
       end: null,
       allDay: true,
       bookingId: 'booking-1',
-      bookingReference: 'booking-1',
       scheduleItemId: 'schedule-1',
       date: scheduleDate,
       timeSlot: ScheduleTimeSlot.TBD,
-      startTime: null,
-      endTime: null,
       activityType: ActivityType.FUN_DIVE,
       activityLabel: 'Fun Dive',
       activitySummary: 'Fun Dive',
       dayNumber: 1,
       totalDays: 1,
       dayLabel: null,
-      activities: [
-        {
-          id: 'activity-1',
-          activityType: ActivityType.FUN_DIVE,
-          activityLabel: 'Fun Dive',
-          specialtyCourse: null,
-          requestedDate: scheduleDate,
-          requestedTime: '08:00',
-          requestedTimeSlot: ScheduleTimeSlot.TBD,
-          notes: 'Two-tank trip.',
-        },
-      ],
       primaryCustomerName: 'Anchie',
       customers: [
         {
@@ -1404,8 +1543,14 @@ test('maps timed schedule rows into calendar events', () => {
       hotel: 'Primary Booking Hotel',
       source: BookingSource.WECHAT,
       referrerName: 'Lina',
-      notes: 'Bring cash for marine park fees.',
+      scheduleNotes: 'Bring cash for marine park fees.',
       assignments: [
+        {
+          name: 'Dina Divemaster',
+          role: ScheduleAssignmentRole.DIVEMASTER,
+        },
+      ],
+      managementAssignments: [
         {
           id: 'assignment-1',
           userId: 'divemaster-1',
@@ -1476,8 +1621,6 @@ test('maps no-time schedule rows into TBD all-day calendar events', () => {
       start: '2026-07-15',
       end: null,
       allDay: true,
-      startTime: null,
-      endTime: null,
       activityLabel: 'Open Water',
       activitySummary: 'Open Water',
       dayNumber: 1,

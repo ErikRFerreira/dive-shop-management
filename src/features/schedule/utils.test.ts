@@ -60,11 +60,8 @@ function myAssignment(
 ): MyScheduleAssignment {
   return {
     scheduleItemId: 'schedule-1',
-    bookingId: 'booking-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
     timeSlot: ScheduleTimeSlot.TBD,
-    startTime: null,
-    endTime: null,
     isTimeTbd: true,
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
@@ -130,12 +127,10 @@ test('groups my schedule assignments into today tomorrow and upcoming buckets', 
       }),
       myAssignment({
         scheduleItemId: 'tomorrow',
-        bookingId: 'booking-2',
         date: new Date('2026-07-15T00:00:00.000Z'),
       }),
       myAssignment({
         scheduleItemId: 'upcoming',
-        bookingId: 'booking-3',
         date: new Date('2026-07-16T00:00:00.000Z'),
       }),
     ],
@@ -163,7 +158,6 @@ test('groups my schedule assignments by the shop timezone day', () => {
       }),
       myAssignment({
         scheduleItemId: 'tomorrow',
-        bookingId: 'booking-2',
         date: new Date('2026-07-16T00:00:00.000Z'),
       }),
     ],
@@ -177,7 +171,7 @@ test('preserves my assignment order inside each bucket', () => {
   const groups = groupMyScheduleAssignmentsByDay(
     [
       myAssignment({ scheduleItemId: 'first' }),
-      myAssignment({ scheduleItemId: 'second', bookingId: 'booking-2' }),
+      myAssignment({ scheduleItemId: 'second' }),
     ],
     new Date('2026-07-14T09:30:00.000Z'),
   );
@@ -197,30 +191,15 @@ test('serializes calendar event date fields for client props', () => {
     end: '2026-07-14T12:00:00',
     allDay: false,
     bookingId: 'booking-1',
-    bookingReference: 'BOOK-1',
     scheduleItemId: 'schedule-1',
     date: new Date('2026-07-14T00:00:00.000Z'),
     timeSlot: ScheduleTimeSlot.AM,
-    startTime: '08:00',
-    endTime: '12:00',
     activityType: ActivityType.FUN_DIVE,
     activityLabel: 'Fun Dive',
     activitySummary: 'Fun Dive',
     dayNumber: 1,
     totalDays: 1,
     dayLabel: null,
-    activities: [
-      {
-        id: 'activity-1',
-        activityType: ActivityType.FUN_DIVE,
-        activityLabel: 'Fun Dive',
-        specialtyCourse: null,
-        requestedDate: new Date('2026-07-14T00:00:00.000Z'),
-        requestedTime: '08:00',
-        requestedTimeSlot: ScheduleTimeSlot.AM,
-        notes: 'Two tanks.',
-      },
-    ],
     primaryCustomerName: 'Maria Santos',
     customers: [
       {
@@ -234,20 +213,16 @@ test('serializes calendar event date fields for client props', () => {
     hotel: 'Ocean View',
     source: BookingSource.WECHAT,
     referrerName: 'Lina',
-    notes: 'Bring cash.',
+    scheduleNotes: 'Bring cash.',
     assignments: [],
     isTimeTbd: false,
   };
 
   expect(serializeScheduleCalendarEvents([event])).toEqual([
-    expect.objectContaining({
+    {
+      ...event,
       date: '2026-07-14T00:00:00.000Z',
-      activities: [
-        expect.objectContaining({
-          requestedDate: '2026-07-14T00:00:00.000Z',
-        }),
-      ],
-    }),
+    },
   ]);
 });
 

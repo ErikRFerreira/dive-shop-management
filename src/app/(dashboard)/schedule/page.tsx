@@ -12,6 +12,7 @@ import { canManageScheduleAssignments } from '@/features/schedule/permissions';
 import {
   getAssignableStaff,
   getScheduleItemsForCalendar,
+  getScheduleStaffFilterOptions,
 } from '@/features/schedule/queries';
 import type { ScheduleFilters as ScheduleFiltersValue } from '@/features/schedule/types';
 import { UserRole } from '@/generated/prisma/enums';
@@ -43,7 +44,10 @@ async function SchedulePage({
     scheduleFilters,
   );
   const scheduleEvents = serializeScheduleCalendarEvents(scheduleItems);
-  const assignableStaff = await getAssignableStaff();
+  const [assignableStaff, staffFilterOptions] = await Promise.all([
+    canManageAssignments ? getAssignableStaff(currentUser) : Promise.resolve([]),
+    getScheduleStaffFilterOptions(currentUser),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -53,15 +57,15 @@ async function SchedulePage({
       />
 
       <SchedulePageShell
-        assignableStaff={assignableStaff}
         filters={scheduleFilters}
+        staffFilterOptions={staffFilterOptions}
       >
         {scheduleEvents.length === 0 ? (
           <ScheduleEmptyState filters={scheduleFilters} />
         ) : null}
 
         <ScheduleCalendar
-          assignableStaff={canManageAssignments ? assignableStaff : []}
+          assignableStaff={assignableStaff}
           canManageAssignments={canManageAssignments}
           canViewBookingDetails={canViewBookingDetails}
           events={scheduleEvents}

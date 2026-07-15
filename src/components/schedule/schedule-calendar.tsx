@@ -186,7 +186,7 @@ function isSerializedScheduleCalendarEvent(
   return (
     typeof value === 'object' &&
     value !== null &&
-    'bookingId' in value &&
+    'id' in value &&
     'scheduleItemId' in value
   );
 }

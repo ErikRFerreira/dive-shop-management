@@ -22,7 +22,7 @@ async function CustomerDetailsPage({ params }: CustomerDetailsPageProps) {
   requireDashboardRouteAccess(currentUser, 'customers');
 
   const { id } = await params;
-  const customer = await getCustomerDetail(id);
+  const customer = await getCustomerDetail(currentUser, id);
 
   if (!customer) {
     notFound();

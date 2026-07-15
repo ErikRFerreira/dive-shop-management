@@ -1,4 +1,11 @@
-import { UserRole } from '@/generated/prisma/enums';
+import {
+  canAccessBookings,
+  canAccessCustomers,
+  canAccessGlobalSchedule,
+  canAccessInstructorAssignments,
+  canAccessPlatform,
+  canAccessSettings,
+} from '@/features/auth/permissions';
 import type { CurrentUser } from '@/lib/current-user';
 import {
   LayoutDashboard,
@@ -22,7 +29,7 @@ type DashboardRoute = {
   href: string;
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  allowedRoles: readonly UserRole[];
+  canAccess: (currentUser: Pick<CurrentUser, 'role'>) => boolean;
 };
 
 export const dashboardRoutes: readonly DashboardRoute[] = [
@@ -31,53 +38,42 @@ export const dashboardRoutes: readonly DashboardRoute[] = [
     href: '/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
-    allowedRoles: [
-      UserRole.ADMIN,
-      UserRole.MANAGER,
-      UserRole.CUSTOMER_SERVICE,
-      UserRole.INSTRUCTOR,
-      UserRole.DIVEMASTER,
-    ],
+    canAccess: canAccessPlatform,
   },
   {
     key: 'bookings',
     href: '/bookings',
     label: 'Bookings',
     icon: ClipboardList,
-    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
+    canAccess: canAccessBookings,
   },
   {
     key: 'schedule',
     href: '/schedule',
     label: 'Schedule',
     icon: CalendarDays,
-    allowedRoles: [
-      UserRole.ADMIN,
-      UserRole.MANAGER,
-      UserRole.CUSTOMER_SERVICE,
-      UserRole.INSTRUCTOR,
-    ],
+    canAccess: canAccessGlobalSchedule,
   },
   {
     key: 'assignments',
     href: '/assignments',
     label: 'My Assignments',
     icon: ClipboardCheck,
-    allowedRoles: [UserRole.INSTRUCTOR, UserRole.DIVEMASTER],
+    canAccess: canAccessInstructorAssignments,
   },
   {
     key: 'customers',
     href: '/customers',
     label: 'Customers',
     icon: Users,
-    allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.CUSTOMER_SERVICE],
+    canAccess: canAccessCustomers,
   },
   {
     key: 'settings',
     href: '/settings',
     label: 'Settings',
     icon: Settings,
-    allowedRoles: [UserRole.ADMIN],
+    canAccess: canAccessSettings,
   },
 ];
 
@@ -88,12 +84,10 @@ export function canAccessDashboardRoute(
 ) {
   const route = dashboardRoutes.find((item) => item.key === routeKey);
 
-  return route?.allowedRoles.includes(currentUser.role) ?? false;
+  return route?.canAccess(currentUser) ?? false;
 }
 
 /** Returns only the sidebar routes the current user is authorized to access. */
 export function getDashboardNavigation(currentUser: Pick<CurrentUser, 'role'>) {
-  return dashboardRoutes.filter((route) =>
-    route.allowedRoles.includes(currentUser.role),
-  );
+  return dashboardRoutes.filter((route) => route.canAccess(currentUser));
 }

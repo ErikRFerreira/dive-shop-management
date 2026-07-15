@@ -207,10 +207,6 @@ export function serializeScheduleCalendarEvents(
   return events.map((event) => ({
     ...event,
     date: event.date.toISOString(),
-    activities: event.activities.map((activity) => ({
-      ...activity,
-      requestedDate: activity.requestedDate?.toISOString() ?? null,
-    })),
   }));
 }
 

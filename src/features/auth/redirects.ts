@@ -8,8 +8,8 @@ const UNSAFE_REDIRECT_CHARACTER_PATTERN = /[\\\u0000-\u001f\u007f]/;
 /**
  * Returns the default authenticated landing path for a database-backed role.
  *
- * Divemaster platform access remains outside this issue, so the existing
- * dashboard fallback is preserved without introducing a new role denial.
+ * Non-platform roles are rejected during current-user resolution before this
+ * helper is called.
  *
  * @param role - Current role loaded from the active database user record.
  * @returns The operational route where the authenticated user should land.

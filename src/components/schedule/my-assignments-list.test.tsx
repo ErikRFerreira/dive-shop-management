@@ -36,7 +36,6 @@ test('renders summary counts and next assignment metadata', () => {
         tomorrowAssignments: [
           assignment({
             scheduleItemId: 'tomorrow',
-            bookingId: 'booking-2',
             date: new Date('2026-06-29T00:00:00.000Z'),
             primaryCustomerName: 'Tomorrow Customer',
           }),
@@ -44,7 +43,6 @@ test('renders summary counts and next assignment metadata', () => {
         upcomingAssignments: [
           assignment({
             scheduleItemId: 'upcoming',
-            bookingId: 'booking-3',
             date: new Date('2026-07-02T00:00:00.000Z'),
             primaryCustomerName: 'Upcoming Customer',
           }),
@@ -78,7 +76,6 @@ test('renders today and tomorrow assignment cards with compact empty states', ()
         upcomingAssignments: [
           assignment({
             scheduleItemId: 'upcoming',
-            bookingId: 'booking-3',
             date: new Date('2026-07-02T00:00:00.000Z'),
             primaryCustomerName: 'Upcoming Customer',
             customers: [
@@ -116,7 +113,6 @@ test('renders upcoming assignments in a scalable table', () => {
         upcomingAssignments: [
           assignment({
             scheduleItemId: 'upcoming',
-            bookingId: 'booking-3',
             date: new Date('2026-07-02T00:00:00.000Z'),
             primaryCustomerName: 'Upcoming Customer',
             customers: [
@@ -174,7 +170,6 @@ test('renders capped upcoming assignments without action controls', () => {
         upcomingAssignments: Array.from({ length: 20 }, (_, index) =>
           assignment({
             scheduleItemId: `upcoming-${index}`,
-            bookingId: `booking-${index}`,
             date: new Date('2026-07-02T00:00:00.000Z'),
             primaryCustomerName: `Upcoming Customer ${index}`,
           }),
@@ -203,8 +198,6 @@ test('renders personal assignment details without edit or booking actions', () =
         todayAssignments: [
           assignment({
             scheduleItemId: 'schedule-1',
-            startTime: '08:00',
-            endTime: '12:30',
             isTimeTbd: false,
             timeSlot: ScheduleTimeSlot.AM,
             activitySummary: 'Fun Dive + Snorkeling',
@@ -274,8 +267,6 @@ test('renders missing hotel pickup and time fallback safely', () => {
         todayAssignments: [
           assignment({
             scheduleItemId: 'schedule-1',
-            startTime: null,
-            endTime: null,
             isTimeTbd: true,
             timeSlot: ScheduleTimeSlot.TBD,
             hotel: null,
@@ -351,10 +342,7 @@ function assignment(
 ): MyScheduleAssignment {
   return {
     scheduleItemId: 'schedule-1',
-    bookingId: 'booking-1',
     date: new Date('2026-06-28T00:00:00.000Z'),
-    startTime: '08:00',
-    endTime: null,
     isTimeTbd: false,
     timeSlot: ScheduleTimeSlot.AM,
     activityType: ActivityType.FUN_DIVE,
@@ -365,24 +353,14 @@ function assignment(
     dayLabel: null,
     activities: [
       {
-        id: 'activity-1',
         activityType: ActivityType.FUN_DIVE,
         activityLabel: 'Fun Dive',
         specialtyCourse: null,
-        requestedDate: new Date('2026-06-28T00:00:00.000Z'),
-        requestedTime: '08:00',
-        requestedTimeSlot: ScheduleTimeSlot.AM,
-        notes: null,
       },
       {
-        id: 'activity-2',
         activityType: ActivityType.SNORKELING,
         activityLabel: 'Snorkeling',
         specialtyCourse: null,
-        requestedDate: new Date('2026-06-28T00:00:00.000Z'),
-        requestedTime: '10:00',
-        requestedTimeSlot: ScheduleTimeSlot.AM,
-        notes: null,
       },
     ],
     primaryCustomerName: 'Maria Santos',

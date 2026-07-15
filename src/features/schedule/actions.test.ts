@@ -291,8 +291,10 @@ test.each([adminUser, managerUser])(
   },
 );
 
-test('does not allow customer service to add a schedule assignment', async () => {
-  mocks.requireCurrentUser.mockResolvedValue(customerServiceUser);
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to add a schedule assignment',
+  async (currentUser) => {
+  mocks.requireCurrentUser.mockResolvedValue(currentUser);
 
   await expect(
     addScheduleAssignment(
@@ -425,7 +427,8 @@ test('rejects add assignment when related booking is not scheduled', async () =>
   });
 
   expect(mocks.createAssignment).not.toHaveBeenCalled();
-});
+  },
+);
 
 test.each([adminUser, managerUser])(
   'allows %s to assign staff to all course days',
@@ -711,8 +714,10 @@ test.each([adminUser, managerUser])(
   },
 );
 
-test('does not allow customer service to update a schedule assignment role', async () => {
-  mocks.requireCurrentUser.mockResolvedValue(customerServiceUser);
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to update a schedule assignment role',
+  async (currentUser) => {
+  mocks.requireCurrentUser.mockResolvedValue(currentUser);
 
   await expect(
     updateScheduleAssignmentRole(
@@ -759,7 +764,8 @@ test('rejects update when related booking is not scheduled', async () => {
   });
 
   expect(mocks.updateAssignment).not.toHaveBeenCalled();
-});
+  },
+);
 
 test.each([adminUser, managerUser])(
   'allows %s to update a scheduled item time slot',
@@ -794,8 +800,10 @@ test('rejects invalid scheduled item time slots before authorization', async () 
   expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
 });
 
-test('does not allow customer service to update a scheduled item time slot', async () => {
-  mocks.requireCurrentUser.mockResolvedValue(customerServiceUser);
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to update a scheduled item time slot',
+  async (currentUser) => {
+  mocks.requireCurrentUser.mockResolvedValue(currentUser);
 
   await expect(
     updateScheduleItemTimeSlot('schedule-2', ScheduleTimeSlot.PM),
@@ -805,7 +813,8 @@ test('does not allow customer service to update a scheduled item time slot', asy
   });
 
   expect(mocks.updateScheduleItem).not.toHaveBeenCalled();
-});
+  },
+);
 
 test('rejects time slot updates when the scheduled day is missing', async () => {
   mocks.findScheduleItemUnique.mockResolvedValue(null);
@@ -855,8 +864,10 @@ test.each([adminUser, managerUser])(
   },
 );
 
-test('does not allow customer service to remove a schedule assignment', async () => {
-  mocks.requireCurrentUser.mockResolvedValue(customerServiceUser);
+test.each([customerServiceUser, instructorUser])(
+  'does not allow %s to remove a schedule assignment',
+  async (currentUser) => {
+  mocks.requireCurrentUser.mockResolvedValue(currentUser);
 
   await expect(removeScheduleAssignment('assignment-1')).resolves.toEqual({
     success: false,
@@ -864,7 +875,8 @@ test('does not allow customer service to remove a schedule assignment', async ()
   });
 
   expect(mocks.deleteAssignment).not.toHaveBeenCalled();
-});
+  },
+);
 
 test('rejects remove when assignment is missing', async () => {
   mocks.findAssignmentUnique.mockResolvedValue(null);

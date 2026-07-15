@@ -7,6 +7,7 @@ import {
   BookingStatus,
   PreferredLanguage,
   ScheduleTimeSlot,
+  UserRole,
 } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
@@ -36,6 +37,13 @@ import {
   searchCustomers,
 } from './queries';
 
+const customerServiceUser = {
+  id: 'customer-service-1',
+  name: 'Customer Service',
+  email: 'customer-service@example.test',
+  role: UserRole.CUSTOMER_SERVICE,
+};
+
 beforeEach(() => {
   mocks.count.mockReset();
   mocks.findUnique.mockReset();
@@ -43,7 +51,7 @@ beforeEach(() => {
 });
 
 test('does not query customers for blank search input', async () => {
-  await expect(searchCustomers('   ')).resolves.toEqual([]);
+  await expect(searchCustomers(customerServiceUser, '   ')).resolves.toEqual([]);
 
   expect(mocks.findMany).not.toHaveBeenCalled();
 });
@@ -51,7 +59,7 @@ test('does not query customers for blank search input', async () => {
 test('searches supported customer identity fields', async () => {
   mocks.findMany.mockResolvedValue([]);
 
-  await searchCustomers(' anchie ');
+  await searchCustomers(customerServiceUser, ' anchie ');
 
   expect(mocks.findMany).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -109,7 +117,7 @@ test('maps customer search results with latest booking details', async () => {
     },
   ]);
 
-  await expect(searchCustomers('anchie')).resolves.toEqual([
+  await expect(searchCustomers(customerServiceUser, 'anchie')).resolves.toEqual([
     {
       id: 'customer-1',
       name: 'Anchie Tan',
@@ -137,7 +145,7 @@ test('maps customer search results with latest booking details', async () => {
 test('returns recent customers ordered by newest update first', async () => {
   mocks.findMany.mockResolvedValue([]);
 
-  await expect(getRecentCustomers(12)).resolves.toEqual([]);
+  await expect(getRecentCustomers(customerServiceUser, 12)).resolves.toEqual([]);
 
   expect(mocks.findMany).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -154,7 +162,7 @@ test('returns a paginated default customer lookup page', async () => {
   mocks.findMany.mockResolvedValue([]);
 
   await expect(
-    getCustomerLookupPage('', { page: 2, pageSize: 10 }),
+    getCustomerLookupPage(customerServiceUser, '', { page: 2, pageSize: 10 }),
   ).resolves.toEqual({
     customers: [],
     pagination: {
@@ -183,7 +191,10 @@ test('returns a paginated searched customer lookup page', async () => {
   mocks.findMany.mockResolvedValue([]);
 
   await expect(
-    getCustomerLookupPage(' anchie ', { page: 5, pageSize: 10 }),
+    getCustomerLookupPage(customerServiceUser, ' anchie ', {
+      page: 5,
+      pageSize: 10,
+    }),
   ).resolves.toMatchObject({
     pagination: {
       totalCount: 23,
@@ -236,7 +247,9 @@ test('parses customer pagination params safely', () => {
 test('returns null when customer detail is missing', async () => {
   mocks.findUnique.mockResolvedValue(null);
 
-  await expect(getCustomerDetail('missing-customer')).resolves.toBeNull();
+  await expect(
+    getCustomerDetail(customerServiceUser, 'missing-customer'),
+  ).resolves.toBeNull();
 
   expect(mocks.findUnique).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -357,7 +370,9 @@ test('maps customer detail with latest known dive info and sorted booking histor
     ],
   });
 
-  await expect(getCustomerDetail('customer-1')).resolves.toMatchObject({
+  await expect(
+    getCustomerDetail(customerServiceUser, 'customer-1'),
+  ).resolves.toMatchObject({
     id: 'customer-1',
     name: 'Anchie Tan',
     chineseName: '安琪',
@@ -433,7 +448,9 @@ test('maps incomplete customer detail data safely', async () => {
     bookings: [],
   });
 
-  await expect(getCustomerDetail('customer-empty')).resolves.toEqual({
+  await expect(
+    getCustomerDetail(customerServiceUser, 'customer-empty'),
+  ).resolves.toEqual({
     id: 'customer-empty',
     name: 'Unnamed customer',
     fullName: null,
@@ -461,4 +478,29 @@ test('maps incomplete customer detail data safely', async () => {
     },
     bookingHistory: [],
   });
+});
+
+test('rejects instructor customer queries before Prisma access', async () => {
+  const instructor = {
+    ...customerServiceUser,
+    id: 'instructor-1',
+    role: UserRole.INSTRUCTOR,
+  };
+
+  await expect(searchCustomers(instructor, 'anchie')).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
+  await expect(getRecentCustomers(instructor)).rejects.toMatchObject({
+    name: 'AuthorizationError',
+  });
+  await expect(
+    getCustomerLookupPage(instructor, '', { page: 1, pageSize: 10 }),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
+  await expect(getCustomerDetail(instructor, 'customer-1')).rejects.toMatchObject(
+    { name: 'AuthorizationError' },
+  );
+
+  expect(mocks.findMany).not.toHaveBeenCalled();
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.count).not.toHaveBeenCalled();
 });
