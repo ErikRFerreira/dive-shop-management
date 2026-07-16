@@ -60,13 +60,26 @@ test('renders summary counts and next assignment metadata', () => {
     />,
   );
 
-  expect(screen.getAllByText('Today').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Tomorrow').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Upcoming').length).toBeGreaterThan(0);
-  expect(screen.getByText('Next assignment')).not.toBeNull();
-  expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2);
-  expect(screen.getAllByText('3').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
+  const todaySection = screen
+    .getByRole('heading', { name: 'Today' })
+    .closest('section');
+  const tomorrowSection = screen
+    .getByRole('heading', { name: 'Tomorrow' })
+    .closest('section');
+  const upcomingSection = screen
+    .getByRole('heading', { name: 'Upcoming' })
+    .closest('section');
+
+  expect(todaySection).not.toBeNull();
+  expect(tomorrowSection).not.toBeNull();
+  expect(upcomingSection).not.toBeNull();
+  expect(within(todaySection!).getByText('1')).not.toBeNull();
+  expect(within(tomorrowSection!).getByText('1')).not.toBeNull();
+  expect(within(upcomingSection!).getByText('3')).not.toBeNull();
+  const nextAssignmentCard = screen.getByText('Next assignment').parentElement;
+
+  expect(nextAssignmentCard).not.toBeNull();
+  expect(within(nextAssignmentCard!).getByText('Fun Dive')).not.toBeNull();
 });
 
 test('renders today and tomorrow assignment cards with compact empty states', () => {
@@ -187,7 +200,13 @@ test('renders capped upcoming assignments without action controls', () => {
     />,
   );
 
-  expect(screen.getAllByText('2 active participants')).toHaveLength(20);
+  const upcomingSection = screen
+    .getByRole('heading', { name: 'Upcoming' })
+    .closest('section');
+
+  expect(upcomingSection).not.toBeNull();
+  expect(within(upcomingSection!).getByText('42')).not.toBeNull();
+  expect(within(upcomingSection!).getAllByRole('row')).toHaveLength(21);
   expect(screen.queryByText('Read-only')).toBeNull();
 });
 
@@ -241,14 +260,22 @@ test('renders personal assignment details without edit or booking actions', () =
     />,
   );
 
-  expect(screen.getAllByText('Maria Santos').length).toBeGreaterThan(0);
+  const todaySection = screen
+    .getByRole('heading', { name: 'Today' })
+    .closest('section');
+
+  expect(todaySection).not.toBeNull();
+  expect(
+    within(todaySection!).getByText(
+      'Fun Dive + Snorkeling x3 Maria Santos',
+    ),
+  ).not.toBeNull();
   expect(screen.getByText('3 active participants')).not.toBeNull();
   expect(screen.getByText('Participant Diver')).not.toBeNull();
   expect(screen.getByText('Second Diver')).not.toBeNull();
   expect(screen.getByText('Hotel / pickup: Primary Booking Hotel')).not.toBeNull();
   expect(screen.getByText(hasTextContent('28 Jun 2026'))).not.toBeNull();
   expect(screen.getByText(hasTextContent('AM'))).not.toBeNull();
-  expect(screen.getAllByText('Fun Dive + Snorkeling').length).toBeGreaterThan(0);
   expect(screen.getByText('Meet at the shop.')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
   expect(screen.queryByRole('link')).toBeNull();

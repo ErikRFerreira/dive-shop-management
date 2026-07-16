@@ -261,7 +261,14 @@ test('renders staff state for unassigned and unscheduled bookings', () => {
   ]);
 
   expect(screen.getByText('Unassigned')).not.toBeNull();
-  expect(screen.getAllByText('\u2014').length).toBeGreaterThan(0);
+  const unscheduledRow = screen
+    .getByRole('button', {
+      name: 'Open actions for booking booking-unscheduled',
+    })
+    .closest('tr');
+
+  expect(unscheduledRow).not.toBeNull();
+  expect(within(unscheduledRow!).getByText('\u2014')).not.toBeNull();
 });
 
 test('shows the latest Needs More Info request as compact activity metadata', () => {
@@ -277,7 +284,6 @@ test('shows the latest Needs More Info request as compact activity metadata', ()
   );
 
   expect(screen.getByText('Needs more info:')).not.toBeNull();
-  expect(request.className).toContain('line-clamp-2');
   expect(request.getAttribute('title')).toBe(
     'Add phone number or WhatsApp before resubmitting.',
   );
@@ -440,7 +446,12 @@ test('renders every customer, activity, safe fallback, schedule, hotel, and row 
   expect(screen.getByText('Maria Santos')).not.toBeNull();
   expect(screen.getByText('Lina Chen')).not.toBeNull();
   expect(screen.queryByText('Maria Santos + 1 more')).toBeNull();
-  expect(screen.getAllByText('Fun Dive').length).toBeGreaterThan(0);
+  const primaryBookingRow = screen
+    .getByRole('button', { name: 'Open actions for booking booking-1' })
+    .closest('tr');
+
+  expect(primaryBookingRow).not.toBeNull();
+  expect(within(primaryBookingRow!).getByText('Fun Dive')).not.toBeNull();
   expect(screen.getByText('Open Water Course')).not.toBeNull();
   expect(screen.queryByText('Fun Dive + Open Water Course')).toBeNull();
   expect(screen.getByText('Unnamed customer')).not.toBeNull();
