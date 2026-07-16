@@ -11,13 +11,14 @@ type LoginExperienceProps = {
 };
 
 /**
- * Coordinates the login fields and optional local-development account picker.
+ * Coordinates the login fields and optional demo-environment account picker.
  *
  * The demo password is intentionally accepted only as an optional prop so the
- * server page can omit all demo functionality outside development.
+ * server page can omit all demo functionality outside local development and
+ * Vercel Preview deployments.
  *
  * @param props - Redirect destination and optional development-only password.
- * @returns The controlled login form and, in development, demo account buttons.
+ * @returns The controlled login form and optional demo account buttons.
  */
 export default function LoginExperience({
   redirectTo,
@@ -27,7 +28,7 @@ export default function LoginExperience({
   const [password, setPassword] = useState('');
 
   /**
-   * Fills the form with a seeded account used only during local development.
+   * Fills the form with a seeded account in an enabled demo environment.
    *
    * @param selectedEmail - Email belonging to the selected seeded user.
    */
@@ -46,7 +47,7 @@ export default function LoginExperience({
         onPasswordChange={setPassword}
       />
 
-      {/* DEVELOPMENT ONLY: never expose seeded account helpers in production. */}
+      {/* DEMO ENVIRONMENTS ONLY: never expose these helpers in production. */}
       {demoPassword ? (
         <FooterDemo onAccountSelect={handleDemoAccountSelect} />
       ) : null}
