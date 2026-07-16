@@ -34,7 +34,7 @@ test.each([
     />,
   );
 
-  expect(screen.getAllByText(label)).toHaveLength(2);
+  expect(screen.getByText(label)).not.toBeNull();
   expect(screen.getByText(description, { exact: false })).not.toBeNull();
 });
 

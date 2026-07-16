@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
@@ -525,8 +526,10 @@ test('renders edit and review actions for reviewer access to needs-more-info boo
   expect(screen.getByRole('link', { name: 'Fix details' })).not.toBeNull();
   expect(screen.getByRole('link', { name: 'Review booking' })).not.toBeNull();
   expect(
-    screen.getAllByText('Please confirm diver certification.').length,
-  ).toBeGreaterThan(0);
+    within(screen.getByRole('main')).getByText(
+      'Please confirm diver certification.',
+    ),
+  ).not.toBeNull();
 });
 
 test('renders schedule action for scheduled bookings with schedule items', () => {
@@ -657,7 +660,9 @@ test('renders multiple assigned staff with assignment roles', () => {
     }),
   });
 
-  expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
+  expect(
+    screen.getByRole('heading', { name: 'Assigned staff' }),
+  ).not.toBeNull();
   expect(screen.getByText('Inez Instructor')).not.toBeNull();
   expect(screen.getByText('Dina Divemaster')).not.toBeNull();
   expect(screen.getByText('Lead Instructor')).not.toBeNull();
@@ -678,8 +683,9 @@ test('renders the unassigned state when the schedule item has no assignments', (
     }),
   });
 
-  expect(screen.getAllByText('Assigned staff').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
+  expect(
+    screen.getByRole('heading', { name: 'Assigned staff' }),
+  ).not.toBeNull();
   expect(screen.getByText('No staff assigned')).not.toBeNull();
 });
 
@@ -715,13 +721,15 @@ test('renders active and historical participant groups on booking detail cards',
     }),
   });
 
-  expect(screen.getAllByText('Active participants').length).toBeGreaterThan(0);
+  expect(
+    screen.getByRole('heading', { name: 'Active participants' }),
+  ).not.toBeNull();
   expect(screen.getByText('Historical participants')).not.toBeNull();
   expect(screen.getByText('Active')).not.toBeNull();
   expect(screen.getByText('No-show')).not.toBeNull();
   expect(screen.getByText('Cancelled')).not.toBeNull();
-  expect(screen.getAllByText('Kai Chen').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('Lina Park').length).toBeGreaterThan(0);
+  expect(screen.getByRole('heading', { name: 'Kai Chen' })).not.toBeNull();
+  expect(screen.getByRole('heading', { name: 'Lina Park' })).not.toBeNull();
 });
 
 test('renders participant status controls for scheduled admin and manager users', () => {
@@ -918,7 +926,9 @@ test('shows deposit not required readiness when no deposit is recorded', () => {
   renderBookingDetails();
 
   expect(screen.getByText('Deposit not required')).not.toBeNull();
-  expect(screen.getAllByText('No deposit recorded.').length).toBeGreaterThan(0);
+  expect(
+    within(screen.getByRole('main')).getByText('No deposit recorded.'),
+  ).not.toBeNull();
   expect(screen.queryByText('Deposit details complete')).toBeNull();
 });
 

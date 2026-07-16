@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import * as React from 'react';
@@ -369,8 +370,10 @@ test('opens an operational booking summary dialog from an event click', () => {
   ).not.toBeNull();
   expect(screen.getByText('Active participants')).not.toBeNull();
   expect(screen.getByText('Ocean View')).not.toBeNull();
-  expect(screen.getAllByText(/Maria Santos \//)).toHaveLength(1);
-  expect(screen.getAllByText('Participant Diver')).toHaveLength(1);
+  const dialog = screen.getByRole('dialog');
+
+  expect(within(dialog).getByText(/Maria Santos \//)).not.toBeNull();
+  expect(within(dialog).getByText('Participant Diver')).not.toBeNull();
   expect(screen.getByRole('link', { name: /Open booking/i }).getAttribute('href'))
     .toBe('/bookings/booking-1');
   expect(screen.queryByRole('button', { name: 'Manage assignments' })).toBeNull();

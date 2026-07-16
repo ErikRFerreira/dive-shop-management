@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 
 import type {
@@ -199,7 +199,7 @@ test('shows calm missing values in attention and schedule rows', () => {
     </div>,
   );
 
-  expect(screen.getAllByText('No primary customer')).toHaveLength(1);
+  expect(screen.getByText('No primary customer')).not.toBeNull();
   expect(screen.getByText('Booking updated')).not.toBeNull();
   expect(screen.getByText(/No primary customer: Fun Dive/)).not.toBeNull();
   expect(screen.getByText('TBD')).not.toBeNull();
@@ -255,9 +255,17 @@ test('shows unassigned and assigned staff states on today schedule rows', () => 
 
   const assignLink = screen.getByRole('link', { name: 'Assign staff' });
 
-  expect(screen.getAllByText('2 active participants').length).toBeGreaterThan(
-    0,
-  );
+  const unassignedItem = assignLink.closest('article');
+  const assignedItem = screen.getByText('Dina Divemaster').closest('article');
+
+  expect(unassignedItem).not.toBeNull();
+  expect(assignedItem).not.toBeNull();
+  expect(
+    within(unassignedItem!).getByText('2 active participants'),
+  ).not.toBeNull();
+  expect(
+    within(assignedItem!).getByText('2 active participants'),
+  ).not.toBeNull();
   expect(screen.getByText('Unassigned')).not.toBeNull();
   expect(screen.getByText('Inez Instructor')).not.toBeNull();
   expect(screen.getByText('Dina Divemaster')).not.toBeNull();
