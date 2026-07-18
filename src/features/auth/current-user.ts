@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { auth } from '@/auth';
 import { canAccessPlatform } from '@/features/auth/permissions';
 import { db } from '@/lib/db';
@@ -13,7 +15,7 @@ import { db } from '@/lib/db';
  * @returns The current safe user record, or null when unauthenticated, inactive,
  * or assigned a non-platform role.
  */
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const session = await auth();
   const userId = session?.user?.id;
 
@@ -42,7 +44,7 @@ export async function getCurrentUser() {
     email: user.email,
     role: user.role,
   };
-}
+});
 
 export type AuthenticatedUser = NonNullable<
   Awaited<ReturnType<typeof getCurrentUser>>
