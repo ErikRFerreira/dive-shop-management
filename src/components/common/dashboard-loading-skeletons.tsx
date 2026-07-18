@@ -254,3 +254,76 @@ export function CustomerDetailLoadingSkeleton() {
     </div>
   );
 }
+
+/**
+ * Renders the operational dashboard structure while role-scoped data loads.
+ *
+ * @returns A non-interactive skeleton matching dashboard cards and sections.
+ */
+export function DashboardLoadingSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading dashboard"
+      className="space-y-5"
+      role="status"
+    >
+      <PageHeaderSkeleton action />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <section
+            className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+            key={index}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-8 w-14" />
+              </div>
+              <Skeleton className="size-9 rounded-xl" />
+            </div>
+            <Skeleton className="mt-4 h-3 w-full" />
+          </section>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, sectionIndex) => (
+          <section
+            className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+            key={sectionIndex}
+          >
+            <div className="space-y-2 border-b border-border p-5">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-72 max-w-full" />
+            </div>
+            <div className="space-y-3 p-3">
+              {Array.from({ length: 3 }).map((_, rowIndex) => (
+                <div
+                  className="flex items-center gap-3 rounded-xl border border-border p-3"
+                  key={rowIndex}
+                >
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <section className="border-t border-border px-1 pt-4">
+        <Skeleton className="mb-3 h-3 w-28" />
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton className="h-12 rounded-xl" key={index} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
