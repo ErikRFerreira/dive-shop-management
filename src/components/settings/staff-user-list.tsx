@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { Eye } from 'lucide-react';
 
-import { AssignmentBadge } from '@/components/common/assignment-badge';
 import { StaffUserPagination } from '@/components/settings/staff-user-pagination';
+import { StaffUserRoleBadge } from '@/components/settings/staff-user-role-badge';
+import { StaffUserStatusBadge } from '@/components/settings/staff-user-status-badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,25 +25,8 @@ import type {
   StaffUserFilters,
   StaffUserListPagination,
 } from '@/features/settings/types';
-import { UserRole } from '@/generated/prisma/enums';
-import { formatDisplayDate, formatEnumLabel } from '@/lib/format';
+import { formatDisplayDate } from '@/lib/format';
 import { hasActiveStaffUserFilters } from './staff-user-list-helpers';
-
-type BadgeColorScheme =
-  | 'ocean'
-  | 'primary'
-  | 'pending'
-  | 'info-alert'
-  | 'scheduled'
-  | 'unassigned';
-
-const roleColorSchemes: Record<UserRole, BadgeColorScheme> = {
-  [UserRole.ADMIN]: 'primary',
-  [UserRole.MANAGER]: 'ocean',
-  [UserRole.CUSTOMER_SERVICE]: 'info-alert',
-  [UserRole.INSTRUCTOR]: 'scheduled',
-  [UserRole.DIVEMASTER]: 'unassigned',
-};
 
 type StaffUserListProps = {
   filters: StaffUserFilters;
@@ -111,20 +96,23 @@ export function StaffUserList({
           <Table aria-label="Staff users" className="table-fixed">
             <TableHeader>
               <TableRow className="border-b bg-muted/40">
-                <TableHead className="h-12 w-[22%] pl-6 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <TableHead className="h-12 w-[20%] pl-6 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Name
                 </TableHead>
-                <TableHead className="h-12 w-[30%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <TableHead className="h-12 w-[26%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Email
                 </TableHead>
-                <TableHead className="h-12 w-[20%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <TableHead className="h-12 w-[18%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Role
                 </TableHead>
-                <TableHead className="h-12 w-[14%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <TableHead className="h-12 w-[12%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Status
                 </TableHead>
-                <TableHead className="h-12 w-[14%] pr-6 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <TableHead className="h-12 w-[12%] text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Updated
+                </TableHead>
+                <TableHead className="h-12 w-[12%] pr-6 text-right text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                  Actions
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -141,20 +129,21 @@ export function StaffUserList({
                     {staffUser.email}
                   </TableCell>
                   <TableCell className="py-5">
-                    <AssignmentBadge
-                      colorScheme={roleColorSchemes[staffUser.role]}
-                      label={formatEnumLabel(staffUser.role)}
-                      showDot={false}
-                    />
+                    <StaffUserRoleBadge role={staffUser.role} />
                   </TableCell>
                   <TableCell className="py-5">
-                    <AssignmentBadge
-                      colorScheme={staffUser.isActive ? 'scheduled' : 'unassigned'}
-                      label={staffUser.isActive ? 'Active' : 'Inactive'}
-                    />
+                    <StaffUserStatusBadge isActive={staffUser.isActive} />
                   </TableCell>
-                  <TableCell className="py-5 pr-6 text-muted-foreground">
+                  <TableCell className="py-5 text-muted-foreground">
                     {formatDisplayDate(staffUser.updatedAt)}
+                  </TableCell>
+                  <TableCell className="py-5 pr-6 text-right">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/settings/users/${staffUser.id}`}>
+                        <Eye className="size-4" />
+                        View details
+                      </Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

@@ -14,7 +14,7 @@ import {
  * Renders a staff-table-shaped loading state for filter transitions.
  *
  * @param props - Optional announcement shown while existing filters remain visible.
- * @returns A five-column staff list skeleton matching the loaded table.
+ * @returns A six-column staff list skeleton matching the loaded table.
  */
 export function StaffUserListPendingSkeleton({
   announce = true,
@@ -37,7 +37,7 @@ export function StaffUserListPendingSkeleton({
           <Table aria-label="Loading staff users" className="table-fixed">
             <TableHeader>
               <TableRow className="border-b bg-muted/40">
-                {['Name', 'Email', 'Role', 'Status', 'Updated'].map(
+                {['Name', 'Email', 'Role', 'Status', 'Updated', 'Actions'].map(
                   (heading) => (
                     <TableHead
                       className="h-12 first:pl-6 last:pr-6 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80"
@@ -66,6 +66,9 @@ export function StaffUserListPendingSkeleton({
                   </TableCell>
                   <TableCell className="py-5 pr-6">
                     <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell className="py-5 pr-6">
+                    <Skeleton className="ml-auto h-8 w-24" />
                   </TableCell>
                 </TableRow>
               ))}

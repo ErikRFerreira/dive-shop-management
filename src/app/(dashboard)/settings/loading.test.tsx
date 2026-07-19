@@ -7,16 +7,14 @@ afterEach(() => {
   cleanup();
 });
 
-test('renders a five-column staff-specific Settings skeleton', () => {
+test('renders a six-column staff-specific Settings skeleton', () => {
   render(<Loading />);
 
   const table = screen.getByRole('table', { name: 'Loading staff users' });
 
-  for (const heading of ['Name', 'Email', 'Role', 'Status', 'Updated']) {
+  for (const heading of ['Name', 'Email', 'Role', 'Status', 'Updated', 'Actions']) {
     expect(within(table).getByRole('columnheader', { name: heading })).not.toBeNull();
   }
 
-  expect(within(table).queryByRole('columnheader', { name: 'Actions' })).toBeNull();
   expect(screen.queryByText(/bookings/i)).toBeNull();
 });
-

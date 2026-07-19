@@ -4,6 +4,7 @@ import { UserRole } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
   count: vi.fn(),
+  findUnique: vi.fn(),
   findMany: vi.fn(),
 }));
 
@@ -13,12 +14,18 @@ vi.mock('@/lib/db', () => ({
   db: {
     user: {
       count: mocks.count,
+      findUnique: mocks.findUnique,
       findMany: mocks.findMany,
     },
   },
 }));
 
-import { getStaffUsers, staffUserListSelect } from './queries';
+import {
+  getStaffUserById,
+  getStaffUsers,
+  staffUserDetailSelect,
+  staffUserListSelect,
+} from './queries';
 
 const admin = {
   id: 'admin-1',
@@ -36,8 +43,10 @@ const defaultFilters = {
 
 beforeEach(() => {
   mocks.count.mockReset();
+  mocks.findUnique.mockReset();
   mocks.findMany.mockReset();
   mocks.count.mockResolvedValue(1);
+  mocks.findUnique.mockResolvedValue(null);
   mocks.findMany.mockResolvedValue([]);
 });
 
@@ -158,6 +167,44 @@ test('returns an empty first page without running a list query', async () => {
     },
   });
   expect(mocks.findMany).not.toHaveBeenCalled();
+});
+
+test('loads the requested staff ID using only approved detail fields', async () => {
+  await getStaffUserById(admin, 'staff-requested');
+
+  expect(staffUserDetailSelect).toEqual({
+    id: true,
+    name: true,
+    email: true,
+    role: true,
+    isActive: true,
+    createdAt: true,
+    updatedAt: true,
+  });
+  expect(staffUserDetailSelect).not.toHaveProperty('passwordHash');
+  expect(mocks.findUnique).toHaveBeenCalledWith({
+    where: { id: 'staff-requested' },
+    select: staffUserDetailSelect,
+  });
+});
+
+test('returns null when the requested staff user does not exist', async () => {
+  mocks.findUnique.mockResolvedValue(null);
+
+  await expect(getStaffUserById(admin, 'missing-staff')).resolves.toBeNull();
+});
+
+test.each([
+  UserRole.MANAGER,
+  UserRole.CUSTOMER_SERVICE,
+  UserRole.INSTRUCTOR,
+  UserRole.DIVEMASTER,
+])('rejects %s from staff details before querying Prisma', async (role) => {
+  await expect(
+    getStaffUserById({ ...admin, id: `${role}-detail`, role }, 'staff-1'),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
+
+  expect(mocks.findUnique).not.toHaveBeenCalled();
 });
 
 test.each([

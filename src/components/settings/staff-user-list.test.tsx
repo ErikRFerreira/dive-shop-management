@@ -85,7 +85,7 @@ test('renders safe staff columns, friendly roles, statuses, and updated dates', 
 
   const table = screen.getByRole('table', { name: 'Staff users' });
 
-  for (const heading of ['Name', 'Email', 'Role', 'Status', 'Updated']) {
+  for (const heading of ['Name', 'Email', 'Role', 'Status', 'Updated', 'Actions']) {
     expect(within(table).getByRole('columnheader', { name: heading })).not.toBeNull();
   }
 
@@ -104,7 +104,14 @@ test('renders safe staff columns, friendly roles, statuses, and updated dates', 
   expect(within(customerServiceRow!).getByText('18 Jul 2026')).not.toBeNull();
   expect(within(divemasterRow!).getByText('Divemaster')).not.toBeNull();
   expect(within(divemasterRow!).getByText('Inactive')).not.toBeNull();
-  expect(within(table).queryByRole('columnheader', { name: 'Actions' })).toBeNull();
+  expect(
+    within(customerServiceRow!).getByRole('link', { name: 'View details' })
+      .getAttribute('href'),
+  ).toBe('/settings/users/staff-1');
+  expect(
+    within(divemasterRow!).getByRole('link', { name: 'View details' })
+      .getAttribute('href'),
+  ).toBe('/settings/users/divemaster-1');
 });
 
 test('renders the unfiltered no-users state', () => {
@@ -155,4 +162,3 @@ test('uses staff-specific range copy and preserves filters in pagination', () =>
     '/settings?search=marina&role=INSTRUCTOR&status=inactive',
   );
 });
-

@@ -23,8 +23,22 @@ export const staffUserListSelect = {
   updatedAt: true,
 } satisfies Prisma.UserSelect;
 
+export const staffUserDetailSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
+
 export type StaffUserListItem = Prisma.UserGetPayload<{
   select: typeof staffUserListSelect;
+}>;
+
+export type StaffUserDetail = Prisma.UserGetPayload<{
+  select: typeof staffUserDetailSelect;
 }>;
 
 export type PaginatedStaffUserList = {
@@ -108,4 +122,27 @@ export async function getStaffUsers(
     staffUsers,
     pagination,
   };
+}
+
+/**
+ * Returns one safe staff-user record for the ADMIN-only details page.
+ *
+ * Authorization is asserted before Prisma receives the requested identifier.
+ * Authentication fields and relations are intentionally excluded from the
+ * explicit select.
+ *
+ * @param currentUser - Authenticated database user requesting Staff Settings.
+ * @param staffUserId - Persisted staff-user identifier from the dynamic route.
+ * @returns The safe staff details, or null when the identifier does not exist.
+ */
+export async function getStaffUserById(
+  currentUser: CurrentUser,
+  staffUserId: string,
+): Promise<StaffUserDetail | null> {
+  assertAuthorizedCapability(canManageStaffUsers(currentUser));
+
+  return db.user.findUnique({
+    where: { id: staffUserId },
+    select: staffUserDetailSelect,
+  });
 }
