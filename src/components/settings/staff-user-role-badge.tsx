@@ -21,15 +21,21 @@ const roleColorSchemes: Record<UserRole, BadgeColorScheme> = {
 /**
  * Renders a staff role using the shared operational badge treatment.
  *
- * @param props - Persisted staff role to label and color consistently.
+ * @param props - Persisted staff role and whether its badge includes a status dot.
  * @returns A read-only, friendly role badge.
  */
-export function StaffUserRoleBadge({ role }: { role: UserRole }) {
+export function StaffUserRoleBadge({
+  role,
+  showDot = false,
+}: {
+  role: UserRole;
+  showDot?: boolean;
+}) {
   return (
     <AssignmentBadge
       colorScheme={roleColorSchemes[role]}
       label={formatEnumLabel(role)}
-      showDot={false}
+      showDot={showDot}
     />
   );
 }

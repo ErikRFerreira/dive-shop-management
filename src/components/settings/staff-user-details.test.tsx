@@ -70,6 +70,7 @@ test('renders read-only identity, account metadata, dates, and back navigation',
 test.each([
   [
     UserRole.ADMIN,
+    'Full administrative access. Can manage bookings, schedules, customers, staff, and settings.',
     [
       'Dashboard',
       'Booking management',
@@ -81,6 +82,7 @@ test.each([
   ],
   [
     UserRole.MANAGER,
+    'Full operational access. Can manage bookings, schedules, assignments, and customers.',
     [
       'Dashboard',
       'Booking management',
@@ -90,21 +92,30 @@ test.each([
   ],
   [
     UserRole.CUSTOMER_SERVICE,
+    'Booking and customer service access. Can create bookings, manage customers, and view the schedule.',
     ['Dashboard', 'Booking intake', 'Customer management', 'Schedule view'],
   ],
-  [UserRole.INSTRUCTOR, ['Global Schedule', 'My Assignments']],
-] as const)('renders the approved %s platform access summary', (role, items) => {
-  render(<StaffUserDetails staffUser={staffUser(role)} />);
+  [
+    UserRole.INSTRUCTOR,
+    'Schedule and assignment access only. Can view the global schedule and personal assignments.',
+    ['Global Schedule', 'My Assignments'],
+  ],
+] as const)(
+  'renders the approved %s platform access summary',
+  (role, description, items) => {
+    render(<StaffUserDetails staffUser={staffUser(role)} />);
 
-  const platformAccess = screen.getByRole('region', {
-    name: 'Platform Access',
-  });
-  const renderedItems = within(platformAccess)
-    .getAllByRole('listitem')
-    .map((item) => item.textContent);
+    const platformAccess = screen.getByRole('region', {
+      name: 'Platform Access',
+    });
+    const renderedItems = within(platformAccess)
+      .getAllByRole('listitem')
+      .map((item) => item.textContent);
 
-  expect(renderedItems).toEqual(items);
-});
+    expect(within(platformAccess).getByText(description)).not.toBeNull();
+    expect(renderedItems).toEqual(items);
+  },
+);
 
 test('renders the DIVEMASTER assignment-only and no-login explanation', () => {
   render(<StaffUserDetails staffUser={staffUser(UserRole.DIVEMASTER)} />);
@@ -114,11 +125,13 @@ test('renders the DIVEMASTER assignment-only and no-login explanation', () => {
   });
 
   expect(
-    within(platformAccess).getByText('Assignment-only staff record'),
+    within(platformAccess).getByText(
+      'Assignment-only staff record. Can be assigned to scheduled activities but cannot sign in to the platform.',
+    ),
   ).not.toBeNull();
   expect(
     within(platformAccess).getByText(
-      /can be assigned to scheduled activities but cannot sign in to the platform/i,
+      'No platform areas are available for this role.',
     ),
   ).not.toBeNull();
   expect(within(platformAccess).queryByRole('list')).toBeNull();
