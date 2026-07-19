@@ -1,20 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StaffUserRoleBadge } from '@/components/settings/staff-user-role-badge';
+import { StaffUserStatusAction } from '@/components/settings/staff-user-status-action';
 import { StaffUserStatusBadge } from '@/components/settings/staff-user-status-badge';
 import type { StaffUserDetail } from '@/features/settings/queries';
+import { isStaffLoginRole } from '@/features/settings/types';
 import { formatDisplayDateTime } from '@/lib/format';
 
 type Props = {
+  currentUserId: string;
+  isFinalActiveAdmin: boolean;
   staffUser: StaffUserDetail;
 };
 
 /**
- * Presents a staff member's identity and account metadata in a read-only card.
+ * Presents staff identity, metadata, and supported account-status controls.
  *
- * @param props - Staff details returned by the authorized settings query.
- * @returns The responsive account-details card with role and status badges.
+ * @param props - Staff details plus current-user and final-ADMIN advisory state.
+ * @returns The account card with role, status, and safe activation controls.
  */
-function AccountDetails({ staffUser }: Props) {
+function AccountDetails({
+  currentUserId,
+  isFinalActiveAdmin,
+  staffUser,
+}: Props) {
   return (
     <Card
       aria-labelledby="account-details-heading"
@@ -59,6 +67,17 @@ function AccountDetails({ staffUser }: Props) {
             </dt>
             <dd className="mt-2">
               <StaffUserStatusBadge isActive={staffUser.isActive} />
+              {isStaffLoginRole(staffUser.role) ? (
+                <StaffUserStatusAction
+                  isCurrentUser={currentUserId === staffUser.id}
+                  isFinalActiveAdmin={isFinalActiveAdmin}
+                  staffUser={{
+                    id: staffUser.id,
+                    name: staffUser.name,
+                    isActive: staffUser.isActive,
+                  }}
+                />
+              ) : null}
             </dd>
           </div>
         </dl>

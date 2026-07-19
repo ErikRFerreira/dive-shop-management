@@ -21,6 +21,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 import {
+  getHasAnotherActiveAdmin,
   getStaffUserById,
   getStaffUsers,
   staffUserDetailSelect,
@@ -194,6 +195,29 @@ test('returns null when the requested staff user does not exist', async () => {
   await expect(getStaffUserById(admin, 'missing-staff')).resolves.toBeNull();
 });
 
+test('checks for another active ADMIN with the shared exclusion predicate', async () => {
+  mocks.count.mockResolvedValue(1);
+
+  await expect(
+    getHasAnotherActiveAdmin(admin, 'admin-target'),
+  ).resolves.toBe(true);
+  expect(mocks.count).toHaveBeenCalledWith({
+    where: {
+      role: UserRole.ADMIN,
+      isActive: true,
+      id: { not: 'admin-target' },
+    },
+  });
+});
+
+test('reports no ADMIN backup when the persisted exclusion count is zero', async () => {
+  mocks.count.mockResolvedValue(0);
+
+  await expect(
+    getHasAnotherActiveAdmin(admin, 'admin-target'),
+  ).resolves.toBe(false);
+});
+
 test.each([
   UserRole.MANAGER,
   UserRole.CUSTOMER_SERVICE,
@@ -205,6 +229,22 @@ test.each([
   ).rejects.toMatchObject({ name: 'AuthorizationError' });
 
   expect(mocks.findUnique).not.toHaveBeenCalled();
+});
+
+test.each([
+  UserRole.MANAGER,
+  UserRole.CUSTOMER_SERVICE,
+  UserRole.INSTRUCTOR,
+  UserRole.DIVEMASTER,
+])('rejects %s from the active-ADMIN advisory query', async (role) => {
+  await expect(
+    getHasAnotherActiveAdmin(
+      { ...admin, id: `${role}-admin-check`, role },
+      'admin-target',
+    ),
+  ).rejects.toMatchObject({ name: 'AuthorizationError' });
+
+  expect(mocks.count).not.toHaveBeenCalled();
 });
 
 test.each([

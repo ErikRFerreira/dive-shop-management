@@ -13,6 +13,8 @@ import {
 import { db } from '@/lib/db';
 import type { CurrentUser } from '@/lib/current-user';
 
+import { hasAnotherActiveAdmin } from './admin-invariants';
+
 export const staffUserListSelect = {
   id: true,
   name: true,
@@ -145,4 +147,23 @@ export async function getStaffUserById(
     where: { id: staffUserId },
     select: staffUserDetailSelect,
   });
+}
+
+/**
+ * Resolves whether a different active ADMIN exists for advisory status UI.
+ *
+ * The deactivation Server Action repeats this check inside its serializable
+ * transaction; this query only supplies an early explanatory disabled state.
+ *
+ * @param currentUser - Authenticated database user requesting Staff Settings.
+ * @param staffUserId - ADMIN account excluded from the backup count.
+ * @returns Whether another active ADMIN currently exists.
+ */
+export async function getHasAnotherActiveAdmin(
+  currentUser: CurrentUser,
+  staffUserId: string,
+): Promise<boolean> {
+  assertAuthorizedCapability(canManageStaffUsers(currentUser));
+
+  return hasAnotherActiveAdmin(db.user, staffUserId);
 }

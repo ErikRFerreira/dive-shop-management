@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { UserRole } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
+  getHasAnotherActiveAdmin: vi.fn(),
   getStaffUserById: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error('not-found');
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/settings/queries', () => ({
+  getHasAnotherActiveAdmin: mocks.getHasAnotherActiveAdmin,
   getStaffUserById: mocks.getStaffUserById,
 }));
 
@@ -23,6 +25,8 @@ vi.mock('@/lib/current-user', () => ({
 }));
 
 vi.mock('@/features/settings/actions', () => ({
+  deactivateStaffUser: vi.fn(),
+  reactivateStaffUser: vi.fn(),
   updateStaffUser: vi.fn(),
 }));
 
@@ -56,11 +60,13 @@ const staffUser = {
 };
 
 beforeEach(() => {
+  mocks.getHasAnotherActiveAdmin.mockReset();
   mocks.getStaffUserById.mockReset();
   mocks.notFound.mockClear();
   mocks.redirect.mockClear();
   mocks.requireCurrentUser.mockReset();
   mocks.requireCurrentUser.mockResolvedValue(admin);
+  mocks.getHasAnotherActiveAdmin.mockResolvedValue(true);
   mocks.getStaffUserById.mockResolvedValue(staffUser);
 });
 
@@ -82,6 +88,34 @@ test('allows ADMIN to load the requested staff user details', async () => {
     admin,
     'staff-requested',
   );
+  expect(mocks.getHasAnotherActiveAdmin).not.toHaveBeenCalled();
+});
+
+test('shows the advisory block for a final active ADMIN', async () => {
+  mocks.getStaffUserById.mockResolvedValue({
+    ...staffUser,
+    role: UserRole.ADMIN,
+  });
+  mocks.getHasAnotherActiveAdmin.mockResolvedValue(false);
+
+  render(
+    await StaffUserDetailsPage({
+      params: Promise.resolve({ id: 'staff-requested' }),
+    }),
+  );
+
+  expect(mocks.getHasAnotherActiveAdmin).toHaveBeenCalledWith(
+    admin,
+    'staff-requested',
+  );
+  expect(
+    screen.getByText(
+      'This account is the final active Admin and cannot be deactivated.',
+    ),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Deactivate account' }),
+  ).toHaveProperty('disabled', true);
 });
 
 test.each([

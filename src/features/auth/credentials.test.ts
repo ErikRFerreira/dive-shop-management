@@ -158,3 +158,26 @@ test('continues to authorize an active instructor', async () => {
     email: persistedUser.email,
   });
 });
+
+test('authorizes a reactivated account with its existing password', async () => {
+  mocks.findUnique
+    .mockResolvedValueOnce({ ...persistedUser, isActive: false })
+    .mockResolvedValueOnce(persistedUser);
+
+  const credentials = {
+    email: 'admin@example.test',
+    password: 'correct-password',
+  };
+
+  await expect(authorizeCredentials(credentials)).resolves.toBeNull();
+  await expect(authorizeCredentials(credentials)).resolves.toEqual({
+    id: persistedUser.id,
+    name: persistedUser.name,
+    email: persistedUser.email,
+  });
+  expect(mocks.verifyPassword).toHaveBeenCalledOnce();
+  expect(mocks.verifyPassword).toHaveBeenCalledWith(
+    'correct-password',
+    persistedUser.passwordHash,
+  );
+});

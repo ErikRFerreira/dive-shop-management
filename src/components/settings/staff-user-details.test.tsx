@@ -54,7 +54,13 @@ test('renders read-only identity, account metadata, dates, and back navigation',
     email: 'avery@example.test',
   });
 
-  render(<StaffUserDetails staffUser={user} />);
+  render(
+    <StaffUserDetails
+      currentUserId="current-admin"
+      isFinalActiveAdmin={false}
+      staffUser={user}
+    />,
+  );
 
   expect(screen.getByRole('heading', { name: 'Avery Admin' })).not.toBeNull();
   expect(
@@ -78,6 +84,21 @@ test('renders read-only identity, account metadata, dates, and back navigation',
     within(accountDetails).getByText(formatDisplayDateTime(updatedAt)),
   ).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Edit Staff User' })).not.toBeNull();
+});
+
+test('renders inactive status with the reactivation entry point', () => {
+  render(
+    <StaffUserDetails
+      currentUserId="current-admin"
+      isFinalActiveAdmin={false}
+      staffUser={staffUser(UserRole.INSTRUCTOR, { isActive: false })}
+    />,
+  );
+
+  expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0);
+  expect(
+    screen.getByRole('button', { name: 'Reactivate account' }),
+  ).not.toBeNull();
 });
 
 test.each([
@@ -116,7 +137,13 @@ test.each([
 ] as const)(
   'renders the approved %s platform access summary',
   (role, description, items) => {
-    render(<StaffUserDetails staffUser={staffUser(role)} />);
+    render(
+      <StaffUserDetails
+        currentUserId="current-admin"
+        isFinalActiveAdmin={false}
+        staffUser={staffUser(role)}
+      />,
+    );
 
     const platformAccess = screen.getByRole('region', {
       name: 'Platform Access',
@@ -131,7 +158,13 @@ test.each([
 );
 
 test('renders the DIVEMASTER assignment-only and no-login explanation', () => {
-  render(<StaffUserDetails staffUser={staffUser(UserRole.DIVEMASTER)} />);
+  render(
+    <StaffUserDetails
+      currentUserId="current-admin"
+      isFinalActiveAdmin={false}
+      staffUser={staffUser(UserRole.DIVEMASTER)}
+    />,
+  );
 
   const platformAccess = screen.getByRole('region', {
     name: 'Platform Access',
@@ -152,4 +185,7 @@ test('renders the DIVEMASTER assignment-only and no-login explanation', () => {
   expect(
     screen.getByText('Assignment-only staff records are read-only in Settings.'),
   ).not.toBeNull();
+  expect(
+    screen.queryByRole('button', { name: /activate account/i }),
+  ).toBeNull();
 });

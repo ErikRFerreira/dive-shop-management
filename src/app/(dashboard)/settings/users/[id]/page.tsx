@@ -1,7 +1,11 @@
 import { notFound } from 'next/navigation';
 
 import { StaffUserDetails } from '@/components/settings/staff-user-details';
-import { getStaffUserById } from '@/features/settings/queries';
+import {
+  getHasAnotherActiveAdmin,
+  getStaffUserById,
+} from '@/features/settings/queries';
+import { UserRole } from '@/generated/prisma/enums';
 import { requireCurrentUser } from '@/lib/current-user';
 import { requireDashboardRouteAccess } from '@/lib/require-dashboard-route-access';
 
@@ -10,10 +14,10 @@ type StaffUserDetailsPageProps = {
 };
 
 /**
- * Renders the ADMIN-only Staff User Details route with safe edit controls.
+ * Renders the ADMIN-only staff details route with safe account controls.
  *
  * @param props - Dynamic route parameters containing the requested staff ID.
- * @returns The safe staff detail/edit view, or the project not-found response.
+ * @returns Staff details with advisory status safeguards, or not-found behavior.
  */
 async function StaffUserDetailsPage({ params }: StaffUserDetailsPageProps) {
   const currentUser = await requireCurrentUser();
@@ -25,7 +29,18 @@ async function StaffUserDetailsPage({ params }: StaffUserDetailsPageProps) {
     notFound();
   }
 
-  return <StaffUserDetails staffUser={staffUser} />;
+  const isFinalActiveAdmin =
+    staffUser.role === UserRole.ADMIN &&
+    staffUser.isActive &&
+    !(await getHasAnotherActiveAdmin(currentUser, staffUser.id));
+
+  return (
+    <StaffUserDetails
+      currentUserId={currentUser.id}
+      isFinalActiveAdmin={isFinalActiveAdmin}
+      staffUser={staffUser}
+    />
+  );
 }
 
 export default StaffUserDetailsPage;

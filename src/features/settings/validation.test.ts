@@ -4,6 +4,7 @@ import { UserRole } from '@/generated/prisma/enums';
 import {
   createStaffUserSchema,
   parseStaffUserSearchParams,
+  staffUserStatusActionSchema,
   updateStaffUserSchema,
 } from './validation';
 
@@ -98,6 +99,21 @@ test('normalizes supported edits and rejects immutable or arbitrary fields', () 
       isActive: false,
     }).success,
   ).toBe(false);
+});
+
+test('accepts only a trimmed staff ID for account status actions', () => {
+  expect(
+    staffUserStatusActionSchema.parse({ userId: '  staff-1  ' }),
+  ).toEqual({ userId: 'staff-1' });
+  expect(
+    staffUserStatusActionSchema.safeParse({
+      userId: 'staff-1',
+      isActive: false,
+    }).success,
+  ).toBe(false);
+  expect(staffUserStatusActionSchema.safeParse({ userId: '' }).success).toBe(
+    false,
+  );
 });
 
 test('parses and trims supported staff URL filters', () => {

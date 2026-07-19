@@ -30,12 +30,19 @@ vi.mock('@/lib/db', () => ({
   db: {
     user: {
       create: mocks.create,
+      findUnique: mocks.findUnique,
+      update: mocks.update,
     },
     $transaction: mocks.transaction,
   },
 }));
 
-import { createStaffUser, updateStaffUser } from './actions';
+import {
+  createStaffUser,
+  deactivateStaffUser,
+  reactivateStaffUser,
+  updateStaffUser,
+} from './actions';
 
 const admin = {
   id: 'admin-1',
@@ -76,7 +83,7 @@ beforeEach(() => {
     role: UserRole.MANAGER,
     isActive: true,
   });
-  mocks.count.mockResolvedValue(2);
+  mocks.count.mockResolvedValue(1);
   mocks.update.mockResolvedValue({ id: 'staff-1' });
   mocks.transaction.mockImplementation(
     async (
@@ -255,7 +262,7 @@ test('prevents another ADMIN from demoting the final active ADMIN', async () => 
     role: UserRole.ADMIN,
     isActive: true,
   });
-  mocks.count.mockResolvedValue(1);
+  mocks.count.mockResolvedValue(0);
 
   await expect(updateStaffUser(validUpdateInput)).resolves.toEqual({
     success: false,
@@ -266,6 +273,7 @@ test('prevents another ADMIN from demoting the final active ADMIN', async () => 
     where: {
       role: UserRole.ADMIN,
       isActive: true,
+      id: { not: 'staff-1' },
     },
   });
   expect(mocks.update).not.toHaveBeenCalled();
@@ -277,7 +285,7 @@ test('prevents the final active ADMIN from demoting themselves', async () => {
     role: UserRole.ADMIN,
     isActive: true,
   });
-  mocks.count.mockResolvedValue(1);
+  mocks.count.mockResolvedValue(0);
 
   expect(
     (
@@ -296,7 +304,7 @@ test('allows an active ADMIN demotion when another active ADMIN exists', async (
     role: UserRole.ADMIN,
     isActive: true,
   });
-  mocks.count.mockResolvedValue(2);
+  mocks.count.mockResolvedValue(1);
 
   await expect(updateStaffUser(validUpdateInput)).resolves.toEqual({
     success: true,
@@ -335,4 +343,272 @@ test('retries a serializable role update after a Prisma write conflict', async (
     success: true,
   });
   expect(mocks.transaction).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  UserRole.MANAGER,
+  UserRole.CUSTOMER_SERVICE,
+  UserRole.INSTRUCTOR,
+  UserRole.DIVEMASTER,
+])('denies %s from both staff status actions without mutation', async (role) => {
+  mocks.requireCurrentUser.mockResolvedValue({ ...admin, id: `${role}-1`, role });
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'You do not have permission to manage staff users.',
+  });
+  await expect(
+    reactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'You do not have permission to manage staff users.',
+  });
+  expect(mocks.transaction).not.toHaveBeenCalled();
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('deactivates another active user by updating only isActive', async () => {
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+
+  expect(mocks.update).toHaveBeenCalledWith({
+    where: { id: 'staff-1' },
+    data: { isActive: false },
+    select: { id: true },
+  });
+  expect(mocks.update.mock.calls[0][0].data).not.toHaveProperty('role');
+  expect(mocks.update.mock.calls[0][0].data).not.toHaveProperty('passwordHash');
+  expect(mocks.transaction.mock.calls[0][1]).toEqual({
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  });
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith(
+    '/settings/users/staff-1',
+  );
+});
+
+test('rejects self-deactivation before counting or updating', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: admin.id,
+    role: UserRole.ADMIN,
+    isActive: true,
+  });
+
+  await expect(
+    deactivateStaffUser({ userId: admin.id }),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'You cannot deactivate the account you are currently using.',
+  });
+  expect(mocks.count).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('rejects deactivation of the final active ADMIN', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: 'staff-1',
+    role: UserRole.ADMIN,
+    isActive: true,
+  });
+  mocks.count.mockResolvedValue(0);
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({
+    success: false,
+    formError:
+      'This account is the final active Admin and cannot be deactivated.',
+  });
+  expect(mocks.count).toHaveBeenCalledWith({
+    where: {
+      role: UserRole.ADMIN,
+      isActive: true,
+      id: { not: 'staff-1' },
+    },
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('deactivates an ADMIN when another active ADMIN exists', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: 'staff-1',
+    role: UserRole.ADMIN,
+    isActive: true,
+  });
+  mocks.count.mockResolvedValue(1);
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+  expect(mocks.update).toHaveBeenCalledOnce();
+});
+
+test('does not count an inactive ADMIN as a deactivation backup', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: 'staff-1',
+    role: UserRole.ADMIN,
+    isActive: true,
+  });
+  mocks.count.mockResolvedValue(0);
+
+  expect((await deactivateStaffUser({ userId: 'staff-1' })).success).toBe(
+    false,
+  );
+  expect(mocks.count).toHaveBeenCalledWith({
+    where: expect.objectContaining({ isActive: true }),
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('handles an already-inactive deactivation target idempotently', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: 'staff-1',
+    role: UserRole.ADMIN,
+    isActive: false,
+  });
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+  expect(mocks.count).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings');
+});
+
+test('handles a missing deactivation target safely', async () => {
+  mocks.findUnique.mockResolvedValue(null);
+
+  await expect(
+    deactivateStaffUser({ userId: 'missing-user' }),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Staff user not found. Refresh and try again.',
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test.each([
+  {},
+  { userId: '' },
+  { userId: 'staff-1', isActive: false },
+  { userId: 'staff-1', role: UserRole.ADMIN },
+])('rejects manipulated deactivation input without a transaction', async (input) => {
+  expect((await deactivateStaffUser(input)).success).toBe(false);
+  expect(mocks.transaction).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('retries deactivation after a serializable write conflict', async () => {
+  mocks.transaction
+    .mockRejectedValueOnce(prismaError('P2034'))
+    .mockImplementationOnce(async (callback) =>
+      callback({
+        user: {
+          findUnique: mocks.findUnique,
+          count: mocks.count,
+          update: mocks.update,
+        },
+      }),
+    );
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+  expect(mocks.transaction).toHaveBeenCalledTimes(2);
+  expect(mocks.update).toHaveBeenCalledOnce();
+});
+
+test('returns a safe deactivation failure without leaking Prisma details', async () => {
+  mocks.transaction.mockRejectedValue(new Error('database secret'));
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({
+    success: false,
+    formError:
+      'Unable to deactivate the staff account right now. Please try again.',
+  });
+  expect(mocks.revalidatePath).not.toHaveBeenCalled();
+});
+
+test('reactivates an inactive user by updating only isActive', async () => {
+  mocks.findUnique.mockResolvedValue({
+    id: 'staff-1',
+    role: UserRole.INSTRUCTOR,
+    isActive: false,
+    passwordHash: 'existing-password-hash',
+  });
+
+  await expect(
+    reactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+  expect(mocks.update).toHaveBeenCalledWith({
+    where: { id: 'staff-1' },
+    data: { isActive: true },
+    select: { id: true },
+  });
+  expect(mocks.update.mock.calls[0][0].data).not.toHaveProperty('role');
+  expect(mocks.update.mock.calls[0][0].data).not.toHaveProperty('passwordHash');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings');
+  expect(mocks.revalidatePath).toHaveBeenCalledWith(
+    '/settings/users/staff-1',
+  );
+});
+
+test('handles an already-active reactivation target idempotently', async () => {
+  await expect(
+    reactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({ success: true });
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings');
+});
+
+test('handles a missing reactivation target safely', async () => {
+  mocks.findUnique.mockResolvedValue(null);
+
+  await expect(
+    reactivateStaffUser({ userId: 'missing-user' }),
+  ).resolves.toEqual({
+    success: false,
+    formError: 'Staff user not found. Refresh and try again.',
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test.each([
+  {},
+  { userId: '' },
+  { userId: 'staff-1', passwordHash: 'manipulated' },
+])('rejects manipulated reactivation input without reading or updating', async (input) => {
+  expect((await reactivateStaffUser(input)).success).toBe(false);
+  expect(mocks.findUnique).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
+test('returns a safe reactivation failure without mutation feedback', async () => {
+  mocks.findUnique.mockRejectedValue(new Error('database secret'));
+
+  await expect(
+    reactivateStaffUser({ userId: 'staff-1' }),
+  ).resolves.toEqual({
+    success: false,
+    formError:
+      'Unable to reactivate the staff account right now. Please try again.',
+  });
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.revalidatePath).not.toHaveBeenCalled();
+});
+
+test('rejects an inactive acting session before a representative status mutation', async () => {
+  mocks.requireCurrentUser.mockRejectedValue(new Error('redirect:/login'));
+
+  await expect(
+    deactivateStaffUser({ userId: 'staff-1' }),
+  ).rejects.toThrow('redirect:/login');
+  expect(mocks.transaction).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
 });

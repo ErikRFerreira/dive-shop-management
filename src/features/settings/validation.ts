@@ -44,8 +44,15 @@ export const updateStaffUserSchema = z.strictObject({
   role: staffLoginRoleSchema,
 });
 
+export const staffUserStatusActionSchema = z.strictObject({
+  userId: z.string().trim().min(1, { error: 'Staff user ID is required.' }),
+});
+
 export type CreateStaffUserInput = z.input<typeof createStaffUserSchema>;
 export type UpdateStaffUserInput = z.input<typeof updateStaffUserSchema>;
+export type StaffUserStatusActionInput = z.input<
+  typeof staffUserStatusActionSchema
+>;
 
 export type StaffUserSearchParams = Record<
   string,
