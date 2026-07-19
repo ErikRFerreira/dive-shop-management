@@ -2,9 +2,50 @@ import { z } from 'zod';
 
 import { UserRole } from '@/generated/prisma/enums';
 import {
+  staffLoginRoleOptions,
   staffUserStatusOptions,
   type StaffUserFilters,
 } from '@/features/settings/types';
+import { normalizeEmail } from '@/lib/normalize-email';
+
+const staffNameSchema = z
+  .string()
+  .trim()
+  .min(1, { error: 'Enter the staff member\'s full name.' });
+
+const staffEmailSchema = z
+  .string()
+  .trim()
+  .email({ error: 'Enter a valid email address.' })
+  .max(254, { error: 'Enter a valid email address.' })
+  .transform(normalizeEmail);
+
+const staffPasswordSchema = z
+  .string()
+  .min(12, { error: 'Password must be at least 12 characters.' })
+  .max(128, { error: 'Password must be 128 characters or fewer.' });
+
+const staffLoginRoleSchema = z.enum(staffLoginRoleOptions, {
+  error: 'Select a supported login role.',
+});
+
+export const createStaffUserSchema = z.strictObject({
+  name: staffNameSchema,
+  email: staffEmailSchema,
+  password: staffPasswordSchema,
+  role: staffLoginRoleSchema,
+  isActive: z.boolean({ error: 'Select a valid active status.' }).default(true),
+});
+
+export const updateStaffUserSchema = z.strictObject({
+  userId: z.string().trim().min(1, { error: 'Staff user ID is required.' }),
+  name: staffNameSchema,
+  email: staffEmailSchema,
+  role: staffLoginRoleSchema,
+});
+
+export type CreateStaffUserInput = z.input<typeof createStaffUserSchema>;
+export type UpdateStaffUserInput = z.input<typeof updateStaffUserSchema>;
 
 export type StaffUserSearchParams = Record<
   string,
@@ -50,4 +91,3 @@ export function parseStaffUserSearchParams(
 ): StaffUserFilters {
   return staffUserSearchParamsSchema.parse(searchParams);
 }
-

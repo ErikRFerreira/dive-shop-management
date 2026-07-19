@@ -10,10 +10,10 @@ type StaffUserDetailsProps = {
 };
 
 /**
- * Renders the read-only Staff User Details experience for an authorized ADMIN.
+ * Renders Staff User Details and the supported login-account edit entry point.
  *
  * @param props - Safe selected staff fields returned by the detail query.
- * @returns Identity header, account metadata, and centralized access summary.
+ * @returns Identity, account metadata, access summary, and safe account actions.
  */
 export function StaffUserDetails({ staffUser }: StaffUserDetailsProps) {
   return (
@@ -40,7 +40,7 @@ export function StaffUserDetails({ staffUser }: StaffUserDetailsProps) {
 
         {/* Sidebar / actions column */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <AccountActions />
+          <AccountActions staffUser={staffUser} />
         </div>
       </div>
     </div>

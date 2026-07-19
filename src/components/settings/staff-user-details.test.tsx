@@ -1,10 +1,22 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import type { StaffUserDetail } from '@/features/settings/queries';
 import { UserRole } from '@/generated/prisma/enums';
 import { formatDisplayDateTime, formatEnumLabel } from '@/lib/format';
 import { StaffUserDetails } from './staff-user-details';
+
+vi.mock('@/features/settings/actions', () => ({
+  updateStaffUser: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn() },
+}));
 
 afterEach(() => {
   cleanup();
@@ -65,12 +77,13 @@ test('renders read-only identity, account metadata, dates, and back navigation',
   expect(
     within(accountDetails).getByText(formatDisplayDateTime(updatedAt)),
   ).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Edit Staff User' })).not.toBeNull();
 });
 
 test.each([
   [
     UserRole.ADMIN,
-    'Full administrative access. Can manage bookings, schedules, customers, staff, and settings.',
+    'Full operational and staff-management access.',
     [
       'Dashboard',
       'Booking management',
@@ -82,7 +95,7 @@ test.each([
   ],
   [
     UserRole.MANAGER,
-    'Full operational access. Can manage bookings, schedules, assignments, and customers.',
+    'Full operational access without Settings or staff management.',
     [
       'Dashboard',
       'Booking management',
@@ -92,12 +105,12 @@ test.each([
   ],
   [
     UserRole.CUSTOMER_SERVICE,
-    'Booking and customer service access. Can create bookings, manage customers, and view the schedule.',
+    'Booking intake, Customers, and Schedule access.',
     ['Dashboard', 'Booking intake', 'Customer management', 'Schedule view'],
   ],
   [
     UserRole.INSTRUCTOR,
-    'Schedule and assignment access only. Can view the global schedule and personal assignments.',
+    'Global Schedule and My Assignments access.',
     ['Global Schedule', 'My Assignments'],
   ],
 ] as const)(
@@ -135,4 +148,8 @@ test('renders the DIVEMASTER assignment-only and no-login explanation', () => {
     ),
   ).not.toBeNull();
   expect(within(platformAccess).queryByRole('list')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Edit Staff User' })).toBeNull();
+  expect(
+    screen.getByText('Assignment-only staff records are read-only in Settings.'),
+  ).not.toBeNull();
 });

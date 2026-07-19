@@ -8,23 +8,13 @@ import {
 import { CircleCheck } from 'lucide-react';
 import type { StaffUserDetail } from '@/features/settings/queries';
 import { getStaffRoleAccessSummary } from '@/features/settings/access-summary';
-import { UserRole } from '@/generated/prisma/enums';
+import {
+  isStaffLoginRole,
+  staffLoginRoleMetadata,
+} from '@/features/settings/types';
 
 type Props = {
   staffUser: StaffUserDetail;
-};
-
-const roleDescriptions: Record<UserRole, string> = {
-  [UserRole.ADMIN]:
-    'Full administrative access. Can manage bookings, schedules, customers, staff, and settings.',
-  [UserRole.MANAGER]:
-    'Full operational access. Can manage bookings, schedules, assignments, and customers.',
-  [UserRole.CUSTOMER_SERVICE]:
-    'Booking and customer service access. Can create bookings, manage customers, and view the schedule.',
-  [UserRole.INSTRUCTOR]:
-    'Schedule and assignment access only. Can view the global schedule and personal assignments.',
-  [UserRole.DIVEMASTER]:
-    'Assignment-only staff record. Can be assigned to scheduled activities but cannot sign in to the platform.',
 };
 
 /**
@@ -35,6 +25,9 @@ const roleDescriptions: Record<UserRole, string> = {
  */
 function PlatformAccess({ staffUser }: Props) {
   const accessSummary = getStaffRoleAccessSummary(staffUser.role);
+  const roleDescription = isStaffLoginRole(staffUser.role)
+    ? staffLoginRoleMetadata[staffUser.role].description
+    : 'Assignment-only staff record. Can be assigned to scheduled activities but cannot sign in to the platform.';
 
   return (
     <Card
@@ -47,7 +40,7 @@ function PlatformAccess({ staffUser }: Props) {
           Platform Access
         </CardTitle>
         <CardDescription className="max-w-2xl text-sm leading-relaxed">
-          {roleDescriptions[staffUser.role]}
+          {roleDescription}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-6 pb-6 sm:px-7 sm:pb-7">

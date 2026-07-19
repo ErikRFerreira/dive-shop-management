@@ -1,7 +1,104 @@
 import { expect, test } from 'vitest';
 
 import { UserRole } from '@/generated/prisma/enums';
-import { parseStaffUserSearchParams } from './validation';
+import {
+  createStaffUserSchema,
+  parseStaffUserSearchParams,
+  updateStaffUserSchema,
+} from './validation';
+
+const validCreateInput = {
+  name: 'Marina Staff',
+  email: 'marina@example.test',
+  password: 'secure-passphrase',
+  role: UserRole.CUSTOMER_SERVICE,
+};
+
+test.each([
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.CUSTOMER_SERVICE,
+  UserRole.INSTRUCTOR,
+])('accepts the supported %s login role for creation', (role) => {
+  expect(createStaffUserSchema.safeParse({ ...validCreateInput, role }).success).toBe(
+    true,
+  );
+});
+
+test('trims identity fields, normalizes email, and defaults creation to active', () => {
+  expect(
+    createStaffUserSchema.parse({
+      ...validCreateInput,
+      name: '  Marina Staff  ',
+      email: '  MARINA@EXAMPLE.TEST  ',
+    }),
+  ).toEqual({
+    ...validCreateInput,
+    name: 'Marina Staff',
+    email: 'marina@example.test',
+    isActive: true,
+  });
+});
+
+test('accepts an explicitly inactive creation boolean', () => {
+  expect(
+    createStaffUserSchema.parse({ ...validCreateInput, isActive: false }),
+  ).toMatchObject({ isActive: false });
+});
+
+test.each(['short-pass', 'x'.repeat(129)])(
+  'rejects an invalid creation password',
+  (password) => {
+    expect(
+      createStaffUserSchema.safeParse({ ...validCreateInput, password }).success,
+    ).toBe(false);
+  },
+);
+
+test.each([UserRole.DIVEMASTER, 'OWNER'])('rejects unsupported role %s', (role) => {
+  expect(
+    createStaffUserSchema.safeParse({ ...validCreateInput, role }).success,
+  ).toBe(false);
+});
+
+test('rejects string booleans and unexpected create fields', () => {
+  expect(
+    createStaffUserSchema.safeParse({ ...validCreateInput, isActive: 'false' })
+      .success,
+  ).toBe(false);
+  expect(
+    createStaffUserSchema.safeParse({
+      ...validCreateInput,
+      passwordHash: 'manipulated',
+    }).success,
+  ).toBe(false);
+});
+
+test('normalizes supported edits and rejects immutable or arbitrary fields', () => {
+  expect(
+    updateStaffUserSchema.parse({
+      userId: '  staff-1  ',
+      name: '  Updated Staff  ',
+      email: '  UPDATED@EXAMPLE.TEST ',
+      role: UserRole.INSTRUCTOR,
+    }),
+  ).toEqual({
+    userId: 'staff-1',
+    name: 'Updated Staff',
+    email: 'updated@example.test',
+    role: UserRole.INSTRUCTOR,
+  });
+
+  expect(
+    updateStaffUserSchema.safeParse({
+      userId: 'staff-1',
+      name: 'Updated Staff',
+      email: 'updated@example.test',
+      role: UserRole.DIVEMASTER,
+      isActive: false,
+    }).success,
+  ).toBe(false);
+});
 
 test('parses and trims supported staff URL filters', () => {
   expect(
@@ -56,4 +153,3 @@ test('defaults missing staff URL filters', () => {
     page: 1,
   });
 });
-

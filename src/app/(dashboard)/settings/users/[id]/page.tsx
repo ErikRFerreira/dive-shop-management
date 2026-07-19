@@ -10,10 +10,10 @@ type StaffUserDetailsPageProps = {
 };
 
 /**
- * Renders the ADMIN-only, read-only Staff User Details route.
+ * Renders the ADMIN-only Staff User Details route with safe edit controls.
  *
  * @param props - Dynamic route parameters containing the requested staff ID.
- * @returns The safe staff detail view, or the project not-found response.
+ * @returns The safe staff detail/edit view, or the project not-found response.
  */
 async function StaffUserDetailsPage({ params }: StaffUserDetailsPageProps) {
   const currentUser = await requireCurrentUser();

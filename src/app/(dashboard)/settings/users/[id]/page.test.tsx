@@ -22,9 +22,18 @@ vi.mock('@/lib/current-user', () => ({
   requireCurrentUser: mocks.requireCurrentUser,
 }));
 
+vi.mock('@/features/settings/actions', () => ({
+  updateStaffUser: vi.fn(),
+}));
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn() },
+}));
+
 vi.mock('next/navigation', () => ({
   notFound: mocks.notFound,
   redirect: mocks.redirect,
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 import StaffUserDetailsPage from './page';

@@ -1,9 +1,7 @@
-import { Plus } from 'lucide-react';
-
 import PageHeader from '@/components/common/page-header';
+import { CreateStaffUserDialog } from '@/components/settings/create-staff-user-dialog';
 import { StaffUserList } from '@/components/settings/staff-user-list';
 import { StaffUserListShell } from '@/components/settings/staff-user-list-shell';
-import { Button } from '@/components/ui/button';
 import { getStaffUsers } from '@/features/settings/queries';
 import {
   parseStaffUserSearchParams,
@@ -17,10 +15,10 @@ type SettingsPageProps = {
 };
 
 /**
- * Renders the ADMIN-only, read-only Staff Management Settings page.
+ * Renders the ADMIN-only Staff Management list and staff-creation entry point.
  *
  * @param props - Async App Router URL parameters for staff search and filtering.
- * @returns Staff filters, safe staff rows, and honest future-action scaffolding.
+ * @returns Staff creation, filters, safe staff rows, and pagination controls.
  */
 async function SettingsPage({ searchParams }: SettingsPageProps) {
   const currentUser = await requireCurrentUser();
@@ -36,19 +34,7 @@ async function SettingsPage({ searchParams }: SettingsPageProps) {
           description="Manage staff accounts, roles, and platform access."
         />
 
-        <div>
-          <Button
-            aria-describedby="create-staff-user-availability"
-            disabled
-            title="Staff user creation is not available yet."
-          >
-            <Plus className="size-4" />
-            Create Staff User
-          </Button>
-          <span className="sr-only" id="create-staff-user-availability">
-            Staff user creation is not available yet.
-          </span>
-        </div>
+        <CreateStaffUserDialog />
       </div>
 
       <section aria-labelledby="staff-users-heading" className="space-y-4">
