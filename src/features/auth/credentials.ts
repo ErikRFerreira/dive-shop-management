@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { verifyPassword } from '@/features/auth/password';
 import { canAccessPlatform } from '@/features/auth/permissions';
 import { db } from '@/lib/db';
+import { normalizeEmail } from '@/lib/normalize-email';
 
 export const credentialsSchema = z.object({
   email: z
@@ -12,7 +13,7 @@ export const credentialsSchema = z.object({
     .trim()
     .email({ error: 'Enter a valid email address.' })
     .max(254, { error: 'Enter a valid email address.' })
-    .transform((email) => email.toLowerCase()),
+    .transform(normalizeEmail),
   password: z
     .string()
     .min(1, { error: 'Enter your password.' })

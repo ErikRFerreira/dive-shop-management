@@ -95,3 +95,12 @@ test('continues to resolve an active instructor', async () => {
     role: UserRole.INSTRUCTOR,
   });
 });
+
+test('resolves an existing session normally after database reactivation', async () => {
+  mocks.findUnique
+    .mockResolvedValueOnce({ ...persistedUser, isActive: false })
+    .mockResolvedValueOnce(persistedUser);
+
+  await expect(getCurrentUser()).resolves.toBeNull();
+  await expect(getCurrentUser()).resolves.toEqual(currentUser);
+});
