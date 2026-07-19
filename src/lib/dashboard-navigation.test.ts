@@ -74,3 +74,13 @@ test('places assignments after schedule in the dashboard route registry', () => 
     routeKeys.indexOf('schedule'),
   );
 });
+
+test('shows Settings navigation only to ADMIN', () => {
+  for (const role of Object.values(UserRole)) {
+    const settingsRoute = getDashboardNavigation({ role }).find(
+      (route) => route.key === 'settings',
+    );
+
+    expect(Boolean(settingsRoute)).toBe(role === UserRole.ADMIN);
+  }
+});
