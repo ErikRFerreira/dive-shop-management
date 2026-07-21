@@ -16,8 +16,9 @@ type LoginPageProps = {
 /**
  * Renders the branded internal login experience for unauthenticated users.
  *
- * Active authenticated users are returned to the dashboard, and demo account
- * identifiers are included only in local development or Vercel Preview.
+ * Active authenticated users are returned to their role-appropriate landing
+ * route. Seed account identifiers are available only when a server-only,
+ * local-development feature flag is explicitly enabled.
  *
  * @param props - Login URL search parameters containing an optional callback.
  * @returns The public login page or an authenticated redirect.
@@ -35,14 +36,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     );
   }
 
-  // DEMO ENVIRONMENTS ONLY: this password is sent to the browser to fill seeded
-  // credentials. The guard must remain so it is never exposed in a Vercel
-  // Production response.
-  const demoPassword =
-    process.env.NODE_ENV === 'development' ||
-    process.env.VERCEL_ENV === 'preview'
-      ? process.env.SEED_USER_PASSWORD
-      : undefined;
+  const showDevelopmentAccountSelector =
+    process.env.NODE_ENV === 'development' &&
+    process.env.ENABLE_DEV_ACCOUNT_SELECTOR === 'true';
 
   return (
     <AuthShell
@@ -51,7 +47,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     >
       <LoginExperience
         redirectTo={redirectDestination}
-        demoPassword={demoPassword}
+        showDevelopmentAccountSelector={showDevelopmentAccountSelector}
       />
     </AuthShell>
   );

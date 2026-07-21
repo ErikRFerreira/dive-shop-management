@@ -5,6 +5,7 @@ import { UserRole } from '@/generated/prisma/enums';
 
 const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
+  loginExperience: vi.fn(),
   redirect: vi.fn(),
 }));
 
@@ -17,25 +18,26 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/login/login-experience', () => ({
-  default: ({
-    redirectTo,
-    demoPassword,
-  }: {
+  default: (props: {
     redirectTo?: string | null;
-    demoPassword?: string;
-  }) => (
-    <>
-      <div data-redirect-to={redirectTo ?? ''}>Login form</div>
-      {demoPassword ? (
-        <div>
-          <p>Demo accounts</p>
-          <span>admin@diveshop.local</span>
-          <span>cs@diveshop.local</span>
-          <span>erik@diveshop.local</span>
-        </div>
-      ) : null}
-    </>
-  ),
+    showDevelopmentAccountSelector?: boolean;
+  }) => {
+    mocks.loginExperience(props);
+
+    return (
+      <>
+        <div data-redirect-to={props.redirectTo ?? ''}>Login form</div>
+        {props.showDevelopmentAccountSelector ? (
+          <div>
+            <p>Demo accounts</p>
+            <span>admin@diveshop.local</span>
+            <span>cs@diveshop.local</span>
+            <span>erik@diveshop.local</span>
+          </div>
+        ) : null}
+      </>
+    );
+  },
 }));
 
 import LoginPage from './page';
@@ -110,10 +112,10 @@ test('passes only a validated destination to the login form', async () => {
   );
 });
 
-test('renders seeded account emails without a password in development', async () => {
+test('renders seeded account emails only when explicitly enabled in development', async () => {
   vi.stubEnv('NODE_ENV', 'development');
-  vi.stubEnv('VERCEL_ENV', 'development');
-  vi.stubEnv('SEED_USER_PASSWORD', 'password123');
+  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
+  vi.stubEnv('SEED_USER_PASSWORD', 'must-not-reach-the-client');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 
@@ -121,31 +123,50 @@ test('renders seeded account emails without a password in development', async ()
   expect(screen.getByText('admin@diveshop.local')).toBeTruthy();
   expect(screen.getByText('cs@diveshop.local')).toBeTruthy();
   expect(screen.getByText('erik@diveshop.local')).toBeTruthy();
-  expect(screen.queryByText('password123')).toBeNull();
+  const loginExperienceProps = mocks.loginExperience.mock.calls.at(-1)?.[0];
+
+  expect(loginExperienceProps).not.toHaveProperty('demoPassword');
+  expect(screen.queryByText('must-not-reach-the-client')).toBeNull();
 });
 
-test('renders seeded account emails in a Vercel Preview deployment', async () => {
-  vi.stubEnv('NODE_ENV', 'production');
-  vi.stubEnv('VERCEL_ENV', 'preview');
-  vi.stubEnv('SEED_USER_PASSWORD', 'preview-password');
-
-  render(await LoginPage({ searchParams: Promise.resolve({}) }));
-
-  expect(screen.getByText('Demo accounts')).toBeTruthy();
-  expect(screen.getByText('admin@diveshop.local')).toBeTruthy();
-  expect(screen.getByText('cs@diveshop.local')).toBeTruthy();
-  expect(screen.getByText('erik@diveshop.local')).toBeTruthy();
-  expect(screen.queryByText('preview-password')).toBeNull();
-});
-
-test('does not render demo account information in Vercel Production', async () => {
-  vi.stubEnv('NODE_ENV', 'production');
-  vi.stubEnv('VERCEL_ENV', 'production');
-  vi.stubEnv('SEED_USER_PASSWORD', 'production-password');
+test('does not render seeded accounts in development without the explicit flag', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'false');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 
   expect(screen.queryByText('Demo accounts')).toBeNull();
   expect(screen.queryByText('admin@diveshop.local')).toBeNull();
-  expect(screen.queryByText('production-password')).toBeNull();
+});
+
+test('does not render seeded accounts in a Vercel Preview deployment', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('VERCEL_ENV', 'preview');
+  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
+
+  render(await LoginPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByText('Demo accounts')).toBeNull();
+  expect(screen.queryByText('admin@diveshop.local')).toBeNull();
+});
+
+test('does not render seeded accounts in Vercel Production', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('VERCEL_ENV', 'production');
+  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
+
+  render(await LoginPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByText('Demo accounts')).toBeNull();
+  expect(screen.queryByText('admin@diveshop.local')).toBeNull();
+});
+
+test('does not render seeded accounts in a local production build', async () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
+
+  render(await LoginPage({ searchParams: Promise.resolve({}) }));
+
+  expect(screen.queryByText('Demo accounts')).toBeNull();
+  expect(screen.queryByText('admin@diveshop.local')).toBeNull();
 });

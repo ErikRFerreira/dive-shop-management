@@ -678,6 +678,65 @@ test('overview query returns summary plus operational sections', async () => {
   });
 });
 
+test('instructor overview contains only assignment-scoped operational information', async () => {
+  mocks.scheduleItemCount
+    .mockResolvedValueOnce(1)
+    .mockResolvedValueOnce(2)
+    .mockResolvedValueOnce(3);
+  mocks.scheduleItemFindMany.mockResolvedValueOnce([
+    scheduleRecord({ assignments: [assignmentRecord()] }),
+  ]);
+  mocks.bookingRequestFindMany.mockResolvedValueOnce([
+    bookingRecord({ status: BookingStatus.SCHEDULED }),
+  ]);
+
+  const overview = await getDashboardOverviewForCurrentUser(instructorUser);
+
+  expect(overview).toEqual({
+    summary: {
+      kind: 'instructor',
+      todayAssignmentsCount: 1,
+      tomorrowAssignmentsCount: 2,
+      myAssignmentsCount: 3,
+    },
+    needsAttention: [],
+    todaysSchedule: [
+      expect.objectContaining({
+        scheduleItemId: 'schedule-1',
+        bookingId: 'booking-1',
+        assignedStaffNames: ['Instructor One'],
+      }),
+    ],
+    recentActivity: [
+      expect.objectContaining({
+        bookingId: 'booking-1',
+        status: BookingStatus.SCHEDULED,
+      }),
+    ],
+  });
+  expect(mocks.scheduleItemFindMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        bookingRequest: { status: BookingStatus.SCHEDULED },
+        assignments: { some: { userId: instructorUser.id } },
+      }),
+    }),
+  );
+  expect(mocks.bookingRequestFindMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: {
+        status: BookingStatus.SCHEDULED,
+        scheduleItems: {
+          some: {
+            assignments: { some: { userId: instructorUser.id } },
+          },
+        },
+      },
+    }),
+  );
+  expect(mocks.bookingRequestCount).not.toHaveBeenCalled();
+});
+
 test('rejects divemaster dashboard overview queries before Prisma access', async () => {
   await expect(
     getDashboardOverviewForCurrentUser(divemasterUser),
