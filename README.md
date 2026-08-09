@@ -1,114 +1,77 @@
 # Dive Shop Management System
 
-Internal dashboard for dive shop booking intake, admin approval, and schedule publishing.
+An internal operations dashboard for turning booking inquiries into reviewed bookings and official scheduled activities. The application database is the source of truth; only approved bookings published to the schedule appear there.
 
-The app helps customer service turn messy booking information from WeChat, WhatsApp, referrals, or instructors into structured booking requests. Admin reviews those requests before they become part of the official internal schedule.
+## Workflow
 
-## MVP Goal
+`Draft -> Pending approval -> Scheduled`
 
-Smallest useful workflow:
+When corrections are required, a pending booking moves to `Needs more info` and can be resubmitted for approval. Bookings under review or already scheduled can also be cancelled.
 
-`Customer Service creates booking request → Admin reviews / approves it → Approved booking appears on internal schedule`
+Customer service creates and maintains booking requests. Admins and managers review them, request corrections, approve them for the schedule, or cancel them.
 
-Main rule: **only approved bookings appear on the official schedule.**
+## Features
 
-## Tech Stack
-
-- Next.js App Router
-- TypeScript
-- PostgreSQL
-- Prisma
-- Auth.js / NextAuth-style authentication
-- Tailwind CSS
-- shadcn/ui
-- Zod
-- Supabase Postgres / Storage
-- Vercel
+- Booking intake and approval workflow with multiple customers and activities
+- Customer search, profiles, and booking history
+- FullCalendar schedule with operational filters
+- Multiple instructor or divemaster assignments per scheduled activity
+- Role-aware dashboards and navigation
+- Admin-only staff account management
 
 ## Roles
 
-**Customer Service** can create bookings, save drafts, submit bookings for approval, and update bookings marked as Needs More Info.
+- **Admin:** Full operational access and staff management.
+- **Manager:** Full operational access without staff management.
+- **Customer Service:** Creates, edits, submits, and resubmits their booking requests; can also access customers and the schedule.
+- **Instructor:** Can view the global schedule and personal assignments.
+- **Divemaster:** Can be assigned to scheduled activities but cannot log in.
 
-**Admin / Manager** can view all bookings, edit bookings, approve bookings, request more information, cancel bookings, and view the schedule.
+## Tech Stack
 
-Instructor features are planned for later and are not part of MVP 0.1.
-
-## Core Models
-
-- `User`
-- `BookingRequest`
-- `Customer`
-- `BookingCustomer`
-- `Deposit`
-- `ScheduleItem`
-- `Attachment` later
-- `BookingStatusHistory` later
-
-`BookingRequest` is the central model. `ScheduleItem` is created only after admin approval.
-
-## Booking Statuses
-
-`DRAFT`, `PENDING_APPROVAL`, `NEEDS_MORE_INFO`, `APPROVED`, `SCHEDULED`, `CANCELLED`
-
-For the early MVP, `APPROVED` and `SCHEDULED` may behave as one step.
-
-## Main Routes
-
-```text
-/login
-/dashboard
-/bookings
-/bookings/new
-/bookings/[id]
-/bookings/[id]/review
-/schedule
-/customers
-/settings/users
-```
-
-Sprint 1 should focus only on `/bookings`, `/bookings/new`, and basic booking detail display.
+Next.js 16 App Router, React 19, TypeScript, PostgreSQL, Prisma 7, Auth.js credentials, Tailwind CSS 4, shadcn/ui, Zod, FullCalendar, and Vitest.
 
 ## Local Development
 
+Requires Node.js 20.9 or newer, pnpm 11, and PostgreSQL.
+
+Install dependencies and copy the environment template to `.env.local`:
+
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env.local
+```
+
+Configure these values:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
+DIRECT_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
+AUTH_SECRET="replace-with-a-random-secret"
+SEED_USER_PASSWORD="replace-with-a-local-development-password"
+ENABLE_DEV_ACCOUNT_SELECTOR="false"
+```
+
+`DIRECT_URL` is used by Prisma migrations. `ENABLE_DEV_ACCOUNT_SELECTOR` optionally enables the development-only account picker.
+
+Set up the database and start the app:
+
+```bash
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
 
-Expected environment variables:
+The seed creates login accounts for `admin@diveshop.local`, `manager@diveshop.local`, `cs@diveshop.local`, `mark@diveshop.local`, `erik@diveshop.local`, and `tomas@diveshop.local`. They share the password in `SEED_USER_PASSWORD`. It also creates `rigie@diveshop.local` and `junior@diveshop.local` as assignment-only divemasters without login access.
 
-```env
-DATABASE_URL=
-DIRECT_URL=
-AUTH_SECRET=
-AUTH_URL=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_STORAGE_BUCKET=
-```
+## Useful Commands
 
-## Database Setup
-
-This project uses PostgreSQL with Prisma.
-
-Create a `.env` file:
-
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
-```
-
-## Development Seed Users
-
-After migrations have been applied, run `pnpm db:seed` (or `npx prisma db seed`) to create these idempotent local development users:
-
-| Name                  | Email                             | Role               |
-| --------------------- | --------------------------------- | ------------------ |
-| Admin User            | `admin@diveshop.local`            | `ADMIN`            |
-| Customer Service User | `customer-service@diveshop.local` | `CUSTOMER_SERVICE` |
-| Manager User          | `manager@diveshop.local`          | `MANAGER`          |
-| Mark User             | `mark@diveshop.local`             | `INSTRUCTOR`       |
-
-The seed does not create passwords, authentication records, bookings, or other demo data. It uses each email as a stable key, so re-running it safely updates the same users.
+| Command          | Purpose                              |
+| ---------------- | ------------------------------------ |
+| `pnpm dev`       | Start the development server         |
+| `pnpm test`      | Run the Vitest suite                 |
+| `pnpm lint`      | Run ESLint                           |
+| `pnpm build`     | Create a production build            |
+| `pnpm db:migrate` | Apply development database migrations |
+| `pnpm db:seed`    | Seed local staff accounts             |
+| `pnpm db:studio`  | Open Prisma Studio                    |
