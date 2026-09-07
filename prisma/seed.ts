@@ -5,6 +5,7 @@ import { config } from 'dotenv';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { UserRole } from '../src/generated/prisma/enums';
 import { canAccessPlatform } from '../src/features/auth/permissions';
+import { seedDemoOperationalData } from './seed-operational-data';
 
 config({ path: '.env.local' });
 
@@ -70,38 +71,67 @@ const users = [
 ] as const;
 
 /**
- * Seeds the development database with idempotent internal users and hashed local credentials.
+ * Seeds missing development users and replaces only deterministic demo operational data.
  */
 async function main() {
+  const existingSeedUsersBefore = await prisma.user.findMany({
+    where: { email: { in: users.map((user) => user.email) } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      passwordHash: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    orderBy: { email: 'asc' },
+  });
   const platformPasswordHash = await hash(
     requiredSeedUserPassword,
     PASSWORD_HASH_ROUNDS,
   );
 
-  await Promise.all(
-    users.map((user) => {
-      const passwordHash = canAccessPlatform(user)
-        ? platformPasswordHash
-        : null;
+  const createdUsers = await prisma.user.createMany({
+    data: users.map((user) => ({
+      ...user,
+      isActive: true,
+      passwordHash: canAccessPlatform(user) ? platformPasswordHash : null,
+    })),
+    skipDuplicates: true,
+  });
 
-      return prisma.user.upsert({
-        where: { email: user.email },
-        update: {
-          name: user.name,
-          role: user.role,
-          isActive: true,
-          passwordHash,
-        },
-        create: {
-          ...user,
-          isActive: true,
-          passwordHash,
-        },
-      });
-    }),
+  console.info(
+    `Ensured ${users.length} development users exist (${createdUsers.count} created; existing users unchanged).`,
   );
 
-  console.info(`Seeded ${users.length} development users.`);
+  const demoSummary = await seedDemoOperationalData(prisma);
+  const existingSeedUsersAfter = await prisma.user.findMany({
+    where: { id: { in: existingSeedUsersBefore.map((user) => user.id) } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      passwordHash: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    orderBy: { email: 'asc' },
+  });
+
+  if (
+    JSON.stringify(existingSeedUsersBefore) !==
+    JSON.stringify(existingSeedUsersAfter)
+  ) {
+    throw new Error('Existing seeded users changed while seeding demo data.');
+  }
+
+  console.info(
+    `Seeded ${demoSummary.bookings} demo bookings, ${demoSummary.customers} customers, ${demoSummary.scheduleItems} active schedule items, and ${demoSummary.assignments} staff assignments through ${demoSummary.furthestScheduleDate.toISOString().slice(0, 10)}.`,
+  );
 }
 
 main()
