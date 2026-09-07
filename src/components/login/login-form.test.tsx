@@ -9,16 +9,20 @@ import {
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  loginWithDemoAccount: vi.fn(),
   loginWithCredentials: vi.fn(),
 }));
 
 vi.mock('@/features/auth/actions', () => ({
+  loginWithDemoAccount: mocks.loginWithDemoAccount,
   loginWithCredentials: mocks.loginWithCredentials,
 }));
 
 import LoginExperience from './login-experience';
 
 beforeEach(() => {
+  mocks.loginWithDemoAccount.mockReset();
+  mocks.loginWithDemoAccount.mockResolvedValue({});
   mocks.loginWithCredentials.mockReset();
   mocks.loginWithCredentials.mockResolvedValue({});
 });
@@ -112,7 +116,7 @@ test.each([
   ['Admin', 'admin@diveshop.local'],
   ['Customer Service', 'cs@diveshop.local'],
   ['Instructor', 'erik@diveshop.local'],
-])('fills only the %s demo account email', (role, expectedEmail) => {
+])('signs in as the %s demo account without exposing its password', async (role, expectedEmail) => {
   render(<LoginExperience showDemoAccountSelector />);
 
   fireEvent.change(screen.getByLabelText('Password'), {
@@ -127,6 +131,12 @@ test.each([
   expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe(
     '',
   );
+  await waitFor(() => {
+    expect(mocks.loginWithDemoAccount).toHaveBeenCalledWith(
+      expectedEmail,
+      undefined,
+    );
+  });
 });
 
 test('does not render demo account controls unless enabled by the server', () => {

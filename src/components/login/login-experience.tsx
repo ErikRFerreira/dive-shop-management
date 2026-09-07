@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 import FooterDemo from '@/components/login/footer-demo';
 import LoginForm from '@/components/login/login-form';
+import { loginWithDemoAccount } from '@/features/auth/actions';
 
 type LoginExperienceProps = {
   redirectTo?: string | null;
@@ -22,15 +23,23 @@ export default function LoginExperience({
 }: LoginExperienceProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [demoLoginError, setDemoLoginError] = useState<string>();
+  const [demoLoginPending, startDemoLoginTransition] = useTransition();
 
   /**
-   * Selects a seeded email while requiring the password to be entered manually.
+   * Selects a seeded email and requests server-side demo authentication.
    *
    * @param selectedEmail - Email belonging to the selected seeded user.
    */
   function handleDemoAccountSelect(selectedEmail: string) {
     setEmail(selectedEmail);
     setPassword('');
+    setDemoLoginError(undefined);
+
+    startDemoLoginTransition(async () => {
+      const result = await loginWithDemoAccount(selectedEmail, redirectTo);
+      setDemoLoginError(result.formError);
+    });
   }
 
   return (
@@ -45,7 +54,11 @@ export default function LoginExperience({
 
       {/* The server resolves this non-sensitive flag from the selected schema. */}
       {showDemoAccountSelector ? (
-        <FooterDemo onAccountSelect={handleDemoAccountSelect} />
+        <FooterDemo
+          error={demoLoginError}
+          pending={demoLoginPending}
+          onAccountSelect={handleDemoAccountSelect}
+        />
       ) : null}
     </>
   );

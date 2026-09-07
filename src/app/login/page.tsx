@@ -17,8 +17,7 @@ type LoginPageProps = {
  * Renders the branded internal login experience for unauthenticated users.
  *
  * Active authenticated users are returned to their role-appropriate landing
- * route. Seed account identifiers are available for the demo schema or when a
- * server-only local-development feature flag is explicitly enabled.
+ * route. Seed account identifiers are available only for the demo schema.
  *
  * @param props - Login URL search parameters containing an optional callback.
  * @returns The public login page or an authenticated redirect.

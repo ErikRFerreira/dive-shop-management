@@ -50,13 +50,13 @@ DATABASE_SCHEMA="public"
 DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_OR_SESSION_HOST:5432/postgres?schema=public"
 AUTH_SECRET="replace-with-a-random-secret"
 SEED_USER_PASSWORD="replace-with-a-local-development-password"
-ENABLE_DEV_ACCOUNT_SELECTOR="false"
 ```
 
 `DATABASE_URL` is the pooled runtime connection. `DIRECT_URL` is used by Prisma
 migrations and should use either Supabase's direct connection or its session
-pooler. `ENABLE_DEV_ACCOUNT_SELECTOR` optionally enables the development-only
-account picker. URL-encode special characters in database passwords.
+pooler. `SEED_USER_PASSWORD` remains server-only and powers one-click login for
+the allowlisted demo accounts. URL-encode special characters in database
+passwords.
 
 Set up the database and start the app:
 

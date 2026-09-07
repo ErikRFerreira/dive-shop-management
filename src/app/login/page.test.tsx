@@ -112,10 +112,8 @@ test('passes only a validated destination to the login form', async () => {
   );
 });
 
-test('renders seeded account emails only when explicitly enabled in development', async () => {
-  vi.stubEnv('NODE_ENV', 'development');
-  vi.stubEnv('DATABASE_SCHEMA', 'public');
-  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
+test('passes demo visibility without exposing the seed password', async () => {
+  vi.stubEnv('DATABASE_SCHEMA', 'demo');
   vi.stubEnv('SEED_USER_PASSWORD', 'must-not-reach-the-client');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
@@ -130,10 +128,9 @@ test('renders seeded account emails only when explicitly enabled in development'
   expect(screen.queryByText('must-not-reach-the-client')).toBeNull();
 });
 
-test('does not render seeded accounts in development without the explicit flag', async () => {
+test('does not render seeded accounts for the public schema in development', async () => {
   vi.stubEnv('NODE_ENV', 'development');
   vi.stubEnv('DATABASE_SCHEMA', 'public');
-  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'false');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 
@@ -144,7 +141,6 @@ test('does not render seeded accounts in development without the explicit flag',
 test('renders seeded accounts in production when the demo schema is selected', async () => {
   vi.stubEnv('NODE_ENV', 'production');
   vi.stubEnv('DATABASE_SCHEMA', 'demo');
-  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'false');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 
@@ -155,7 +151,6 @@ test('renders seeded accounts in production when the demo schema is selected', a
 test('does not render seeded accounts in production for the public schema', async () => {
   vi.stubEnv('NODE_ENV', 'production');
   vi.stubEnv('DATABASE_SCHEMA', 'public');
-  vi.stubEnv('ENABLE_DEV_ACCOUNT_SELECTOR', 'true');
 
   render(await LoginPage({ searchParams: Promise.resolve({}) }));
 
