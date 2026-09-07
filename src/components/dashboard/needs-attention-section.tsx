@@ -13,6 +13,8 @@ import {
 import type { DashboardSectionUser } from './dashboard-operational-helpers';
 import { NeedsAttentionItem } from './needs-attention-item';
 
+const NEEDS_ATTENTION_DISPLAY_LIMIT = 4;
+
 type NeedsAttentionSectionProps = {
   items: DashboardNeedsAttentionItemData[];
   currentUser: DashboardSectionUser;
@@ -22,7 +24,7 @@ type NeedsAttentionSectionProps = {
  * Renders booking and schedule rows that need operational attention.
  *
  * @param props - Role-scoped attention rows and current user details.
- * @returns A dashboard card containing attention items or an empty state.
+ * @returns A dashboard card containing up to four attention items or an empty state.
  */
 export function NeedsAttentionSection({
   items,
@@ -56,7 +58,7 @@ export function NeedsAttentionSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 p-2">
-        {items.map((item) => (
+        {items.slice(0, NEEDS_ATTENTION_DISPLAY_LIMIT).map((item) => (
           <NeedsAttentionItem
             currentUser={currentUser}
             item={item}
