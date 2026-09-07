@@ -7,18 +7,18 @@ import LoginForm from '@/components/login/login-form';
 
 type LoginExperienceProps = {
   redirectTo?: string | null;
-  showDevelopmentAccountSelector?: boolean;
+  showDemoAccountSelector?: boolean;
 };
 
 /**
- * Coordinates the login fields and optional local-development account picker.
+ * Coordinates the login fields and optional seeded demo account picker.
  *
  * @param props - Redirect destination and server-resolved selector visibility.
  * @returns The controlled login form and optional demo account buttons.
  */
 export default function LoginExperience({
   redirectTo,
-  showDevelopmentAccountSelector = false,
+  showDemoAccountSelector = false,
 }: LoginExperienceProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,8 +43,8 @@ export default function LoginExperience({
         onPasswordChange={setPassword}
       />
 
-      {/* LOCAL DEVELOPMENT ONLY: the server resolves this non-sensitive flag. */}
-      {showDevelopmentAccountSelector ? (
+      {/* The server resolves this non-sensitive flag from the selected schema. */}
+      {showDemoAccountSelector ? (
         <FooterDemo onAccountSelect={handleDemoAccountSelect} />
       ) : null}
     </>

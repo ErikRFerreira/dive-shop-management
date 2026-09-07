@@ -11,7 +11,10 @@
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:demo": "prisma migrate deploy --config prisma.demo.config.ts",
     "db:seed": "prisma db seed",
+    "db:seed:demo": "tsx prisma/seed.ts --demo",
+    "db:setup:demo": "prisma migrate deploy --config prisma.demo.config.ts && tsx prisma/seed.ts --demo",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

@@ -45,14 +45,18 @@ cp .env.example .env.local
 Configure these values:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
-DIRECT_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true"
+DATABASE_SCHEMA="public"
+DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_OR_SESSION_HOST:5432/postgres?schema=public"
 AUTH_SECRET="replace-with-a-random-secret"
 SEED_USER_PASSWORD="replace-with-a-local-development-password"
 ENABLE_DEV_ACCOUNT_SELECTOR="false"
 ```
 
-`DIRECT_URL` is used by Prisma migrations. `ENABLE_DEV_ACCOUNT_SELECTOR` optionally enables the development-only account picker.
+`DATABASE_URL` is the pooled runtime connection. `DIRECT_URL` is used by Prisma
+migrations and should use either Supabase's direct connection or its session
+pooler. `ENABLE_DEV_ACCOUNT_SELECTOR` optionally enables the development-only
+account picker. URL-encode special characters in database passwords.
 
 Set up the database and start the app:
 
@@ -64,6 +68,47 @@ pnpm dev
 
 The seed creates login accounts for `admin@diveshop.local`, `manager@diveshop.local`, `cs@diveshop.local`, `mark@diveshop.local`, `erik@diveshop.local`, and `tomas@diveshop.local`. They share the password in `SEED_USER_PASSWORD`. It also creates `rigie@diveshop.local` and `junior@diveshop.local` as assignment-only divemasters without login access.
 
+## Portfolio Demo Database
+
+The portfolio deployment uses the same Supabase database with its own `demo`
+schema. Configure these variables wherever migrations or seeds are run:
+
+```env
+DEMO_DATABASE_URL="postgresql://USER:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true"
+DEMO_DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_OR_SESSION_HOST:5432/postgres"
+```
+
+`DEMO_DIRECT_URL` is optional when `DIRECT_URL` reaches the same database; the
+demo migration config always forces the `demo` schema. The demo seed also selects
+`demo` explicitly, so neither demo connection URL needs a `schema` query
+parameter. To prepare or refresh the portfolio dataset, run:
+
+```bash
+pnpm db:setup:demo
+```
+
+This applies any pending migrations already present in `prisma/migrations`, then
+deletes application data from the `demo` schema only and replaces it with the
+fictional rolling seed dataset. It preserves `demo._prisma_migrations` and does
+not modify `public`.
+
+For the deployed demo application, set its normal runtime variables to the demo
+target:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true"
+DATABASE_SCHEMA="demo"
+```
+
+Keep `DATABASE_SCHEMA="public"` (or omit it) for the main application.
+Selecting `DATABASE_SCHEMA="demo"` also enables the seeded demo account selector
+on the login page, including in production deployments.
+
+A schema separates object names, but it is not a security boundary for a
+privileged database credential. Before publishing the portfolio deployment,
+prefer a separate Supabase project or give its runtime connection a dedicated
+database role that has access to `demo` and no access to `public`.
+
 ## Useful Commands
 
 | Command          | Purpose                              |
@@ -73,5 +118,8 @@ The seed creates login accounts for `admin@diveshop.local`, `manager@diveshop.lo
 | `pnpm lint`      | Run ESLint                           |
 | `pnpm build`     | Create a production build            |
 | `pnpm db:migrate` | Apply development database migrations |
+| `pnpm db:migrate:demo` | Apply committed migrations to `demo` |
 | `pnpm db:seed`    | Seed local staff accounts             |
+| `pnpm db:seed:demo` | Reset and seed only the `demo` schema |
+| `pnpm db:setup:demo` | Migrate, reset, and seed `demo`       |
 | `pnpm db:studio`  | Open Prisma Studio                    |
