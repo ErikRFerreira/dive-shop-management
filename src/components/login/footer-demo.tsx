@@ -12,13 +12,10 @@ type FooterDemoProps = {
 };
 
 /**
- * Renders development-only shortcuts for selecting a seeded demo account.
- *
- * This component must never be rendered in production because it exposes
- * internal development account identifiers.
+ * Renders shortcuts for selecting a seeded account in an isolated demo dataset.
  *
  * @param props - Callback invoked with the selected seeded account email.
- * @returns Accessible buttons for the local development accounts.
+ * @returns Accessible buttons for the available demo accounts.
  */
 function FooterDemo({ onAccountSelect }: FooterDemoProps) {
   return (

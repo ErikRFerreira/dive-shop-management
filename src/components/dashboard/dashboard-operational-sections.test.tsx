@@ -142,6 +142,25 @@ test('does not render admin-only attention actions for customer service users', 
   expect(screen.getAllByRole('link', { name: 'View booking' })).toHaveLength(2);
 });
 
+test('limits the needs-attention preview to four items', () => {
+  render(
+    <NeedsAttentionSection
+      currentUser={{ id: 'admin-1', role: UserRole.ADMIN }}
+      items={[
+        attentionItem({ id: 'attention-1', activitySummary: 'Activity one' }),
+        attentionItem({ id: 'attention-2', activitySummary: 'Activity two' }),
+        attentionItem({ id: 'attention-3', activitySummary: 'Activity three' }),
+        attentionItem({ id: 'attention-4', activitySummary: 'Activity four' }),
+        attentionItem({ id: 'attention-5', activitySummary: 'Activity five' }),
+      ]}
+    />,
+  );
+
+  expect(screen.getByText('Activity one')).not.toBeNull();
+  expect(screen.getByText('Activity four')).not.toBeNull();
+  expect(screen.queryByText('Activity five')).toBeNull();
+});
+
 test('does not render booking or assignment links for instructors', () => {
   render(
     <div>

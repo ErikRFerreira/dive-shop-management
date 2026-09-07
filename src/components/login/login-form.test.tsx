@@ -112,8 +112,8 @@ test.each([
   ['Admin', 'admin@diveshop.local'],
   ['Customer Service', 'cs@diveshop.local'],
   ['Instructor', 'erik@diveshop.local'],
-])('fills only the %s development account email', (role, expectedEmail) => {
-  render(<LoginExperience showDevelopmentAccountSelector />);
+])('fills only the %s demo account email', (role, expectedEmail) => {
+  render(<LoginExperience showDemoAccountSelector />);
 
   fireEvent.change(screen.getByLabelText('Password'), {
     target: { value: 'manually-entered-password' },
@@ -129,7 +129,7 @@ test.each([
   );
 });
 
-test('does not render development account controls unless enabled by the server', () => {
+test('does not render demo account controls unless enabled by the server', () => {
   render(<LoginExperience />);
 
   expect(screen.queryByText('Demo accounts')).toBeNull();
