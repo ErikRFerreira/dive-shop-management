@@ -10,9 +10,7 @@ import { seedDemoOperationalData } from './seed-operational-data';
 config({ path: '.env.local' });
 
 const isDemoSeed = process.argv.includes('--demo');
-const connectionString = isDemoSeed
-  ? process.env.DEMO_DATABASE_URL
-  : process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL;
 const databaseSchema = isDemoSeed
   ? 'demo'
   : (process.env.DATABASE_SCHEMA ?? 'public');
@@ -20,9 +18,7 @@ const seedUserPassword = process.env.SEED_USER_PASSWORD;
 const PASSWORD_HASH_ROUNDS = 12;
 
 if (!connectionString) {
-  throw new Error(
-    `${isDemoSeed ? 'DEMO_DATABASE_URL' : 'DATABASE_URL'} must be set to seed the database.`,
-  );
+  throw new Error('DATABASE_URL must be set to seed the database.');
 }
 
 if (!seedUserPassword) {
