@@ -5,10 +5,10 @@ config({
   path: '.env.local',
 });
 
-const directUrl = process.env['DEMO_DIRECT_URL'] ?? process.env['DIRECT_URL'];
+const directUrl = process.env['DIRECT_URL'];
 
 if (!directUrl) {
-  throw new Error('DEMO_DIRECT_URL or DIRECT_URL must be set for demo migrations.');
+  throw new Error('DIRECT_URL must be set for demo migrations.');
 }
 
 const demoDirectUrl = new URL(directUrl);

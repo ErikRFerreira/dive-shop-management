@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { signIn, signOut } from '@/auth';
 import { credentialsSchema } from '@/features/auth/credentials';
+import { isDemoAccountEmail } from '@/features/auth/demo-accounts';
 import { validateInternalRedirectDestination } from '@/features/auth/redirects';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
@@ -73,6 +74,49 @@ export async function loginWithCredentials(
   try {
     await signIn('credentials', {
       ...parsedCredentials.data,
+      redirect: false,
+      redirectTo: redirectDestination ?? '/',
+    });
+  } catch (error) {
+    if (error instanceof AuthError && error.type === 'CredentialsSignin') {
+      return { formError: INVALID_CREDENTIALS_MESSAGE };
+    }
+
+    return { formError: UNEXPECTED_SIGN_IN_MESSAGE };
+  }
+
+  redirect(redirectDestination ?? '/');
+}
+
+/**
+ * Authenticates one allowlisted demo account without exposing the seed password.
+ *
+ * This action is callable from the browser, so it independently verifies the
+ * selected schema and account email before reading the server-only credential.
+ *
+ * @param email - Untrusted email selected by the demo account UI.
+ * @param callbackUrl - Optional prevalidated destination requested by the login page.
+ * @returns A safe form error when demo login cannot be completed.
+ */
+export async function loginWithDemoAccount(
+  email: string,
+  callbackUrl?: string | null,
+): Promise<LoginActionState> {
+  const redirectDestination = validateInternalRedirectDestination(callbackUrl);
+
+  if (process.env.DATABASE_SCHEMA !== 'demo' || !isDemoAccountEmail(email)) {
+    return { formError: UNEXPECTED_SIGN_IN_MESSAGE };
+  }
+
+  const demoPassword = process.env.SEED_USER_PASSWORD;
+  if (!demoPassword) {
+    return { formError: UNEXPECTED_SIGN_IN_MESSAGE };
+  }
+
+  try {
+    await signIn('credentials', {
+      email,
+      password: demoPassword,
       redirect: false,
       redirectTo: redirectDestination ?? '/',
     });

@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+
 import {
   Pagination,
   PaginationContent,
@@ -73,21 +75,27 @@ export function BookingPagination({
             previousVisiblePage !== undefined && page - previousVisiblePage > 1;
 
           return (
-            <PaginationItem key={page}>
-              {showEllipsis ? <PaginationEllipsis /> : null}
-              <PaginationLink
-                href={buildBookingPageHref({
-                  page,
-                  pageSize: pagination.pageSize,
-                  selectedQueue,
-                  selectedSort,
-                  selectedStatus,
-                })}
-                isActive={page === pagination.page}
-              >
-                {page}
-              </PaginationLink>
-            </PaginationItem>
+            <Fragment key={page}>
+              {showEllipsis ? (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : null}
+              <PaginationItem>
+                <PaginationLink
+                  href={buildBookingPageHref({
+                    page,
+                    pageSize: pagination.pageSize,
+                    selectedQueue,
+                    selectedSort,
+                    selectedStatus,
+                  })}
+                  isActive={page === pagination.page}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            </Fragment>
           );
         })}
 

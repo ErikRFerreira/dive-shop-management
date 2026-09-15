@@ -50,13 +50,13 @@ DATABASE_SCHEMA="public"
 DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_OR_SESSION_HOST:5432/postgres?schema=public"
 AUTH_SECRET="replace-with-a-random-secret"
 SEED_USER_PASSWORD="replace-with-a-local-development-password"
-ENABLE_DEV_ACCOUNT_SELECTOR="false"
 ```
 
 `DATABASE_URL` is the pooled runtime connection. `DIRECT_URL` is used by Prisma
 migrations and should use either Supabase's direct connection or its session
-pooler. `ENABLE_DEV_ACCOUNT_SELECTOR` optionally enables the development-only
-account picker. URL-encode special characters in database passwords.
+pooler. `SEED_USER_PASSWORD` remains server-only and powers one-click login for
+the allowlisted demo accounts. URL-encode special characters in database
+passwords.
 
 Set up the database and start the app:
 
@@ -71,17 +71,9 @@ The seed creates login accounts for `admin@diveshop.local`, `manager@diveshop.lo
 ## Portfolio Demo Database
 
 The portfolio deployment uses the same Supabase database with its own `demo`
-schema. Configure these variables wherever migrations or seeds are run:
-
-```env
-DEMO_DATABASE_URL="postgresql://USER:PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true"
-DEMO_DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_OR_SESSION_HOST:5432/postgres"
-```
-
-`DEMO_DIRECT_URL` is optional when `DIRECT_URL` reaches the same database; the
-demo migration config always forces the `demo` schema. The demo seed also selects
-`demo` explicitly, so neither demo connection URL needs a `schema` query
-parameter. To prepare or refresh the portfolio dataset, run:
+schema. Demo migrations reuse `DIRECT_URL` and always force the `demo` schema;
+demo seeds reuse `DATABASE_URL` and select `demo` explicitly. To prepare or
+refresh the portfolio dataset, run:
 
 ```bash
 pnpm db:setup:demo

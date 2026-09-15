@@ -632,6 +632,26 @@ test('renders pagination links that preserve a status filter', () => {
   ).toBe('true');
 });
 
+test('renders the pagination ellipsis and final page as separate items', () => {
+  renderBookingList([booking()], {
+    pagination: {
+      totalCount: 56,
+      page: 1,
+      pageSize: 10,
+      totalPages: 6,
+    },
+  });
+
+  const pagination = screen.getByRole('navigation', { name: 'pagination' });
+  const ellipsis = pagination.querySelector(
+    '[data-slot="pagination-ellipsis"]',
+  );
+  const finalPageLink = screen.getByRole('link', { name: '6' });
+
+  expect(ellipsis).not.toBeNull();
+  expect(ellipsis?.closest('li')).not.toBe(finalPageLink.closest('li'));
+});
+
 test('renders pagination links that preserve the unassigned queue filter', () => {
   renderBookingList([booking()], {
     pagination: {

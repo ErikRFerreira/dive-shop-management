@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn(),
@@ -28,7 +28,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { AuthError, CredentialsSignin } from 'next-auth';
-import { loginWithCredentials, logout } from './actions';
+import {
+  loginWithCredentials,
+  loginWithDemoAccount,
+  logout,
+} from './actions';
 
 /**
  * Builds browser form data for one credentials action test.
@@ -55,6 +59,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.signIn.mockResolvedValue('/');
   mocks.signOut.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 test('normalizes valid input and uses root for role-aware landing', async () => {
@@ -170,6 +178,48 @@ test.each([
   });
 
   expect(mocks.redirect).not.toHaveBeenCalled();
+});
+
+test('signs in an allowlisted demo account with the server-only seed password', async () => {
+  vi.stubEnv('DATABASE_SCHEMA', 'demo');
+  vi.stubEnv('SEED_USER_PASSWORD', 'server-only-demo-password');
+
+  await loginWithDemoAccount(
+    'admin@diveshop.local',
+    '/bookings?status=PENDING_APPROVAL',
+  );
+
+  expect(mocks.signIn).toHaveBeenCalledWith('credentials', {
+    email: 'admin@diveshop.local',
+    password: 'server-only-demo-password',
+    redirect: false,
+    redirectTo: '/bookings?status=PENDING_APPROVAL',
+  });
+  expect(mocks.redirect).toHaveBeenCalledWith(
+    '/bookings?status=PENDING_APPROVAL',
+  );
+});
+
+test('rejects demo login outside the demo schema', async () => {
+  vi.stubEnv('DATABASE_SCHEMA', 'public');
+  vi.stubEnv('SEED_USER_PASSWORD', 'server-only-demo-password');
+
+  await expect(
+    loginWithDemoAccount('admin@diveshop.local'),
+  ).resolves.toEqual({
+    formError: 'Unable to sign in right now. Please try again.',
+  });
+  expect(mocks.signIn).not.toHaveBeenCalled();
+});
+
+test('rejects a non-allowlisted account from the demo login action', async () => {
+  vi.stubEnv('DATABASE_SCHEMA', 'demo');
+  vi.stubEnv('SEED_USER_PASSWORD', 'server-only-demo-password');
+
+  await expect(loginWithDemoAccount('manager@diveshop.local')).resolves.toEqual({
+    formError: 'Unable to sign in right now. Please try again.',
+  });
+  expect(mocks.signIn).not.toHaveBeenCalled();
 });
 
 test('signs out through Auth.js and redirects to login', async () => {
