@@ -112,6 +112,31 @@ test('renders safe staff columns, friendly roles, statuses, and updated dates', 
     within(divemasterRow!).getByRole('link', { name: 'View details' })
       .getAttribute('href'),
   ).toBe('/settings/users/divemaster-1');
+  expect(screen.getAllByRole('link', { name: 'View details' })).toHaveLength(2);
+});
+
+test('uses full-width labeled cards below xl and restores the desktop table', () => {
+  renderStaffUserList([staffUser()]);
+
+  const table = screen.getByRole('table', { name: 'Staff users' });
+  const tableHeader = table.querySelector('thead');
+  const tableBody = table.querySelector('tbody');
+  const row = within(table).getByText('Casey Service').closest('tr');
+
+  expect(table.classList.contains('block')).toBe(true);
+  expect(table.classList.contains('xl:table')).toBe(true);
+  expect(tableHeader?.classList.contains('hidden')).toBe(true);
+  expect(tableHeader?.classList.contains('xl:table-header-group')).toBe(true);
+  expect(tableBody?.classList.contains('block')).toBe(true);
+  expect(tableBody?.classList.contains('xl:table-row-group')).toBe(true);
+  expect(row?.classList.contains('grid')).toBe(true);
+  expect(row?.classList.contains('xl:table-row')).toBe(true);
+
+  for (const label of ['Email', 'Role', 'Status', 'Updated']) {
+    const mobileLabel = within(row!).getByText(label);
+
+    expect(mobileLabel.classList.contains('xl:hidden')).toBe(true);
+  }
 });
 
 test('renders the unfiltered no-users state', () => {
@@ -161,4 +186,9 @@ test('uses staff-specific range copy and preserves filters in pagination', () =>
   expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe(
     '/settings?search=marina&role=INSTRUCTOR&status=inactive',
   );
+
+  const pagination = screen.getByRole('navigation', { name: 'pagination' });
+
+  expect(pagination.classList.contains('justify-center')).toBe(true);
+  expect(pagination.classList.contains('xl:justify-end')).toBe(true);
 });

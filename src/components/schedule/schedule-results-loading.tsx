@@ -16,12 +16,22 @@ export function ScheduleResultsPendingSkeleton() {
         Updating results...
       </div>
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <Skeleton className="h-7 w-40" />
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-8 w-20" />
+        <div className="mb-4 flex flex-col gap-3 min-[721px]:flex-row min-[721px]:items-center min-[721px]:justify-between">
+          <div className="flex w-full items-center justify-between gap-2 min-[721px]:w-auto">
+            <div className="flex gap-1">
+              <Skeleton className="size-9 rounded-full" />
+              <Skeleton className="size-9 rounded-full" />
+            </div>
+            <Skeleton className="h-9 w-16 rounded-full" />
+            <Skeleton className="h-6 w-28" />
+          </div>
+          <div className="grid w-full grid-cols-4 gap-px overflow-hidden rounded-full border border-border min-[721px]:flex min-[721px]:w-auto">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton
+                className="h-9 w-full rounded-none min-[721px]:w-16"
+                key={index}
+              />
+            ))}
           </div>
         </div>
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-border bg-border">

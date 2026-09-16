@@ -46,7 +46,7 @@ function getUserInitials(name: string) {
  * @returns The responsive dashboard header with profile and logout controls.
  */
 function DashboardHeader({ currentUser }: DashboardHeaderProps) {
-  const { toggle } = useMobileMenu();
+  const { isOpen, toggle } = useMobileMenu();
   const roleLabel = formatEnumLabel(currentUser.role);
 
   return (
@@ -57,6 +57,7 @@ function DashboardHeader({ currentUser }: DashboardHeaderProps) {
         size="icon"
         onClick={toggle}
         aria-label="Open navigation menu"
+        aria-expanded={isOpen}
         className="lg:hidden"
       >
         <Menu className="size-5" />

@@ -34,7 +34,7 @@ const sortLabels: Record<BookingSort, string> = {
 };
 
 const selectClass =
-  'h-13 w-44 truncate rounded-2xl border border-border bg-card/60 px-4 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
+  'h-13 w-full truncate rounded-2xl border border-border bg-card/60 px-4 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 xl:w-44 [&>span]:truncate';
 
 /**
  * Checks whether a raw select value is one of the supported booking sorts.
@@ -83,7 +83,7 @@ export function BookingSortSelect({
   }
 
   return (
-    <div className="flex flex-col gap-1 md:items-end">
+    <div className="flex w-full flex-col gap-1 xl:w-auto xl:items-end">
       <Label
         className="mb-0.5 text-xs font-medium text-muted-foreground"
         htmlFor={sortSelectId}

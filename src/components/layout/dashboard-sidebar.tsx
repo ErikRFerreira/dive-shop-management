@@ -64,8 +64,8 @@ function DashboardSidebar({
         className={cn(
           isMobile
             ? 'fixed inset-y-0 left-0 z-50 flex h-dvh w-[85vw] max-w-sm flex-col text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden'
-            : 'app-sidebar',
-          'relative overflow-hidden',
+            : 'app-sidebar relative',
+          'overflow-hidden',
           isMobile && (isOpen ? 'translate-x-0' : '-translate-x-full'),
           isVisuallyCollapsed && 'app-sidebar-collapsed',
         )}

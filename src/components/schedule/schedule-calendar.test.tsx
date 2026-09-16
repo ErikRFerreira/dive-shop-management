@@ -56,6 +56,7 @@ vi.mock('@fullcalendar/react', () => ({
       };
     }) => void;
     headerToolbar?: {
+      left?: string;
       right?: string;
     };
     initialView?: string;
@@ -65,6 +66,7 @@ vi.mock('@fullcalendar/react', () => ({
       <div
         data-editable={String(props.editable)}
         data-all-day-text={props.allDayText}
+        data-controls={props.headerToolbar?.left}
         data-initial-view={props.initialView}
         data-selectable={String(props.selectable)}
         data-testid="full-calendar"
@@ -556,6 +558,9 @@ test('renders month, week, day, and list schedule views without a TBD all-day la
 
   expect(calendar.getAttribute('data-views')).toBe(
     'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+  );
+  expect(calendar.getAttribute('data-controls')).toBe(
+    'prev,next today title',
   );
   expect(calendar.getAttribute('data-all-day-text')).toBe('');
 });

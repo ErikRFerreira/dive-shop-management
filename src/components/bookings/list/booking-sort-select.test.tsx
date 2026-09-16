@@ -26,29 +26,36 @@ vi.mock('@/components/ui/select', () => {
   }
 
   /**
-   * Finds the trigger ID so labels point at the native select mock.
+   * Finds trigger presentation props for the native select mock.
    *
    * @param children - Select children that may include a mocked trigger.
-   * @returns The trigger ID when present.
+   * @returns The trigger ID and responsive class name when present.
    */
-  function getTriggerId(children: React.ReactNode): string | undefined {
+  function getTriggerProps(
+    children: React.ReactNode,
+  ): { className?: string; id?: string } | undefined {
     for (const child of React.Children.toArray(children)) {
       if (
-        !React.isValidElement<{ id?: string; children?: React.ReactNode }>(
-          child,
-        )
+        !React.isValidElement<{
+          className?: string;
+          id?: string;
+          children?: React.ReactNode;
+        }>(child)
       ) {
         continue;
       }
 
       if (child.type === SelectTrigger) {
-        return child.props.id;
+        return {
+          className: child.props.className,
+          id: child.props.id,
+        };
       }
 
-      const nestedId = getTriggerId(child.props.children);
+      const nestedProps = getTriggerProps(child.props.children);
 
-      if (nestedId) {
-        return nestedId;
+      if (nestedProps) {
+        return nestedProps;
       }
     }
 
@@ -72,10 +79,13 @@ vi.mock('@/components/ui/select', () => {
     onValueChange?: (value: string) => void;
     value?: string;
   }) {
+    const triggerProps = getTriggerProps(children);
+
     return (
       <select
+        className={triggerProps?.className}
         disabled={disabled}
-        id={getTriggerId(children)}
+        id={triggerProps?.id}
         onChange={(event) => onValueChange?.(event.target.value)}
         value={value ?? ''}
       >
@@ -175,6 +185,18 @@ test('renders supported booking sort options', () => {
     ['Recently updated', 'Newest created', 'Upcoming activity date'],
   );
   expect(sortSelect.value).toBe('recently-updated');
+});
+
+test('uses the available width on compact layouts', () => {
+  renderBookingSortSelect();
+
+  const sortSelect = screen.getByLabelText('Sort by');
+  const sortWrapper = sortSelect.parentElement;
+
+  expect(sortWrapper?.classList.contains('w-full')).toBe(true);
+  expect(sortWrapper?.classList.contains('xl:w-auto')).toBe(true);
+  expect(sortSelect.classList.contains('w-full')).toBe(true);
+  expect(sortSelect.classList.contains('xl:w-44')).toBe(true);
 });
 
 test('builds a sort href that preserves the selected status filter', () => {

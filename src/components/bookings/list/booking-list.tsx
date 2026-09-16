@@ -69,10 +69,10 @@ export function BookingList({
 
   return (
     <div className="space-y-3">
-      <Card className="overflow-hidden rounded-2xl border border-border bg-linear-to-b from-card to-card-glow shadow-sm py-0">
+      <Card className="overflow-visible rounded-none border-0 bg-transparent py-0 shadow-none xl:overflow-hidden xl:rounded-2xl xl:border xl:border-border xl:bg-linear-to-b xl:from-card xl:to-card-glow xl:shadow-sm">
         <CardContent className="p-0">
-          <Table className="table-fixed">
-            <TableHeader>
+          <Table className="block w-full xl:table xl:table-fixed">
+            <TableHeader className="hidden xl:table-header-group">
               <TableRow className="border-b bg-muted/40">
                 <TableHead className="h-12 w-[14%] pl-6 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                   Status
@@ -94,25 +94,40 @@ export function BookingList({
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="block space-y-3 [&_tr:last-child]:border xl:table-row-group xl:space-y-0 xl:[&_tr:last-child]:border-0">
               {bookings.map((booking) => (
-                <TableRow key={booking.id} className="border-b last:border-b-0">
-                  <TableCell className="py-5 pl-6 align-top">
+                <TableRow
+                  key={booking.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 rounded-2xl border border-border bg-linear-to-b from-card to-card-glow p-4 shadow-sm xl:table-row xl:rounded-none xl:border-x-0 xl:border-t-0 xl:border-b xl:bg-none xl:p-0 xl:shadow-none"
+                >
+                  <TableCell className="col-start-1 row-start-1 p-0 align-middle xl:table-cell xl:py-5 xl:pr-2 xl:pl-6 xl:align-top">
                     <BookingStatusBadge status={booking.status} />
                   </TableCell>
-                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
+                  <TableCell className="col-span-2 mt-4 whitespace-normal wrap-break-word border-t border-border/70 p-0 pt-4 align-top xl:table-cell xl:mt-0 xl:border-0 xl:py-5 xl:pr-2">
+                    <span className="mb-2 block text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 xl:hidden">
+                      Booking
+                    </span>
                     {renderBookingSummary(booking)}
                   </TableCell>
-                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
+                  <TableCell className="col-span-2 mt-4 whitespace-normal wrap-break-word border-t border-border/70 p-0 pt-4 align-top xl:table-cell xl:mt-0 xl:border-0 xl:py-5 xl:pr-2">
+                    <span className="mb-2 block text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 xl:hidden">
+                      Activity / Schedule
+                    </span>
                     {renderActivitySchedule(booking)}
                   </TableCell>
-                  <TableCell className="whitespace-normal wrap-break-word py-5 align-top">
+                  <TableCell className="col-start-1 row-start-4 mt-4 whitespace-normal wrap-break-word border-t border-border/70 p-0 pt-4 pr-2 align-top xl:table-cell xl:mt-0 xl:border-0 xl:py-5 xl:pr-2">
+                    <span className="mb-2 block text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 xl:hidden">
+                      Staff
+                    </span>
                     {renderStaffAssignments(booking)}
                   </TableCell>
-                  <TableCell className="py-5 align-top">
+                  <TableCell className="col-start-2 row-start-4 mt-4 border-t border-border/70 p-0 pt-4 pl-2 align-top xl:table-cell xl:mt-0 xl:border-0 xl:py-5 xl:pr-2 xl:pl-0">
+                    <span className="mb-2 block text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 xl:hidden">
+                      Updated
+                    </span>
                     {renderCompactUpdatedDate(booking.updatedAt)}
                   </TableCell>
-                  <TableCell className="py-5 pr-6 text-center align-top">
+                  <TableCell className="col-start-2 row-start-1 p-0 text-right align-middle xl:table-cell xl:py-5 xl:pr-6 xl:text-center xl:align-top">
                     <BookingRowActions
                       booking={booking}
                       currentUser={currentUser}
@@ -125,11 +140,11 @@ export function BookingList({
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground mb-8">
+      <div className="mb-8 flex flex-col items-center gap-3 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
         <p>
           Showing {bookings.length} of {pagination.totalCount} bookings
         </p>
-        <div>
+        <div className="w-full sm:w-auto">
           <BookingPagination
             pagination={pagination}
             selectedQueue={selectedQueue}

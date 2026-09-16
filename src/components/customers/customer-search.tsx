@@ -74,10 +74,10 @@ function CustomerSearchForm({ query }: CustomerSearchProps) {
     <div className="rounded-2xl border border-border bg-card/60 p-3 shadow-sm">
       <form
         action="/customers"
-        className="flex max-w-2xl flex-wrap gap-2"
+        className="flex max-w-2xl flex-col gap-2 sm:flex-row"
         onSubmit={handleSubmit}
       >
-        <div className="min-w-64 flex-1">
+        <div className="w-full min-w-0 flex-1 sm:min-w-64">
           <label className="sr-only" htmlFor="customer-search">
             Search customers
           </label>
@@ -108,7 +108,11 @@ function CustomerSearchForm({ query }: CustomerSearchProps) {
             ) : null}
           </div>
         </div>
-        <Button disabled={isPending} type="submit">
+        <Button
+          className="w-full justify-center sm:w-auto"
+          disabled={isPending}
+          type="submit"
+        >
           <Search className="h-4 w-4" />
           {isPending ? 'Searching...' : 'Search'}
         </Button>

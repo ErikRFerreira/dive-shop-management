@@ -26,6 +26,7 @@ import type {
 import { formatScheduleActivityLabel } from '@/features/schedule/utils';
 import { ActivityType } from '@/generated/prisma/enums';
 import { formatEnumLabel } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
 const allStaffValue = 'all-staff';
@@ -41,7 +42,7 @@ type ScheduleFiltersProps = {
 };
 
 const selectClass =
-  'h-9 truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
+  'h-9 w-full truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
 
 /**
  * Renders URL-backed controls for filtering the internal schedule page.
@@ -108,7 +109,7 @@ export function ScheduleFilters({
     >
       <h2 className="sr-only">Filters</h2>
       <div className="flex flex-wrap items-end gap-3">
-        <div className="grid min-w-48 gap-1">
+        <div className="grid w-full gap-1 md:w-auto md:min-w-48">
           <Label
             htmlFor={staffSelectId}
             className="text-xs font-medium text-muted-foreground mb-0.5"
@@ -138,7 +139,7 @@ export function ScheduleFilters({
           </Select>
         </div>
 
-        <div className="grid min-w-44 gap-1">
+        <div className="grid w-full gap-1 md:w-auto md:min-w-44">
           <Label
             htmlFor={scheduleTypeSelectId}
             className="text-xs font-medium text-muted-foreground mb-0.5"
@@ -161,7 +162,7 @@ export function ScheduleFilters({
           </Select>
         </div>
 
-        <div className="grid min-w-52 gap-1">
+        <div className="grid w-full gap-1 md:w-auto md:min-w-52">
           <Label
             htmlFor={activitySelectId}
             className="text-xs font-medium text-muted-foreground mb-0.5"
@@ -196,7 +197,7 @@ export function ScheduleFilters({
           </Select>
         </div>
 
-        <div className="flex h-9 items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition-colors hover:border-primary/50">
+        <div className="flex h-9 w-full items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 shadow-sm transition-colors hover:border-primary/50 md:w-auto">
           <Checkbox
             checked={filters.unassignedOnly ?? false}
             disabled={disabled || isPending}
@@ -219,11 +220,10 @@ export function ScheduleFilters({
         {hasActiveFilters ? (
           <Button
             asChild
-            className={
-              disabled || isPending
-                ? 'pointer-events-none opacity-50'
-                : undefined
-            }
+            className={cn(
+              'w-full justify-center md:w-auto',
+              (disabled || isPending) && 'pointer-events-none opacity-50',
+            )}
             size="sm"
             variant="ghost"
           >

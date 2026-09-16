@@ -37,29 +37,36 @@ vi.mock('@/components/ui/select', () => {
   }
 
   /**
-   * Finds the trigger ID so labels point at the native select mock.
+   * Finds trigger presentation props for the native select mock.
    *
    * @param children - Select children that may include a mocked trigger.
-   * @returns The trigger ID when present.
+   * @returns The trigger ID and responsive class name when present.
    */
-  function getTriggerId(children: React.ReactNode): string | undefined {
+  function getTriggerProps(
+    children: React.ReactNode,
+  ): { className?: string; id?: string } | undefined {
     for (const child of React.Children.toArray(children)) {
       if (
-        !React.isValidElement<{ id?: string; children?: React.ReactNode }>(
-          child,
-        )
+        !React.isValidElement<{
+          className?: string;
+          id?: string;
+          children?: React.ReactNode;
+        }>(child)
       ) {
         continue;
       }
 
       if (child.type === SelectTrigger) {
-        return child.props.id;
+        return {
+          className: child.props.className,
+          id: child.props.id,
+        };
       }
 
-      const nestedId = getTriggerId(child.props.children);
+      const nestedProps = getTriggerProps(child.props.children);
 
-      if (nestedId) {
-        return nestedId;
+      if (nestedProps) {
+        return nestedProps;
       }
     }
 
@@ -83,10 +90,13 @@ vi.mock('@/components/ui/select', () => {
     onValueChange?: (value: string) => void;
     value?: string;
   }) {
+    const triggerProps = getTriggerProps(children);
+
     return (
       <select
+        className={triggerProps?.className}
         disabled={disabled}
-        id={getTriggerId(children)}
+        id={triggerProps?.id}
         onChange={(event) => onValueChange?.(event.target.value)}
         value={value ?? ''}
       >
@@ -222,6 +232,32 @@ test('shows all activity options when schedule type is all', () => {
   ]);
 });
 
+test('uses full-width filter controls on mobile', () => {
+  renderScheduleFilters();
+
+  const responsiveSelects = [
+    ['Staff', 'md:min-w-48'],
+    ['Schedule type', 'md:min-w-44'],
+    ['Activity', 'md:min-w-52'],
+  ] as const;
+
+  for (const [label, desktopWidthClass] of responsiveSelects) {
+    const select = screen.getByLabelText(label);
+    const wrapper = select.parentElement;
+
+    expect(select.classList.contains('w-full')).toBe(true);
+    expect(wrapper?.classList.contains('w-full')).toBe(true);
+    expect(wrapper?.classList.contains('md:w-auto')).toBe(true);
+    expect(wrapper?.classList.contains(desktopWidthClass)).toBe(true);
+  }
+
+  const unassignedOnly = screen.getByLabelText('Unassigned only');
+  const checkboxWrapper = unassignedOnly.parentElement;
+
+  expect(checkboxWrapper?.classList.contains('w-full')).toBe(true);
+  expect(checkboxWrapper?.classList.contains('md:w-auto')).toBe(true);
+});
+
 test('limits activity options to fun dives when schedule type is fun dives', () => {
   renderScheduleFilters({
     filters: {
@@ -328,9 +364,11 @@ test('renders clear filters link to the base schedule page', () => {
     },
   });
 
-  expect(
-    screen.getByRole('link', { name: 'Clear filters' }).getAttribute('href'),
-  ).toBe('/schedule');
+  const clearFilters = screen.getByRole('link', { name: 'Clear filters' });
+
+  expect(clearFilters.getAttribute('href')).toBe('/schedule');
+  expect(clearFilters.classList.contains('w-full')).toBe(true);
+  expect(clearFilters.classList.contains('md:w-auto')).toBe(true);
 });
 
 test('hides clear filters when no filter is active', () => {

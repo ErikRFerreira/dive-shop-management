@@ -89,49 +89,51 @@ export function BookingStatusFilter({
   return (
     <nav
       aria-label="Filter bookings by status or operational queue"
-      className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card/60 p-3 shadow-sm"
+      className="no-scrollbar w-full min-w-0 overflow-x-auto rounded-2xl border border-border bg-card/60 p-3 shadow-sm xl:flex-1 xl:overflow-visible"
     >
-      {filters.map((filter) => {
-        const matchesCurrentFilter = filter.queue
-          ? filter.queue === selectedQueue
-          : !selectedQueue && filter.status === selectedStatus;
-        const isPendingFilter = pendingFilterKey === filter.key;
-        const isActive = pendingFilterKey
-          ? isPendingFilter
-          : matchesCurrentFilter;
-        const href = buildBookingFilterHref({
-          pageSize,
-          selectedQueue: filter.queue,
-          selectedSort,
-          selectedStatus: filter.status,
-        });
+      <div className="flex min-w-max gap-2 xl:min-w-0 xl:flex-wrap">
+        {filters.map((filter) => {
+          const matchesCurrentFilter = filter.queue
+            ? filter.queue === selectedQueue
+            : !selectedQueue && filter.status === selectedStatus;
+          const isPendingFilter = pendingFilterKey === filter.key;
+          const isActive = pendingFilterKey
+            ? isPendingFilter
+            : matchesCurrentFilter;
+          const href = buildBookingFilterHref({
+            pageSize,
+            selectedQueue: filter.queue,
+            selectedSort,
+            selectedStatus: filter.status,
+          });
 
-        return (
-          <Button
-            key={filter.label}
-            aria-current={isActive ? 'page' : undefined}
-            aria-pressed={isActive}
-            disabled={disabled}
-            onClick={() => {
-              if (!disabled && !matchesCurrentFilter) {
-                onFilterSelect(href, filter.key);
-              }
-            }}
-            size="sm"
-            type="button"
-            variant={isActive ? 'default' : 'outline'}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              isActive
-                ? 'border-primary/30 bg-primary/10 text-primary'
-                : 'border-transparent bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
-              disabled && 'cursor-not-allowed',
-            )}
-          >
-            {filter.label}
-          </Button>
-        );
-      })}
+          return (
+            <Button
+              key={filter.label}
+              aria-current={isActive ? 'page' : undefined}
+              aria-pressed={isActive}
+              disabled={disabled}
+              onClick={() => {
+                if (!disabled && !matchesCurrentFilter) {
+                  onFilterSelect(href, filter.key);
+                }
+              }}
+              size="sm"
+              type="button"
+              variant={isActive ? 'default' : 'outline'}
+              className={cn(
+                'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                isActive
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-transparent bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+                disabled && 'cursor-not-allowed',
+              )}
+            >
+              {filter.label}
+            </Button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

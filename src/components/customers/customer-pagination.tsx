@@ -42,7 +42,7 @@ export function CustomerPagination({
   const hasNextPage = pagination.page < pagination.totalPages;
 
   return (
-    <Pagination className="justify-end">
+    <Pagination className="justify-center sm:justify-end">
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
