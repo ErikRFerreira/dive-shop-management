@@ -101,3 +101,22 @@ test('disables filter controls and keeps the pending filter visually active', ()
 
   expect(onFilterSelect).not.toHaveBeenCalled();
 });
+
+test('renders status filters as a non-shrinking horizontal scroller on compact layouts', () => {
+  renderBookingStatusFilter();
+
+  const navigation = screen.getByRole('navigation', {
+    name: 'Filter bookings by status or operational queue',
+  });
+  const filterRow = navigation.firstElementChild;
+
+  expect(navigation.classList.contains('overflow-x-auto')).toBe(true);
+  expect(navigation.classList.contains('xl:overflow-visible')).toBe(true);
+  expect(filterRow?.classList.contains('min-w-max')).toBe(true);
+  expect(filterRow?.classList.contains('xl:flex-wrap')).toBe(true);
+  expect(
+    screen
+      .getAllByRole('button')
+      .every((button) => button.classList.contains('shrink-0')),
+  ).toBe(true);
+});

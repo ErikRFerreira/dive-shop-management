@@ -36,7 +36,7 @@ import {
 
 const allRolesValue = 'all-roles';
 const selectClass =
-  'h-9 truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
+  'h-9 w-full truncate rounded-lg border border-border bg-background px-2.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 [&>span]:truncate';
 
 type StaffUserListShellProps = {
   children: ReactNode;
@@ -115,17 +115,17 @@ export function StaffUserListShell({
       >
         <form
           action="/settings"
-          className="flex flex-wrap items-end gap-3"
+          className="flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-end"
           onSubmit={handleSearchSubmit}
         >
-          <div className="grid min-w-64 flex-1 gap-1">
+          <div className="grid w-full gap-1 md:min-w-64 md:flex-1">
             <Label
               className="mb-0.5 text-xs font-medium text-muted-foreground"
               htmlFor="staff-user-search"
             >
               Search
             </Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 md:flex-row">
               <Input
                 autoComplete="off"
                 disabled={isPending}
@@ -136,14 +136,18 @@ export function StaffUserListShell({
                 type="search"
                 value={search}
               />
-              <Button disabled={isPending} type="submit">
+              <Button
+                className="w-full justify-center md:w-auto"
+                disabled={isPending}
+                type="submit"
+              >
                 <Search className="size-4" />
                 {isPending ? 'Updating...' : 'Search'}
               </Button>
             </div>
           </div>
 
-          <div className="grid min-w-44 gap-1">
+          <div className="grid w-full gap-1 md:w-auto md:min-w-44">
             <Label
               className="mb-0.5 text-xs font-medium text-muted-foreground"
               htmlFor={roleSelectId}
@@ -169,7 +173,7 @@ export function StaffUserListShell({
             </Select>
           </div>
 
-          <div className="grid min-w-36 gap-1">
+          <div className="grid w-full gap-1 md:w-auto md:min-w-36">
             <Label
               className="mb-0.5 text-xs font-medium text-muted-foreground"
               htmlFor={statusSelectId}
@@ -194,6 +198,7 @@ export function StaffUserListShell({
 
           {hasActiveFilters ? (
             <Button
+              className="w-full justify-center md:w-auto"
               disabled={isPending}
               onClick={handleClearFilters}
               type="button"

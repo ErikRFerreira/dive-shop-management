@@ -221,12 +221,43 @@ export function CustomersLoadingSkeleton() {
     <div className="space-y-6">
       <PageHeaderSkeleton />
       <div className="rounded-2xl border border-border bg-card/60 p-3 shadow-sm">
-        <div className="flex max-w-2xl flex-wrap gap-2">
-          <Skeleton className="h-9 min-w-64 flex-1 rounded-2xl" />
-          <Skeleton className="h-9 w-24" />
+        <div className="flex max-w-2xl flex-col gap-2 sm:flex-row">
+          <Skeleton className="h-9 w-full rounded-2xl sm:min-w-64 sm:flex-1" />
+          <Skeleton className="h-9 w-full sm:w-24" />
         </div>
       </div>
-      <TableRowsSkeleton rows={5} />
+      <div className="space-y-3 xl:hidden" data-testid="customer-card-skeletons">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 rounded-2xl border border-border bg-card p-4 shadow-sm"
+            key={index}
+          >
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-8 w-20" />
+            <div className="col-span-2 mt-4 space-y-2 border-t border-border/70 pt-4">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-52 max-w-full" />
+              <Skeleton className="h-4 w-44 max-w-full" />
+            </div>
+            <div className="col-span-2 mt-4 space-y-2 border-t border-border/70 pt-4">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-4 w-28 max-w-full" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <div className="col-span-2 mt-4 space-y-2 border-t border-border/70 pt-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-28 max-w-full" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden xl:block">
+        <TableRowsSkeleton rows={5} />
+      </div>
     </div>
   );
 }

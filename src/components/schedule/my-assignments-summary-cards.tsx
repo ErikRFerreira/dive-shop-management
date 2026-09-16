@@ -61,7 +61,7 @@ export function AssignmentSummaryCards({
 }: AssignmentSummaryCardsProps) {
   const nextAssignment = briefing.summary.nextAssignment;
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <AssignmentSummaryCard
         label="Today"
         icon={CalendarDays}
@@ -132,13 +132,13 @@ function AssignmentSummaryCard({
  */
 function NextAssignmentCard({ label, value }: AssignmentSummaryCardProps) {
   return (
-    <Card className="col-span-2 gap-1 flex flex-col justify-center rounded-2xl border border-primary/20 bg-primary/[0.06] p-4 shadow-sm lg:col-span-1">
+    <Card className="flex min-w-0 flex-col justify-center gap-1 rounded-2xl border border-primary/20 bg-primary/[0.06] p-4 shadow-sm">
       <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
         <ArrowRight className="size-3.5" />
         Next assignment
       </div>
-      <CardHeader className="flex gap-4 items-center">
-        <div>
+      <CardHeader className="flex min-w-0 items-center gap-4">
+        <div className="min-w-0">
           <CardTitle className="truncate text-sm font-semibold text-foreground">
             {label}
           </CardTitle>

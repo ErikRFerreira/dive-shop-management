@@ -45,7 +45,7 @@ export function StaffUserPagination({
   const hasNextPage = pagination.page < pagination.totalPages;
 
   return (
-    <Pagination className="justify-end">
+    <Pagination className="justify-center xl:justify-end">
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious

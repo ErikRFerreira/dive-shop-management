@@ -457,23 +457,50 @@
 
 @media (max-width: 720px) {
   .schedule-calendar .fc .fc-toolbar {
-    align-items: flex-start;
+    align-items: stretch;
     flex-wrap: wrap;
+    row-gap: 0.875rem;
+    padding-inline: 0;
   }
 
   .schedule-calendar .fc .fc-toolbar-chunk:first-child,
   .schedule-calendar .fc .fc-toolbar-chunk:last-child {
     flex: 1 1 100%;
-    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-chunk:first-child {
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .schedule-calendar .fc .fc-toolbar-chunk:first-child .fc-button-group {
+    flex: 0 0 auto;
+    width: auto;
   }
 
   .schedule-calendar .fc .fc-toolbar-title {
-    flex-basis: 100%;
-    margin-top: 0.25rem;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 1rem;
+    text-align: right;
+    white-space: nowrap;
   }
 
-  .schedule-calendar .fc .fc-button-group > .fc-button {
-    padding-inline: 0.75rem;
+  .schedule-calendar .fc .fc-toolbar-chunk:last-child .fc-button-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .schedule-calendar
+    .fc
+    .fc-toolbar-chunk:last-child
+    .fc-button-group
+    > .fc-button {
+    flex: 1 1 25%;
+    min-width: 0;
+    padding-inline: 0.5rem;
   }
 }
 

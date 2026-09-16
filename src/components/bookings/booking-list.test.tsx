@@ -241,6 +241,33 @@ test('renders assigned staff names without exposing emails', () => {
   expect(screen.queryByText('dina@example.test')).toBeNull();
 });
 
+test('renders each compact booking row as a labeled responsive card', () => {
+  renderBookingList([booking()]);
+
+  const action = screen.getByRole('button', {
+    name: 'Open actions for booking booking-1',
+  });
+  const row = action.closest('tr');
+  const tableHeader = screen
+    .getByRole('table')
+    .querySelector('[data-slot="table-header"]');
+
+  expect(row).not.toBeNull();
+  expect(tableHeader).not.toBeNull();
+  expect(row?.classList.contains('grid')).toBe(true);
+  expect(row?.classList.contains('xl:table-row')).toBe(true);
+  expect(tableHeader?.classList.contains('hidden')).toBe(true);
+  expect(within(row!).getByText('Booking')).not.toBeNull();
+  expect(within(row!).getByText('Activity / Schedule')).not.toBeNull();
+  expect(within(row!).getByText('Staff')).not.toBeNull();
+  expect(within(row!).getByText('Updated')).not.toBeNull();
+  expect(
+    screen.getAllByRole('button', {
+      name: 'Open actions for booking booking-1',
+    }),
+  ).toHaveLength(1);
+});
+
 test('renders staff state for unassigned and unscheduled bookings', () => {
   renderBookingList([
     booking({
@@ -630,6 +657,12 @@ test('renders pagination links that preserve a status filter', () => {
       .getByRole('link', { name: 'Go to previous page' })
       .getAttribute('aria-disabled'),
   ).toBe('true');
+  const pagination = screen.getByRole('navigation', { name: 'pagination' });
+
+  expect(pagination.classList.contains('justify-center')).toBe(true);
+  expect(pagination.classList.contains('sm:justify-end')).toBe(true);
+  expect(pagination.parentElement?.classList.contains('w-full')).toBe(true);
+  expect(pagination.parentElement?.classList.contains('sm:w-auto')).toBe(true);
 });
 
 test('renders the pagination ellipsis and final page as separate items', () => {
@@ -699,6 +732,14 @@ test('renders pending feedback with a table-shaped bookings skeleton', () => {
   expect(screen.getByRole('columnheader', { name: 'Staff' })).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Updated' })).not.toBeNull();
   expect(screen.getByRole('columnheader', { name: 'Actions' })).not.toBeNull();
+  const firstPendingRow = screen.getAllByRole('row', { hidden: true })[1];
+
+  expect(firstPendingRow.classList.contains('grid')).toBe(true);
+  expect(firstPendingRow.classList.contains('xl:table-row')).toBe(true);
+  expect(within(firstPendingRow).getByText('Booking')).not.toBeNull();
+  expect(within(firstPendingRow).getByText('Activity / Schedule')).not.toBeNull();
+  expect(within(firstPendingRow).getByText('Staff')).not.toBeNull();
+  expect(within(firstPendingRow).getByText('Updated')).not.toBeNull();
   expect(screen.queryByText(/Showing \d+ of \d+ bookings/)).toBeNull();
   expect(screen.queryByRole('navigation', { name: 'pagination' })).toBeNull();
 });

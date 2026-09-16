@@ -77,9 +77,13 @@ test('renders summary counts and next assignment metadata', () => {
   expect(within(tomorrowSection!).getByText('1')).not.toBeNull();
   expect(within(upcomingSection!).getByText('3')).not.toBeNull();
   const nextAssignmentCard = screen.getByText('Next assignment').parentElement;
+  const summaryGrid = nextAssignmentCard?.parentElement;
 
   expect(nextAssignmentCard).not.toBeNull();
   expect(within(nextAssignmentCard!).getByText('Fun Dive')).not.toBeNull();
+  expect(nextAssignmentCard?.classList.contains('col-span-2')).toBe(false);
+  expect(summaryGrid?.classList.contains('grid-cols-2')).toBe(true);
+  expect(summaryGrid?.classList.contains('xl:grid-cols-4')).toBe(true);
 });
 
 test('renders today and tomorrow assignment cards with compact empty states', () => {
@@ -160,13 +164,21 @@ test('renders upcoming assignments in a scalable table', () => {
     />,
   );
 
-  const table = screen.getByRole('table');
-  expect(within(table).getByText('Date / Slot')).not.toBeNull();
-  expect(within(table).getByText('Activity')).not.toBeNull();
-  expect(within(table).getByText('Active participants')).not.toBeNull();
-  expect(within(table).getByText('Location')).not.toBeNull();
-  expect(within(table).getByText('Role')).not.toBeNull();
-  expect(within(table).getByText('Notes')).not.toBeNull();
+  const table = screen.getByRole('table', { name: 'Upcoming assignments' });
+
+  for (const heading of [
+    'Date / Slot',
+    'Activity',
+    'Active participants',
+    'Location',
+    'Role',
+    'Notes',
+  ]) {
+    expect(
+      within(table).getByRole('columnheader', { name: heading }),
+    ).not.toBeNull();
+  }
+
   expect(within(table).getByText('02 Jul 2026')).not.toBeNull();
   expect(within(table).getByText('2 active participants')).not.toBeNull();
   expect(within(table).getByText('Upcoming Customer')).not.toBeNull();
@@ -174,6 +186,56 @@ test('renders upcoming assignments in a scalable table', () => {
   expect(within(table).getByText('Hotel / pickup: Harbor Hotel')).not.toBeNull();
   expect(within(table).getByText('Assistant Instructor')).not.toBeNull();
   expect(within(table).getByText('No notes')).not.toBeNull();
+});
+
+test('uses full-width labeled cards below xl and restores the upcoming table', () => {
+  render(
+    <MyAssignmentsList
+      briefing={briefing({
+        upcomingAssignments: [
+          assignment({
+            scheduleItemId: 'upcoming',
+            date: new Date('2026-07-02T00:00:00.000Z'),
+            scheduleNotes: 'Bring the oxygen kit.',
+          }),
+        ],
+        summary: {
+          todayCount: 0,
+          tomorrowCount: 0,
+          upcomingCount: 1,
+          nextAssignment: null,
+        },
+      })}
+    />,
+  );
+
+  const table = screen.getByRole('table', { name: 'Upcoming assignments' });
+  const tableHeader = table.querySelector('thead');
+  const tableBody = table.querySelector('tbody');
+  const row = within(table).getByText('02 Jul 2026').closest('tr');
+
+  expect(table.classList.contains('block')).toBe(true);
+  expect(table.classList.contains('xl:table')).toBe(true);
+  expect(tableHeader?.classList.contains('hidden')).toBe(true);
+  expect(tableHeader?.classList.contains('xl:table-header-group')).toBe(true);
+  expect(tableBody?.classList.contains('block')).toBe(true);
+  expect(tableBody?.classList.contains('xl:table-row-group')).toBe(true);
+  expect(row?.classList.contains('grid')).toBe(true);
+  expect(row?.classList.contains('xl:table-row')).toBe(true);
+
+  for (const label of [
+    'Activity',
+    'Active participants',
+    'Location',
+    'Notes',
+  ]) {
+    const mobileLabel = within(row!).getByText(label);
+
+    expect(mobileLabel.classList.contains('xl:hidden')).toBe(true);
+  }
+
+  expect(within(row!).getByText('Bring the oxygen kit.')).not.toBeNull();
+  expect(within(row!).getByText('Role:')).not.toBeNull();
 });
 
 test('renders capped upcoming assignments without action controls', () => {
