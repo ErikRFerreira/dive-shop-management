@@ -42,9 +42,12 @@ export function RecentActivityItem({ item }: RecentActivityItemProps) {
         {item.activitySummary}
       </span>
 
-      <span className="ml-auto shrink-0 text-xs text-muted-foreground/70">
+      <time
+        className="ml-auto shrink-0 text-xs text-muted-foreground/70"
+        dateTime={item.occurredAt.toISOString()}
+      >
         {formatRecentActivityTime(item.occurredAt)}
-      </span>
+      </time>
     </li>
   );
 }
