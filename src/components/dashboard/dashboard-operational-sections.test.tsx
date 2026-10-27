@@ -308,7 +308,11 @@ test('renders recent activity as read-only status and date information', () => {
   );
 
   expect(screen.getByText('Booking approved and scheduled')).not.toBeNull();
-  expect(screen.getByText('3 hours ago')).not.toBeNull();
+  const timestamp = screen.getByText('3 hours ago').closest('time');
+
+  expect(timestamp?.getAttribute('dateTime')).toBe(
+    '2026-07-03T08:30:00.000Z',
+  );
   expect(screen.queryByText('Scheduled')).toBeNull();
   expect(screen.queryByRole('link')).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
