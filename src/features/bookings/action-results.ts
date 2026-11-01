@@ -36,6 +36,46 @@ export type BookingWorkflowActionState = {
   formError?: string;
 };
 
+/** Result returned after changing a scheduled participant's operational status. */
+export type BookingParticipantStatusActionResult =
+  | { success: true }
+  | {
+      success: false;
+      fieldErrors?: Record<string, string[]>;
+      formError?: string;
+    };
+
+/** Browser-safe values accepted when adding a participant to a scheduled booking. */
+export type AddScheduledBookingParticipantValues = {
+  customerId?: string;
+  customerName: string;
+  chineseName: string;
+  weChatId: string;
+  whatsAppNumber: string;
+  email: string;
+  phone: string;
+  hotelAtBooking: string;
+  equipmentNeeded: string;
+  customerNotes: string;
+  preferredLanguage: string;
+  heightCm: string;
+  weightKg: string;
+  shoeSize: string;
+  certificationLevel: string;
+  certificationAgency: string;
+  lastDiveDate: string;
+  divesLogged: string;
+};
+
+/** Result returned after adding a participant to a scheduled booking. */
+export type AddScheduledBookingParticipantActionResult =
+  | { success: true }
+  | {
+      success: false;
+      fieldErrors?: Record<string, string[]>;
+      formError?: string;
+    };
+
 /**
  * Converts a Zod validation error into a shape consumable by the booking workflow forms.
  *
